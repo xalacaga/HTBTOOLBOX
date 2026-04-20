@@ -1,10 +1,27 @@
 # HTB Toolbox
 
-Interface web standalone pour piloter une boîte à outils de pentest `Windows / Linux / Web / Hybrid` et un mode `HTB Challenge` depuis Kali Linux.
+> 🇫🇷 [Français](#-français) · 🇬🇧 [English](#-english)
+> 📖 Guide utilisateur assisté : [GUIDE.md](GUIDE.md)
 
-Le projet est maintenant pensé pour être cloné depuis GitHub et installé `from scratch` sur une Kali récente.
+---
 
-## Installation from scratch sur Kali
+## 🇫🇷 Français
+
+Interface web standalone qui pilote une boîte à outils de pentest **Windows / Linux / Web / Hybrid / HTB Challenge** depuis Kali Linux. Le projet est conçu pour être cloné et installé **from-scratch** sur une Kali récente en quelques commandes.
+
+### Ce que fait l'outil
+
+- **Un navigateur web = ta console opérateur** : sélectionne des outils, lance-les, regarde les sorties en temps réel, parcours le loot, analyse avec Claude.
+- **91 outils catalogués** en 14 groupes : recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, coercition NTLM, tunnel/pivot, challenge CTF, plus un bloc ad-hoc.
+- **Wizard guidé + Presets d'attaque** : 8 chaînes prêtes à l'emploi (HTB AD quick win, Foothold, Web focus, Linux focus, Challenge triage/web/pwn/forensics).
+- **Playbook opérateur** : recommandations adaptées au contexte détecté (type de cible × mode opératoire).
+- **3 modes opératoires** : `safe` (discret), `htb` (agressif pour lab), `enterprise` (opsec serrée).
+- **Détection auto** : après un scan, les modules pertinents se cochent tout seuls selon les ports ouverts.
+- **Auto-complétion** : credentials extraits des sorties (NT hash, TGT, mots de passe) automatiquement proposés pour remplir la config.
+- **Parallélisme contrôlé** : 1 à 4 outils en parallèle selon le contexte et le mode.
+- **Mode Challenge** : workflow CTF pour challenges HTB Academy (web, pwn, reverse, crypto, forensics, osint).
+
+### Installation from-scratch sur Kali
 
 ```bash
 git clone <REPO_URL> HTBTOOLBOX
@@ -14,127 +31,238 @@ chmod +x install.sh start.sh htbtoolbox.sh
 ./start.sh --open
 ```
 
-L'interface sera disponible sur `http://127.0.0.1:8765`.
+L'interface est disponible sur `http://127.0.0.1:8765`.
 
-## Ce que fait `install.sh`
-
-- installe les prérequis système: `python3`, `python3-venv`, `pipx`, `git`, `curl`, `jq`, `unzip`
-- crée un virtualenv local `.venv/`
-- installe les dépendances Python du backend via `requirements.txt`
-- crée `config.local.json` à partir de `config.example.json`
-- tente d'installer automatiquement les outils offensifs manquants
-- complète l'installation avec le moteur d'auto-install interne de `htbtoolbox.sh`
-
-## Outils installés automatiquement si absents
-
-Le bootstrap essaie d'installer ou de préparer notamment:
-
-- `nmap`, `rustscan`, `masscan`
-- `netexec` / `nxc`, `crackmapexec`, `smbclient`, `rpcclient`, `ldapsearch`
-- `impacket`, `bloodhound-python`, `certipy-ad`, `bloodyAD`, `ldapdomaindump`, `enum4linux-ng`
-- `file`, `readelf`, `strings`, `exiftool`, `binwalk`, `foremost`, `checksec`
-- `ffuf`, `wfuzz`, `feroxbuster`, `gobuster`, `nikto`, `nuclei`, `sqlmap`, `wpscan`, `wafw00f`, `whatweb`
-- `hydra`, `responder`, `chisel`, `ligolo-proxy`, `socat`
-- `kerbrute`, `ntpdate`, `snmpwalk`, `onesixtyone`
-- `smbmap`, `evil-winrm`, `psql`, `mysql`, `redis-cli`, `mongosh`, `mongodump`
-
-Important:
-- l'installation est `best effort`: certains paquets peuvent varier selon la version de Kali
-- les outils vraiment optionnels ou non packagés proprement peuvent nécessiter une installation manuelle complémentaire
-- `ligolo-proxy` est téléchargé depuis sa release GitHub si absent
-
-## Démarrage
+#### Options install
 
 ```bash
-./start.sh
-./start.sh --open
-./start.sh --host 0.0.0.0 --port 9000
+./install.sh --with-ai      # ajoute le client Anthropic (analyse IA du loot)
+./install.sh --skip-tools   # prépare seulement backend + UI (pas d'apt install)
 ```
 
-Options:
+#### Options start
 
 ```bash
-./start.sh --skip-bootstrap   # utilise le .venv existant sans vérification
-./install.sh --with-ai        # ajoute le client Anthropic
-./install.sh --skip-tools     # prépare seulement le backend/UI
+./start.sh                        # 127.0.0.1:8765
+./start.sh --open                 # ouvre Firefox automatiquement
+./start.sh --host 0.0.0.0         # accessible réseau (⚠ attention)
+./start.sh --port 9000            # change le port
+./start.sh --skip-bootstrap       # utilise .venv existant sans vérification
 ```
 
-## Structure du projet
+### Outils installés automatiquement
+
+`install.sh` tente d'installer via apt/pipx/releases GitHub :
+
+- Scan : `nmap`, `rustscan`, `masscan`
+- AD : `netexec`/`nxc`, `crackmapexec`, `smbclient`, `rpcclient`, `ldap-utils`, `kerbrute`
+- Impacket, `bloodhound-python`, `certipy-ad`, `bloodyAD`, `ldapdomaindump`, `enum4linux-ng`
+- Web : `ffuf`, `wfuzz`, `feroxbuster`, `gobuster`, `nikto`, `nuclei`, `sqlmap`, `wpscan`, `wafw00f`, `whatweb`
+- Linux : `hydra`, `sshpass`, `responder`, `chisel`, `ligolo-proxy`, `socat`
+- SQL : `mysql`, `psql`, `redis-cli`, `mongosh`, `mongodump`
+- Challenge : `file`, `readelf`, `strings`, `exiftool`, `binwalk`, `foremost`, `checksec`
+
+> Best-effort : certains paquets varient selon la version de Kali. Ligolo-ng est téléchargé depuis sa release si absent.
+
+### Structure du projet
 
 ```text
 HTBTOOLBOX/
-├── install.sh
-├── start.sh
-├── server.py
-├── htbtoolbox.sh
-├── index.html
-├── requirements.txt
-├── config.example.json
-├── config.local.json        # généré localement, ignoré par git
+├── install.sh              ← bootstrap complet (apt + pipx + releases)
+├── start.sh                ← lanceur (crée .venv, démarre uvicorn)
+├── server.py               ← backend FastAPI + WebSocket (5000+ lignes)
+├── index.html              ← SPA, zéro dépendance externe (5000+ lignes)
+├── htbtoolbox.sh           ← script historique AD/HTB (toujours supporté)
 ├── catalog/
-│   ├── modules.json
-│   └── profiles.json
+│   ├── modules.json        ← 91 outils catalogués
+│   └── profiles.json       ← profils de sélection
+├── config.example.json     ← template versionné
+├── config.local.json       ← config locale (ignorée par Git)
+├── requirements.txt        ← fastapi + uvicorn + websockets
 └── loot/
+    └── <domain>/           ← sorties triées par domaine cible
+        ├── parsed/runs/    ← historique horodaté JSON
+        ├── adcs/ kerberos/ bloodhound/ smb_shares/ …
+        └── attack_checks/
 ```
 
-## Configuration locale
+### Sécurité & secrets
 
-Le projet versionne `config.example.json` et utilise `config.local.json` en local.
+- Le backend écoute sur `127.0.0.1` par défaut.
+- `config.local.json` contient tes secrets locaux — il est **ignoré par Git**.
+- `config.example.json` est le template versionné (vide de secrets).
+- Les mots de passe ne sont **jamais** persistés par `save_config`.
+- Les mots de passe sont masqués dans l'output terminal.
+- N'expose pas `--host 0.0.0.0` sur un réseau non maîtrisé.
 
-`config.local.json` est ignoré par Git pour éviter de publier:
+### Commandes terminal intégrées
 
-- mots de passe
-- `sudo_password`
-- hash NT
-- chemins de `ccache`
-- infos de session locales
+```text
+TARGET=10.129.x.x       # changer la cible
+DOMAIN=corp.htb         # changer le domaine
+DC=DC01.corp.htb        # changer le DC
+USER=john               # changer le user
+PASS=P@ssw0rd           # changer le mot de passe
+TYPE=linux              # windows | linux | web | hybrid | challenge
+MODE=htb                # safe | htb | enterprise
+run                     # lancer la sélection
+stop                    # arrêter le run
+profile=htb             # appliquer un profil de groupes
+loot                    # vue loot
+clear / help
+```
 
-Le backend ne persiste plus les secrets lors du `save_config`.
+### Raccourcis
 
-## Développement / publication GitHub
+| Touche | Action |
+|--------|--------|
+| `/` | Focus sur le terminal |
+| `Ctrl+L` | Effacer le terminal |
 
-Avant de pousser le dépôt:
+### Pour aller plus loin
+
+- 📖 **[GUIDE.md](GUIDE.md)** : guide utilisateur assisté, pas à pas
+- 🧙 **Wizard** dans l'UI : sélecteur de type + preset en 3 clics
+- 📚 **Playbook** : stratégie recommandée pour la box en cours
+
+### Dépannage express
+
+| Problème | Solution |
+|----------|----------|
+| `claude: command not found` | Claude Code CLI non installé (optionnel) |
+| `rustscan` pas trouvé | `cargo install rustscan` ou `apt install rustscan` |
+| Modules ne s'affichent pas | Le catalog JSON est invalide — `python3 -c "import json; json.load(open('catalog/modules.json'))"` |
+| Backend injoignable | Vérifier que `./start.sh` tourne, port 8765 libre |
+| WebSocket disconnects | Rechargement navigateur ou `Ctrl+C` puis `./start.sh` |
+
+---
+
+## 🇬🇧 English
+
+Standalone web interface driving a **Windows / Linux / Web / Hybrid / HTB Challenge** pentest toolbox from Kali Linux. The project is designed to be cloned and installed **from-scratch** on a recent Kali in a few commands.
+
+### What it does
+
+- **A web browser = your operator console**: pick tools, run them, watch live output, browse the loot, analyze with Claude.
+- **91 catalogued tools** in 14 groups: recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, NTLM coercion, tunneling/pivot, CTF challenges, plus an ad-hoc slot.
+- **Guided wizard + Attack presets**: 8 ready-made chains (HTB AD quick win, Foothold, Web focus, Linux focus, Challenge triage/web/pwn/forensics).
+- **Operator playbook**: context-aware recommendations (target type × operating mode).
+- **3 operating modes**: `safe` (stealthy), `htb` (aggressive lab), `enterprise` (tight opsec).
+- **Auto-detect**: after a scan, relevant modules are ticked automatically based on open ports.
+- **Auto-fill**: credentials extracted from outputs (NT hash, TGT, passwords) are automatically suggested.
+- **Controlled parallelism**: 1 to 4 tools in parallel depending on context and mode.
+- **Challenge mode**: CTF workflow for HTB Academy challenges (web, pwn, reverse, crypto, forensics, osint).
+
+### From-scratch install on Kali
 
 ```bash
-rm -rf loot __pycache__ .venv
-cp config.example.json config.local.json   # si besoin d'un squelette local propre
+git clone <REPO_URL> HTBTOOLBOX
+cd HTBTOOLBOX
+chmod +x install.sh start.sh htbtoolbox.sh
+./install.sh
+./start.sh --open
 ```
 
-Fichiers ignorés par Git:
+UI at `http://127.0.0.1:8765`.
 
-- `.venv/`
-- `loot/`
-- `timeline.json`
-- `config.local.json`
-- `__pycache__/`
+#### Install flags
 
-## Modules et usage
+```bash
+./install.sh --with-ai      # add Anthropic client (loot AI analysis)
+./install.sh --skip-tools   # prepare only backend + UI (no apt install)
+```
 
-L'interface couvre la recon, l'énumération et les chaînes d'attaque sur:
+#### Start flags
 
-- Active Directory / Windows
-- Linux
-- Web
-- SQL
-- coercition / relay
-- tunneling / pivot
+```bash
+./start.sh                        # 127.0.0.1:8765
+./start.sh --open                 # auto-open Firefox
+./start.sh --host 0.0.0.0         # expose on network (⚠ careful)
+./start.sh --port 9000            # change port
+./start.sh --skip-bootstrap       # reuse existing .venv without checks
+```
 
-Elle inclut aussi:
+### Auto-installed tooling
 
-- presets d'attaque
-- wizard
-- playbook opérateur
-- adaptation au contexte détecté
-- mode opératoire `safe / htb / realiste entreprise`
-- parallélisme contrôlé
-- manifests de run
-- historique et loot viewer
-- mode `challenge` pour `web / pwn / reverse / crypto / forensics / osint / misc`
+`install.sh` installs via apt/pipx/GitHub releases:
 
-## Sécurité
+- Scan: `nmap`, `rustscan`, `masscan`
+- AD: `netexec`/`nxc`, `crackmapexec`, `smbclient`, `rpcclient`, `ldap-utils`, `kerbrute`
+- Impacket, `bloodhound-python`, `certipy-ad`, `bloodyAD`, `ldapdomaindump`, `enum4linux-ng`
+- Web: `ffuf`, `wfuzz`, `feroxbuster`, `gobuster`, `nikto`, `nuclei`, `sqlmap`, `wpscan`, `wafw00f`, `whatweb`
+- Linux: `hydra`, `sshpass`, `responder`, `chisel`, `ligolo-proxy`, `socat`
+- SQL: `mysql`, `psql`, `redis-cli`, `mongosh`, `mongodump`
+- Challenge: `file`, `readelf`, `strings`, `exiftool`, `binwalk`, `foremost`, `checksec`
 
-- le backend écoute sur `127.0.0.1` par défaut
-- les secrets ne sont pas sauvegardés dans la config persistée
-- n'expose pas le service sur une interface publique sans cloisonnement
-- certains outils lancés par l'UI sont bruyants: utilise le mode `safe` ou `realiste entreprise` si besoin
-# HTBTOOLBOX
+> Best-effort: packages vary per Kali version. Ligolo-ng is downloaded from its release if missing.
+
+### Project layout
+
+```text
+HTBTOOLBOX/
+├── install.sh              ← full bootstrap (apt + pipx + releases)
+├── start.sh                ← launcher (builds .venv, starts uvicorn)
+├── server.py               ← FastAPI + WebSocket backend (5000+ lines)
+├── index.html              ← SPA, zero external deps (5000+ lines)
+├── htbtoolbox.sh           ← legacy AD/HTB script (still supported)
+├── catalog/
+│   ├── modules.json        ← 91 catalogued tools
+│   └── profiles.json       ← selection profiles
+├── config.example.json     ← versioned template
+├── config.local.json       ← local config (Git-ignored)
+├── requirements.txt        ← fastapi + uvicorn + websockets
+└── loot/
+    └── <domain>/           ← per-target outputs
+        ├── parsed/runs/    ← timestamped JSON history
+        ├── adcs/ kerberos/ bloodhound/ smb_shares/ …
+        └── attack_checks/
+```
+
+### Security & secrets
+
+- Backend binds `127.0.0.1` by default.
+- `config.local.json` holds your local secrets — **Git-ignored**.
+- `config.example.json` is the versioned template (no secrets).
+- Passwords are **never** persisted by `save_config`.
+- Passwords are masked in terminal output.
+- Don't expose `--host 0.0.0.0` on untrusted networks.
+
+### Built-in terminal commands
+
+```text
+TARGET=10.129.x.x       # change target
+DOMAIN=corp.htb         # change domain
+DC=DC01.corp.htb        # change DC
+USER=john               # change user
+PASS=P@ssw0rd           # change password
+TYPE=linux              # windows | linux | web | hybrid | challenge
+MODE=htb                # safe | htb | enterprise
+run                     # run selection
+stop                    # stop run
+profile=htb             # apply group profile
+loot                    # switch to loot view
+clear / help
+```
+
+### Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `/` | Focus terminal |
+| `Ctrl+L` | Clear terminal |
+
+### Next steps
+
+- 📖 **[GUIDE.md](GUIDE.md)**: assisted user guide, step-by-step
+- 🧙 **Wizard** in the UI: target type + preset picker in 3 clicks
+- 📚 **Playbook**: recommended strategy for your current box
+
+### Quick troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| `claude: command not found` | Claude Code CLI not installed (optional) |
+| `rustscan` missing | `cargo install rustscan` or `apt install rustscan` |
+| Modules don't show | Catalog JSON invalid — `python3 -c "import json; json.load(open('catalog/modules.json'))"` |
+| Backend unreachable | Check `./start.sh` is running and port 8765 is free |
+| WebSocket disconnects | Reload browser or `Ctrl+C` and `./start.sh` |

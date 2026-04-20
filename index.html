@@ -217,7 +217,8 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 .tool-row{display:flex;align-items:center;gap:5px;padding:3px 4px;
   border-radius:4px;cursor:pointer;transition:background .1s;overflow:hidden}
 .tool-row:hover{background:var(--bg4)}
-.tool-info{flex:1;display:flex;align-items:center;gap:5px;min-width:0}
+.tool-info{flex:1;display:flex;flex-direction:column;align-items:stretch;gap:2px;min-width:0}
+.tool-info-top{display:flex;align-items:center;gap:5px;min-width:0}
 .tool-meta{display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0}
 .tool-badge{font-size:8px;padding:1px 5px;border-radius:999px;border:1px solid rgba(255,255,255,.08);
   color:var(--text3);background:rgba(255,255,255,.03)}
@@ -238,7 +239,7 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
   font-size:8px;color:transparent;transition:all .1s}
 .tool-chk.on{background:rgba(62,207,110,.15);border-color:rgba(62,207,110,.5);color:var(--green)}
 .tool-label{flex:1;font-size:11px;color:var(--text2);min-width:0;
-  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.4}
+  line-height:1.35;word-break:break-word;overflow-wrap:anywhere}
 .tool-label b{color:var(--text)}
 .noisy{color:var(--red);font-size:9px}
 .tool-row.blocked{opacity:.68}
@@ -1774,6 +1775,10 @@ const PORT_AUTO_RULES = [
   { ports:[6379], label:"Redis", groups:["sql"], tools:["redis_probe"] },
   { ports:[27017,27018,27019], label:"MongoDB", groups:["sql"], tools:["mongodb_probe"] },
 ];
+// Outils qui invoquent `sudo` — si le pwd sudo est vide, prompt explicite avant lancement
+const SUDO_REQUIRED_TOOLS = new Set([
+  "hosts_autoconf", "ntlmrelayx", "responder", "ligolo_proxy", "chisel_server",
+]);
 const TOOL_REQUIREMENTS = {
   smb_signing: { ports:[445] },
   nxc_anon_probe: { ports:[445] },
@@ -2503,6 +2508,10 @@ function handleMsg(msg) {
         if(activeViewNow === "view-loot") scheduleLootRefresh(900);
       }
       if(msg.done) {
+        // Meta-acks du backend (manifest, adhoc bloqué) — pas des outils de la queue
+        if(msg.tool_id === "run_manifest" || msg.tool_id === "adhoc_blocked") {
+          break;
+        }
         const wasDaemon = isDaemon(msg.tool_id);
         // Signal kill (SIGTERM=143, SIGKILL=137, SIGINT=130) → "arrêté" pas "erreur"
         const wasKilled = wasDaemon && (msg.rc === 143 || msg.rc === 137 || msg.rc === 130 || msg.rc < 0);
@@ -2719,9 +2728,11 @@ function buildModules() {
           <div class="tool-row ${skipReason ? "blocked" : ""}" id="tr-${t.id}" onclick="toggleTool('${t.id}')" title="${escapeHtml(skipReason || plainLabel)}">
             <div class="tool-chk ${toolOn?"on":""}" id="tc-${t.id}">${toolOn?"✓":""}</div>
             <div class="tool-info">
-              <span class="tool-label">${t.label}${t.noisy?` <span class="noisy">[bruyant]</span>`:""}${t.daemon?` <span class="noisy" style="color:var(--yellow)">[daemon]</span>`:""}</span>
+              <div class="tool-info-top">
+                <span class="tool-label">${t.label}${t.noisy?` <span class="noisy">[bruyant]</span>`:""}${t.daemon?` <span class="noisy" style="color:var(--yellow)">[daemon]</span>`:""}</span>
+                ${t.desc?`<button class="tool-info-btn" data-desc="${t.desc.replace(/"/g,'&quot;')}" onclick="event.stopPropagation();toggleToolTip(event,this,'${t.id}')">ⓘ</button>`:""}
+              </div>
               ${badges.length ? `<span class="tool-meta">${badges.join("")}</span>` : ""}
-              ${t.desc?`<button class="tool-info-btn" data-desc="${t.desc.replace(/"/g,'&quot;')}" onclick="event.stopPropagation();toggleToolTip(event,this,'${t.id}')">ⓘ</button>`:""}
             </div>
             <button class="tool-run-btn" id="run-btn-${t.id}" onclick="event.stopPropagation();${t.daemon?`daemonToggle('${t.id}')`:`runOne('${t.id}')`}">▶</button>
             <span class="tool-stat ts-idle" id="ts-${t.id}">—</span>
@@ -2834,14 +2845,63 @@ function getSelected() {
   return getVisibleModules().flatMap(m=>m.tools.map(t=>t.id))
     .filter(id=>{ const c=document.getElementById("tc-"+id); return c&&c.classList.contains("on"); });
 }
-function runOne(id) {
+async function runOne(id) {
+  if(!(await ensureSudoForTools([id]))) return;
+  _runOneDirect(id);
+}
+function _runOneDirect(id) {
   if(running){toast("Exécution en cours — stop d'abord","err");return;}
   runQueue=[id]; startQueue();
 }
-function runSelected() {
+/* ── Sudo prompt ─────────────────────────────────────────────────── */
+let _sudoPromptResolve = null;
+function promptSudoPassword(reason) {
+  const ov = document.getElementById("sudo-overlay");
+  const inp = document.getElementById("sudo-prompt-input");
+  const msg = document.getElementById("sudo-prompt-reason");
+  const rem = document.getElementById("sudo-prompt-remember");
+  msg.textContent = reason || "Un outil a besoin de sudo. Saisis ton mot de passe pour continuer.";
+  inp.value = ""; rem.checked = true;
+  ov.style.display = "flex";
+  setTimeout(()=>inp.focus(),30);
+  return new Promise(res => { _sudoPromptResolve = res; });
+}
+function sudoPromptConfirm() {
+  const inp = document.getElementById("sudo-prompt-input");
+  const rem = document.getElementById("sudo-prompt-remember");
+  const pw = inp.value;
+  document.getElementById("sudo-overlay").style.display = "none";
+  if(pw && rem.checked) {
+    document.getElementById("inp-sudo").value = pw;
+  }
+  if(_sudoPromptResolve) { _sudoPromptResolve(pw || null); _sudoPromptResolve = null; }
+}
+function sudoPromptCancel() {
+  document.getElementById("sudo-overlay").style.display = "none";
+  if(_sudoPromptResolve) { _sudoPromptResolve(null); _sudoPromptResolve = null; }
+}
+async function ensureSudoForTools(toolIds) {
+  const needs = toolIds.some(id => SUDO_REQUIRED_TOOLS.has(id));
+  if(!needs) return true;
+  if(document.getElementById("inp-sudo").value) return true;
+  const which = toolIds.filter(id => SUDO_REQUIRED_TOOLS.has(id)).join(", ");
+  const pw = await promptSudoPassword(`Les outils suivants demandent sudo : ${which}. Saisis ton mot de passe pour continuer.`);
+  if(!pw) { toast("Exécution annulée — sudo requis","err"); return false; }
+  return true;
+}
+async function ensureSudoForRaw(raw) {
+  if(!/^\s*sudo\s+/.test(raw)) return true;
+  if(document.getElementById("inp-sudo").value) return true;
+  const pw = await promptSudoPassword(`La commande commence par sudo : <code>${escapeHtml(raw.slice(0,80))}</code>`);
+  if(!pw) { toast("Exécution annulée — sudo requis","err"); return false; }
+  return true;
+}
+
+async function runSelected() {
   if(running){toast("Exécution en cours — stop d'abord","err");return;}
   runQueue=getSelected();
   if(!runQueue.length){toast("Aucun outil sélectionné","err");return;}
+  if(!(await ensureSudoForTools(runQueue))) return;
   startQueue();
 }
 function runAll() { selectAll(true); setTimeout(runSelected,50); }
@@ -2875,11 +2935,13 @@ function startQueue() {
   dispatchQueue();
 }
 function finishQueueIfDone() {
+  if(!running) return false;
   if(runIdx>=runQueue.length && runInflight.size===0){
     if(LAST_RUN_MANIFEST) {
       LAST_RUN_MANIFEST.completed_at = new Date().toISOString();
       LAST_RUN_MANIFEST.finished_tools = Object.entries(toolStats).filter(([,state]) => ["ok","err","stop","skip"].includes(state)).map(([id,state]) => ({tool_id:id,state}));
       wsSend("save_run_manifest", {manifest: LAST_RUN_MANIFEST, cfg:getCfg()});
+      LAST_RUN_MANIFEST = null;
     }
     setRunning(false);
     tl(`\n<span class="tc-ok">[+] Run terminé — ${sessionStats.ok} ok / ${sessionStats.err} erreur(s)</span>`);
@@ -3007,11 +3069,19 @@ function handleConsoleInput(e) {
   if(e.key!=="Enter") return;
   sendConsoleLine();
 }
-function sendConsoleLine() {
+async function sendConsoleLine() {
   const inp=document.getElementById("console-input");
-  const cmd=inp.value;
+  let cmd=inp.value;
   if(!cmd.trim()) return;
   if(!wsReady){toast("Backend non connecté","err");return;}
+  if(!(await ensureSudoForRaw(cmd))) return;
+  // Si sudo + pwd connu, transforme en forme non-interactive pour éviter le prompt TTY
+  const sp = document.getElementById("inp-sudo").value;
+  if(sp && /^\s*sudo\s+(?!-S\b)/.test(cmd)) {
+    const escPw = sp.replace(/'/g, "'\\''");
+    const rest = cmd.replace(/^\s*sudo\s+/, "");
+    cmd = `printf '%s\\n' '${escPw}' | sudo -S -p '' ${rest}`;
+  }
   if(!consoleReady) startConsoleShell();
   wsSend("shell_input",{chars:cmd+"\n",cfg:getCfg()});
   inp.value="";
@@ -3963,13 +4033,14 @@ function runAdhocCmdFromPayload(payload) {
   }
 }
 
-function runAdhocCmd(entryOrCmd) {
+async function runAdhocCmd(entryOrCmd) {
   if(!wsReady) { toast("WebSocket non connecté","err"); return; }
   const entry = typeof entryOrCmd === "string" ? {cmd: entryOrCmd} : (entryOrCmd || {});
   if(entry.manual || entry.run_allowed === false) {
     toast("Commande à adapter manuellement — utilise Copier","err");
     return;
   }
+  if(!(await ensureSudoForRaw(entry.cmd || ""))) return;
   wsSend("run_adhoc", {cmd: entry.cmd || "", cfg:getCfg(), meta:entry});
   document.querySelectorAll(".view").forEach(v=>v.style.display="");
   switchView("modules", document.getElementById("nav-modules"));
@@ -5066,5 +5137,23 @@ function toast(msg,type=""){
 }
 </script>
 <div id="tool-tip"></div>
+<div id="sudo-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg1);border:1px solid var(--border2);border-radius:8px;padding:18px 20px;min-width:360px;max-width:460px;box-shadow:0 10px 40px rgba(0,0,0,.5)">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Mot de passe sudo requis</div>
+    <div id="sudo-prompt-reason" style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5"></div>
+    <input id="sudo-prompt-input" type="password" autocomplete="current-password"
+           style="width:100%;padding:8px 10px;background:var(--bg0);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px"
+           placeholder="mot de passe sudo"
+           onkeydown="if(event.key==='Enter')sudoPromptConfirm();if(event.key==='Escape')sudoPromptCancel()">
+    <label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10px;color:var(--text3);cursor:pointer">
+      <input id="sudo-prompt-remember" type="checkbox" style="margin:0">
+      mémoriser pour cette session (stocké en mémoire, pas sur disque)
+    </label>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="modal-btn" onclick="sudoPromptCancel()">Annuler</button>
+      <button class="modal-btn primary" onclick="sudoPromptConfirm()">Valider</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

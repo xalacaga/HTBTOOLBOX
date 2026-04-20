@@ -124,6 +124,63 @@ install_release_binary() {
   good "$bin_name installé dans /usr/local/bin"
 }
 
+install_deb_from_url() {
+  # $1 = nom du binaire final, $2 = URL du .deb
+  local bin_name="$1"
+  local url="$2"
+  if have "$bin_name"; then
+    good "$bin_name déjà présent"
+    return 0
+  fi
+  local tmpfile
+  tmpfile="$(mktemp --suffix=.deb)"
+  log "Téléchargement .deb pour $bin_name depuis ${url}"
+  if ! curl -fsSL "$url" -o "$tmpfile"; then
+    warn "Échec du téléchargement de $bin_name"
+    rm -f "$tmpfile"
+    return 1
+  fi
+  run_priv dpkg -i "$tmpfile" 2>/dev/null || run_priv apt-get install -f -y
+  rm -f "$tmpfile"
+  if have "$bin_name"; then
+    good "$bin_name installé via .deb"
+    return 0
+  fi
+  warn "$bin_name non disponible après install"
+  return 1
+}
+
+ensure_rustscan() {
+  if have rustscan; then good "rustscan déjà présent"; return 0; fi
+  if apt_install rustscan 2>/dev/null; then return 0; fi
+  warn "rustscan absent d'apt — fallback GitHub release"
+  local tag url
+  tag="$(curl -fsSL https://api.github.com/repos/bee-san/RustScan/releases/latest 2>/dev/null | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -1 | cut -d'"' -f4)"
+  [[ -z "$tag" ]] && tag="2.3.0"
+  local ver="${tag#v}"
+  url="https://github.com/bee-san/RustScan/releases/download/${tag}/rustscan_${ver}_amd64.deb"
+  install_deb_from_url rustscan "$url" || {
+    warn "Essaie via cargo : cargo install rustscan (nécessite rust)"
+    return 1
+  }
+}
+
+ensure_mongosh() {
+  if have mongosh; then good "mongosh déjà présent"; return 0; fi
+  if apt_install mongodb-mongosh 2>/dev/null; then return 0; fi
+  warn "mongosh absent d'apt — fallback MongoDB CDN"
+  local url="https://downloads.mongodb.com/compass/mongodb-mongosh_2.3.2_amd64.deb"
+  install_deb_from_url mongosh "$url"
+}
+
+ensure_mongodb_tools() {
+  if have mongodump; then good "mongodump déjà présent"; return 0; fi
+  if apt_install mongodb-database-tools 2>/dev/null; then return 0; fi
+  warn "mongodb-database-tools absent d'apt — fallback MongoDB CDN"
+  local url="https://fastdl.mongodb.org/tools/db/mongodb-database-tools-debian12-x86_64-100.10.0.deb"
+  install_deb_from_url mongodump "$url"
+}
+
 main() {
   command -v python3 >/dev/null || { bad "python3 est requis"; exit 1; }
   command -v git >/dev/null || { bad "git est requis"; exit 1; }
@@ -175,11 +232,11 @@ main() {
   ensure_apt responder responder
   ensure_apt chisel chisel
   ensure_apt evil-winrm evil-winrm
-  ensure_apt rustscan rustscan
+  ensure_rustscan || true
   ensure_apt masscan masscan
   ensure_apt nuclei nuclei
-  ensure_apt mongosh mongodb-mongosh || true
-  ensure_apt mongodump mongodb-database-tools || true
+  ensure_mongosh || true
+  ensure_mongodb_tools || true
   ensure_apt sshpass sshpass
   ensure_apt onesixtyone onesixtyone || true
   ensure_apt snmpwalk snmp
