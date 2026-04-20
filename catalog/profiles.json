@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "profiles": {
+    "full": {
+      "title": "Full AD",
+      "on":  ["recon", "smb", "ldap", "kerberos", "bh"],
+      "off": ["adcs", "postauth", "linux", "web", "sql", "coercion", "tunnel"],
+      "target_types": ["windows"]
+    },
+    "htb": {
+      "title": "HTB quick win",
+      "on":  ["recon", "smb", "ldap", "kerberos", "bh", "adcs"],
+      "off": ["postauth", "linux", "web", "sql", "coercion", "tunnel"],
+      "target_types": ["windows"]
+    },
+    "ldap": {
+      "title": "LDAP / Kerb",
+      "on":  ["ldap", "kerberos", "adcs", "bh"],
+      "off": ["recon", "smb", "postauth", "linux", "web", "sql", "coercion", "tunnel"],
+      "target_types": ["windows"]
+    },
+    "smb": {
+      "title": "SMB focus",
+      "on":  ["recon", "smb", "bh"],
+      "off": ["ldap", "kerberos", "adcs", "postauth", "linux", "web", "sql", "coercion", "tunnel"],
+      "target_types": ["windows"]
+    },
+    "adcs": {
+      "title": "ADCS focus",
+      "on":  ["ldap", "kerberos", "adcs"],
+      "off": ["recon", "smb", "bh", "postauth", "linux", "web", "sql", "coercion", "tunnel"],
+      "target_types": ["windows"]
+    },
+    "windows": {
+      "title": "Windows Host",
+      "on":  ["recon", "smb", "ldap", "kerberos", "bh", "adcs", "sql"],
+      "off": ["postauth", "linux", "web", "coercion", "tunnel"],
+      "target_types": ["windows"]
+    },
+    "linux": {
+      "title": "Linux Host",
+      "on":  ["recon", "linux", "web", "sql"],
+      "off": ["smb", "ldap", "kerberos", "adcs", "bh", "postauth", "coercion", "tunnel"],
+      "target_types": ["linux"]
+    },
+    "web": {
+      "title": "Web App",
+      "on":  ["recon", "web", "sql"],
+      "off": ["smb", "ldap", "kerberos", "adcs", "bh", "postauth", "linux", "coercion", "tunnel"],
+      "target_types": ["web"]
+    },
+    "hybrid": {
+      "title": "Hybrid",
+      "on":  ["recon", "smb", "ldap", "kerberos", "bh", "linux", "web", "sql"],
+      "off": ["postauth", "coercion", "tunnel"],
+      "target_types": ["hybrid", "windows", "linux", "web"]
+    },
+    "challenge": {
+      "title": "HTB Challenge",
+      "on":  ["challenge", "web"],
+      "off": ["recon", "smb", "ldap", "kerberos", "adcs", "bh", "postauth", "linux", "sql", "coercion", "tunnel"],
+      "target_types": ["challenge"]
+    }
+  }
+}

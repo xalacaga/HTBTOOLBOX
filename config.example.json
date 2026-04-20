@@ -1,0 +1,18 @@
+{
+  "target_type": "windows",
+  "op_mode": "safe",
+  "challenge_kind": "web",
+  "challenge_path": "",
+  "target": "",
+  "domain": "",
+  "dc": "",
+  "user": "",
+  "password": "",
+  "sudo_password": "",
+  "nt_hash": "",
+  "ccache": "",
+  "claude_api_key": "",
+  "web_port": "80",
+  "ssh_port": "22",
+  "notes": ""
+}
