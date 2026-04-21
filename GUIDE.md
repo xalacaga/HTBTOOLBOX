@@ -25,6 +25,8 @@ Ce guide t'accompagne **pas à pas** pour tirer le maximum de HTB Toolbox sur un
 12. [Gérer les credentials découverts](#12-gérer-les-credentials-découverts)
 13. [Les daemons (Responder, chisel, ligolo…)](#13-les-daemons)
 14. [Analyse IA du loot avec Claude](#14-analyse-ia-du-loot-avec-claude)
+14bis. [Prévisualiser avant de lancer](#14bis-prévisualiser-avant-de-lancer)
+14ter. [Notes par box](#14ter-notes-par-box)
 15. [FAQ et pièges à éviter](#15-faq-et-pièges-à-éviter)
 
 ---
@@ -41,7 +43,7 @@ Firefox s'ouvre sur `http://127.0.0.1:8765`. Tu vois :
 - **Barre du haut** : état backend, horloge cible, boutons `🔑 Identifiants`, `🪄 Wizard`, `💾 Sauver`.
 - **Sidebar gauche** : champs cible (IP, domaine, user, password), puis la liste des **groupes de modules**.
 - **Panel central** : le **terminal** qui affiche les sorties en temps réel.
-- **Panel droit** : `Résultats`, `Loot`, `Timeline`, `Credentials`, `Playbook`, `Analyse IA`.
+- **Panel droit** : `Résultats`, `Loot`, `Timeline`, `Credentials`, `Playbook`, `Analyse IA`, `📝 Notes` (par box).
 
 **Premier lancement :**
 
@@ -292,6 +294,33 @@ Certains outils **tournent en continu** (Responder écoute, chisel maintient un 
 
 ---
 
+### 14bis. Prévisualiser avant de lancer
+
+Le bouton `👁 Prévisualiser` dans la barre d'actions construit la commande réelle pour chaque outil coché, **sans l'exécuter**. La commande est affichée dans le terminal avec les secrets masqués (password, NT hash, sudo password).
+
+Utile pour :
+
+- Vérifier que l'auth choisie (ccache / hash / password) est bien celle qui sera utilisée.
+- Valider les flags, le port web/SSH, le chemin de sortie.
+- Adapter la commande à la main puis la copier-coller dans un autre terminal si besoin.
+
+Les outils bloqués par le mode opératoire ou les prérequis (ports fermés, auth manquante) apparaissent en `[skip]` avec la raison.
+
+---
+
+### 14ter. Notes par box
+
+Vue `📝 Notes` dans la nav. Une note **par domaine** (`cfg.domain`), stockée dans `loot/<domain>/notes.md`. Les notes voyagent donc avec le loot (backup, partage, export).
+
+- **Éditeur markdown** avec auto-save (1,2 s après inactivité) + sauvegarde au blur.
+- **Aperçu rendu** via le bouton `👁 Aperçu` : titres, code, listes formatés.
+- **Rechargement automatique** quand tu changes de domaine dans la barre du haut.
+- **Badge** sur la nav quand la box a des notes non vides.
+
+Idéal pour noter les credentials glanés, les pistes à tester, une checklist, ou un writeup en construction pendant que tu progresses.
+
+---
+
 ### 15. FAQ et pièges à éviter
 
 **Q. L'outil ne trouve pas mon scan nmap pour l'auto-check.**
@@ -340,6 +369,8 @@ This guide walks you **step-by-step** through HTB Toolbox on a HackTheBox machin
 12. [Managing discovered credentials](#12-managing-discovered-credentials)
 13. [Daemons (Responder, chisel, ligolo…)](#13-daemons)
 14. [Claude AI loot analysis](#14-claude-ai-loot-analysis)
+14bis. [Preview before running](#14bis-preview-before-running)
+14ter. [Per-box notes](#14ter-per-box-notes)
 15. [FAQ and common pitfalls](#15-faq-and-common-pitfalls)
 
 ---
@@ -356,7 +387,7 @@ Firefox opens `http://127.0.0.1:8765`. You see:
 - **Top bar**: backend status, target clock, `🔑 Credentials`, `🪄 Wizard`, `💾 Save` buttons.
 - **Left sidebar**: target fields (IP, domain, user, password), then the **module groups** list.
 - **Center panel**: the live **terminal** with real-time output.
-- **Right panel**: `Results`, `Loot`, `Timeline`, `Credentials`, `Playbook`, `AI Analysis`.
+- **Right panel**: `Results`, `Loot`, `Timeline`, `Credentials`, `Playbook`, `AI Analysis`, `📝 Notes` (per box).
 
 **First run:**
 
@@ -604,6 +635,33 @@ Some tools **run continuously** (Responder listens, chisel holds a tunnel). Mark
 3. Save: stored in `config.local.json`
 4. Pick a subfolder (`adcs`, `kerberos`, `bloodhound`, etc. or full loot)
 5. Click `✦ Analyze loot` → Claude reads files and suggests a concrete attack path.
+
+---
+
+### 14bis. Preview before running
+
+The `👁 Preview` button in the action bar builds the real command for each ticked tool **without executing it**. The command is echoed into the terminal with secrets masked (password, NT hash, sudo password).
+
+Useful for:
+
+- Confirming the auth chosen (ccache / hash / password) is the one that will actually be used.
+- Validating flags, web/SSH port, output path.
+- Tweaking the command manually and pasting it into another terminal if needed.
+
+Tools blocked by the operating mode or prerequisites (closed ports, missing auth) show up as `[skip]` with the reason.
+
+---
+
+### 14ter. Per-box notes
+
+`📝 Notes` view in the nav. One note **per domain** (`cfg.domain`), stored in `loot/<domain>/notes.md`. Notes therefore travel with the loot (backup, share, export).
+
+- **Markdown editor** with auto-save (1.2s after idle) + save-on-blur.
+- **Rendered preview** via the `👁 Preview` button: headings, code, lists.
+- **Auto-reload** when you change the domain in the top bar.
+- **Nav badge** when the current box has non-empty notes.
+
+Great for writing down gleaned credentials, leads to test, a checklist, or a writeup-in-progress as you move forward.
 
 ---
 

@@ -19,6 +19,9 @@ Interface web standalone qui pilote une boîte à outils de pentest **Windows / 
 - **Détection auto** : après un scan, les modules pertinents se cochent tout seuls selon les ports ouverts.
 - **Auto-complétion** : credentials extraits des sorties (NT hash, TGT, mots de passe) automatiquement proposés pour remplir la config.
 - **Parallélisme contrôlé** : jusqu'à 3 outils en parallèle selon le contexte et le mode.
+- **Prévisualisation** : bouton `👁 Prévisualiser` qui affiche la commande construite (masquée) sans l'exécuter, pour valider auth/flags avant de lancer.
+- **Notes par box** : vue `📝 Notes` dédiée avec éditeur markdown (aperçu), stockées dans `loot/<domain>/notes.md` — les notes voyagent avec le loot.
+- **Prompt sudo à la demande** : l'UI réclame le mot de passe sudo uniquement pour les outils qui en ont besoin (responder, ntlmrelayx, ligolo, chisel, hosts_autoconf). Jamais persisté sur disque.
 - **UI bilingue** : bascule `Français / English` directement dans l'interface, avec persistance dans la config locale.
 
 ### Installation from-scratch sur Kali
@@ -90,6 +93,7 @@ HTBTOOLBOX/
 ├── requirements.txt        ← fastapi + uvicorn + websockets
 └── loot/
     └── <domain>/           ← sorties triées par domaine cible
+        ├── notes.md        ← notes opérateur par box (éditables dans la vue 📝 Notes)
         ├── parsed/runs/    ← historique horodaté JSON
         ├── adcs/ kerberos/ bloodhound/ smb_shares/ …
         └── attack_checks/
@@ -161,6 +165,9 @@ Standalone web interface driving a **Windows / Linux / Web / Hybrid** pentest to
 - **Auto-detect**: after a scan, relevant modules are ticked automatically based on open ports.
 - **Auto-fill**: credentials extracted from outputs (NT hash, TGT, passwords) are automatically suggested.
 - **Controlled parallelism**: up to 3 tools in parallel depending on context and mode.
+- **Preview mode**: `👁 Preview` button renders the built (masked) command without running it — lets you validate auth/flags before firing.
+- **Per-box notes**: dedicated `📝 Notes` view with markdown editor (live preview), saved to `loot/<domain>/notes.md` — notes travel with the loot.
+- **On-demand sudo prompt**: UI asks for the sudo password only when a tool actually needs it (responder, ntlmrelayx, ligolo, chisel, hosts_autoconf). Never persisted to disk.
 - **Bilingual UI**: switch `Français / English` directly in the interface, with persistence in local config.
 
 ### From-scratch install on Kali
@@ -232,6 +239,7 @@ HTBTOOLBOX/
 ├── requirements.txt        ← fastapi + uvicorn + websockets
 └── loot/
     └── <domain>/           ← per-target outputs
+        ├── notes.md        ← per-box operator notes (editable in the 📝 Notes view)
         ├── parsed/runs/    ← timestamped JSON history
         ├── adcs/ kerberos/ bloodhound/ smb_shares/ …
         └── attack_checks/

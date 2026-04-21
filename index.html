@@ -467,6 +467,28 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 .res-findings-list{display:flex;flex-direction:column;gap:6px}
 .res-find-item{font-size:11px;color:var(--text2);padding:7px 9px;border-radius:8px;background:rgba(255,255,255,.03);
   border:1px solid rgba(255,255,255,.04)}
+.anom-list{display:flex;flex-direction:column;gap:8px}
+.anom-card{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03)}
+.anom-card.critical{border-color:rgba(232,71,63,.4);background:rgba(232,71,63,.08)}
+.anom-card.high{border-color:rgba(255,165,0,.35);background:rgba(255,165,0,.07)}
+.anom-card.medium{border-color:rgba(110,231,255,.22);background:rgba(110,231,255,.05)}
+.anom-card.low{border-color:rgba(255,255,255,.08)}
+.anom-top{display:flex;align-items:flex-start;gap:8px;justify-content:space-between}
+.anom-title{font-size:12px;font-weight:700;color:var(--text)}
+.anom-sev{font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;text-transform:uppercase}
+.anom-sev.critical{background:rgba(232,71,63,.18);color:var(--red)}
+.anom-sev.high{background:rgba(255,165,0,.18);color:var(--orange)}
+.anom-sev.medium{background:rgba(110,231,255,.14);color:var(--cyan)}
+.anom-sev.low{background:rgba(255,255,255,.08);color:var(--text3)}
+.anom-body{margin-top:7px;display:flex;flex-direction:column;gap:5px}
+.anom-line{font-size:11px;line-height:1.45;color:var(--text2)}
+.anom-label{color:var(--text3);font-weight:700;margin-right:4px}
+.anom-summary{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.anom-chip{font-size:10px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:var(--text2)}
+.res-inline-link,.detail-loot-link{color:var(--cyan);cursor:pointer;text-decoration:none;border-bottom:1px dotted rgba(110,231,255,.45)}
+.res-inline-link:hover,.detail-loot-link:hover{color:#b6f6ff;border-bottom-color:#b6f6ff}
+.ops-source-btn,.playbook-source-btn{display:inline-flex;align-items:center;justify-content:center;margin-left:6px;padding:1px 6px;border-radius:999px;border:1px solid rgba(110,231,255,.25);background:rgba(110,231,255,.08);color:var(--cyan);font-size:10px;cursor:pointer}
+.ops-source-btn:hover,.playbook-source-btn:hover{background:rgba(110,231,255,.16);color:#b6f6ff}
 .users-toolbar{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
 .users-search{min-width:220px;flex:1;background:var(--bg0);border:1px solid var(--border2);border-radius:8px;
   padding:8px 10px;color:var(--text);font-size:12px;outline:none}
@@ -1016,7 +1038,6 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
         <option value="hybrid">hybrid</option>
       </select>
       <select class="cred-inp" id="inp-opmode" title="Mode opératoire" onchange="handleOpModeChange()">
-        <option value="safe">safe</option>
         <option value="htb">htb</option>
         <option value="enterprise">realiste entreprise</option>
       </select>
@@ -1258,6 +1279,15 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
           <div class="res-findings">
             <div class="res-findings-list" id="res-findings-list">
               <div class="res-find-empty">Ouvre un historique ou lance un scan pour alimenter cette vue.</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="section-anomalies">
+          <div class="res-sec-title">Anomalies & faiblesses</div>
+          <div class="res-findings">
+            <div class="res-findings-list" id="res-anomalies-list">
+              <div class="res-find-empty">Les anomalies détectées dans le loot apparaîtront ici.</div>
             </div>
           </div>
         </div>
@@ -1834,6 +1864,10 @@ const AUTH_CHAIN_RULES = [
   { ports:[1433], tools:["mssql_probe"] },
   { ports:[22], tools:["sudo_enum","linux_services_enum"] },
 ];
+// Modes opératoires exposés dans l'UI. Retirer un mode ici le supprime du <select>
+// et force la config persistée à retomber sur le premier mode listé.
+const ENABLED_OP_MODES = ["htb","enterprise"];
+const DEFAULT_OP_MODE  = ENABLED_OP_MODES[0] || "htb";
 const OP_MODE_LABELS = {
   fr: { safe: "safe", htb: "HTB", enterprise: "realiste entreprise" },
   en: { safe: "safe", htb: "HTB", enterprise: "enterprise realistic" },
@@ -1955,6 +1989,7 @@ const UI_I18N = {
     session_counters: "Compteurs de session",
     categories_findings: "Findings par catégorie",
     interesting_loot: "Éléments intéressants du loot",
+    anomalies_weaknesses: "Anomalies & faiblesses",
     probable_users: "Utilisateurs & rôles probables",
     sensitive_groups: "Groupes AD sensibles",
     operational_view: "Vue Opérationnelle",
@@ -2156,6 +2191,9 @@ const UI_I18N = {
     credential_applied: "Credential appliqué : {user} ({mode})",
     auth_chain_selected: "Chaîne auth sélectionnée : {n} outil(s)",
     no_auth_chain: "Aucune chaîne auth exploitable avec les ports connus",
+    auth_retest_started: "Retests auth lancés : {n} outil(s)",
+    active_credential: "Credential actif",
+    use_and_retest: "Utiliser + retest",
     testing: "test…",
     click_for_details: "Cliquer pour voir le détail",
     no_extra_info: "Aucun renseignement complémentaire.",
@@ -2289,6 +2327,7 @@ const UI_I18N = {
     session_counters: "Session counters",
     categories_findings: "Findings by category",
     interesting_loot: "Interesting loot items",
+    anomalies_weaknesses: "Anomalies & weaknesses",
     probable_users: "Users & likely roles",
     sensitive_groups: "Sensitive AD groups",
     operational_view: "Operational view",
@@ -2490,6 +2529,9 @@ const UI_I18N = {
     credential_applied: "Credential applied: {user} ({mode})",
     auth_chain_selected: "Auth chain selected: {n} tool(s)",
     no_auth_chain: "No usable auth chain with known ports",
+    auth_retest_started: "Auth retests started: {n} tool(s)",
+    active_credential: "Active credential",
+    use_and_retest: "Use + retest",
     testing: "testing…",
     click_for_details: "Click to view details",
     no_extra_info: "No additional information.",
@@ -2688,11 +2730,13 @@ let _lootAnalysisTimer = null;
 let _lootAnalysisInFlight = false;
 let _lootAnalysisQueued = false;
 let _lootAnalysisManualPending = false;
+let _pendingLootPath = "";
 let _seenPortFingerprints = new Set();
 let _wizardPreset = "htb_ad_quick_win";
 let _lastOpenPorts = new Set();
 let LAST_RESULTS_SUMMARY = null;
 let LAST_RUN_MANIFEST = null;
+let _pendingCredAutoApply = null;
 let _contextSuggestion = {target_type:"windows", preset:"htb_ad_quick_win", reason:"en attente", confidence:0.2, score:0};
 let _autoApplyContext = false;
 
@@ -2792,11 +2836,12 @@ function applyI18n() {
   if(secTitles[0]) secTitles[0].textContent = t("session_counters");
   if(secTitles[1]) secTitles[1].textContent = t("categories_findings");
   if(secTitles[2]) secTitles[2].textContent = t("interesting_loot");
-  if(secTitles[3]) secTitles[3].textContent = t("probable_users");
-  if(secTitles[4]) secTitles[4].textContent = t("sensitive_groups");
-  if(secTitles[5]) secTitles[5].textContent = t("operational_view");
-  if(secTitles[6]) secTitles[6].textContent = t("discovered_machines");
-  if(secTitles[7]) secTitles[7].textContent = t("loot_details");
+  if(secTitles[3]) secTitles[3].textContent = t("anomalies_weaknesses");
+  if(secTitles[4]) secTitles[4].textContent = t("probable_users");
+  if(secTitles[5]) secTitles[5].textContent = t("sensitive_groups");
+  if(secTitles[6]) secTitles[6].textContent = t("operational_view");
+  if(secTitles[7]) secTitles[7].textContent = t("discovered_machines");
+  if(secTitles[8]) secTitles[8].textContent = t("loot_details");
   const playTopBtns = document.querySelectorAll("#view-playbook .playbook-topbar .btn");
   if(playTopBtns[0]) playTopBtns[0].textContent = t("refresh");
   if(playTopBtns[1]) playTopBtns[1].textContent = t("open_results_btn");
@@ -2925,13 +2970,25 @@ function hasInflightDaemon() {
   return [...runInflight].some(id => isDaemon(id));
 }
 function getOpMode() {
-  return document.getElementById("inp-opmode")?.value || "safe";
+  const v = document.getElementById("inp-opmode")?.value || DEFAULT_OP_MODE;
+  return ENABLED_OP_MODES.includes(v) ? v : DEFAULT_OP_MODE;
 }
 function getOpModeRule(mode=getOpMode()) {
-  return OP_MODE_RULES[mode] || OP_MODE_RULES.safe;
+  return OP_MODE_RULES[mode] || OP_MODE_RULES[DEFAULT_OP_MODE] || Object.values(OP_MODE_RULES)[0];
 }
 function getStrategyPlan(type=_contextSuggestion.target_type || getTargetType(), mode=getOpMode()) {
-  return STRATEGY_MATRIX[type]?.[mode] || STRATEGY_MATRIX[getTargetType()]?.[mode] || STRATEGY_MATRIX.windows.safe;
+  return STRATEGY_MATRIX[type]?.[mode]
+      || STRATEGY_MATRIX[getTargetType()]?.[mode]
+      || STRATEGY_MATRIX.windows?.[DEFAULT_OP_MODE]
+      || Object.values(STRATEGY_MATRIX.windows || {})[0];
+}
+function applyEnabledOpModes() {
+  const sel = document.getElementById("inp-opmode");
+  if (!sel) return;
+  [...sel.options].forEach(opt => {
+    if (!ENABLED_OP_MODES.includes(opt.value)) opt.remove();
+  });
+  if (!ENABLED_OP_MODES.includes(sel.value)) sel.value = DEFAULT_OP_MODE;
 }
 function computeRecommendedParallelism(type=_contextSuggestion.target_type || getTargetType(), mode=getOpMode()) {
   const rule = getOpModeRule(mode);
@@ -3035,6 +3092,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function boot() {
   await loadCatalog();
+  applyEnabledOpModes();
   applyI18n();
   buildModules();
   connectWS();
@@ -3287,6 +3345,63 @@ function getAuthChainTools() {
     });
   }
   return out;
+}
+function getCredentialRetestTools() {
+  const preferred = [
+    "nxc_smb_shares",
+    "ldap_users_auth",
+    "ldapdomaindump",
+    "bloodhound_collect",
+    "winrm_checks",
+    "gettgt",
+    "ldap_kerberoastable",
+    "smbmap_enum",
+  ];
+  const out = [];
+  const seen = new Set();
+  preferred.forEach(toolId => {
+    const mod = getModuleByTool(toolId);
+    if(!mod || seen.has(toolId) || !isGroupVisible(mod, getTargetType()) || toolSkipReason(toolId)) return;
+    out.push(toolId);
+    seen.add(toolId);
+  });
+  getAuthChainTools().forEach(toolId => {
+    const mod = getModuleByTool(toolId);
+    if(!mod || seen.has(toolId) || !isGroupVisible(mod, getTargetType()) || toolSkipReason(toolId)) return;
+    out.push(toolId);
+    seen.add(toolId);
+  });
+  return out.slice(0, 8);
+}
+async function applyActiveCredential(user, pass="", hash="", ccache="", opts={}) {
+  const uEl = document.getElementById("inp-user");
+  const pEl = document.getElementById("inp-pass");
+  const hEl = document.getElementById("inp-nt");
+  const cEl = document.getElementById("inp-cc");
+  if(uEl && user) uEl.value = user;
+  if(pEl) pEl.value = pass || "";
+  if(hEl) hEl.value = hash || "";
+  if(cEl) cEl.value = ccache || "";
+  saveConfig();
+  ping();
+  if(opts.toast !== false) {
+    toast(t("credential_applied",{user, mode:getCredentialModeLabel(pass, hash, ccache)}), "ok");
+  }
+  if(opts.chain) {
+    const authTools = getAuthChainTools();
+    if(authTools.length) {
+      selectToolSet(authTools, {preserve:false});
+      toast(t("auth_chain_selected",{n:authTools.length}), "ok");
+      if(opts.autorunChain !== false) setTimeout(runSelected, 90);
+    } else if(opts.toast !== false) {
+      toast(t("no_auth_chain"), "err");
+    }
+    return;
+  }
+  if(opts.retest) {
+    const retestTools = getCredentialRetestTools();
+    await runToolBatch(retestTools, {toast:true, emptyToast:false});
+  }
 }
 function selectToolSet(toolIds, opts={}) {
   if(!opts.preserve) selectAll(false);
@@ -3776,9 +3891,35 @@ function getCfg() {
     notes:       document.getElementById("inp-notes").value,
   };
 }
+function getActiveCredentialInfo() {
+  const cfg = getCfg();
+  const user = String(cfg.user || "").trim();
+  if(!user) return null;
+  const mode = cfg.ccache ? "ccache" : cfg.nt_hash ? "hash" : cfg.password ? "password" : "user";
+  return {user, mode};
+}
+function getCredentialModeLabel(pass="", hash="", ccache="") {
+  return ccache ? "ccache" : hash ? "hash" : (getUiLang()==="fr" ? "mot de passe" : "password");
+}
 function getSelected() {
   return getVisibleModules().flatMap(m=>m.tools.map(t=>t.id))
     .filter(id=>{ const c=document.getElementById("tc-"+id); return c&&c.classList.contains("on"); });
+}
+async function runToolBatch(toolIds, opts={}) {
+  const ids = [...new Set((toolIds || []).filter(Boolean))];
+  if(!ids.length) {
+    if(opts.emptyToast !== false) toast(t("no_auth_chain"), "err");
+    return false;
+  }
+  if(running){
+    toast(t("run_busy"),"err");
+    return false;
+  }
+  if(!(await ensureSudoForTools(ids))) return false;
+  runQueue = ids;
+  startQueue();
+  if(opts.toast !== false) toast(t("auth_retest_started",{n:ids.length}), "ok");
+  return true;
 }
 async function runOne(id) {
   if(!(await ensureSudoForTools([id]))) return;
@@ -4546,7 +4687,8 @@ function renderLoot(files) {
       const sz=f.size>1024*1024?(f.size/1024/1024).toFixed(1)+"M":
                f.size>1024?(f.size/1024).toFixed(0)+"K":f.size+"B";
       const path=f.path.replace(/'/g,"\\'");
-      html+=`<div class="file-item" onclick="readFile('${path}',this)" title="${f.path}">
+      const activeCls = _pendingLootPath && _pendingLootPath === f.path ? " active" : "";
+      html+=`<div class="file-item${activeCls}" onclick="readFile('${path}',this)" title="${f.path}">
         <span>${ico}</span>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${name}</span>
         <span class="file-size">${sz}</span>
@@ -4559,6 +4701,10 @@ function renderLoot(files) {
     placeholder="${getUiLang()==="fr"?"filtrer les fichiers…":"filter files…"}" oninput="filterFileTree(this.value)"
     value="${escapeHtml(prevSearch)}">` + html;
   if(prevSearch) filterFileTree(prevSearch);
+  if(_pendingLootPath){
+    const activeItem = [...tree.querySelectorAll(".file-item")].find(el=>el.title===_pendingLootPath);
+    if(activeItem) activeItem.scrollIntoView({block:"nearest"});
+  }
   updateLootAutocomplete(document.getElementById("loot-global-search")?.value || "");
 }
 function filterFileTree(val) {
@@ -4577,10 +4723,18 @@ function filterFileTree(val) {
     grp.style.display = anyVisible ? "" : "none";
   });
 }
-function readFile(path,el) {
+function readFile(path,el=null) {
   document.querySelectorAll(".file-item").forEach(i=>i.classList.remove("active"));
-  el.classList.add("active");
+  if(el) el.classList.add("active");
+  _pendingLootPath = path;
   wsSend("read_file",{path});
+}
+function openLootPath(path) {
+  if(!path) return;
+  _pendingLootPath = path;
+  switchView("loot", document.getElementById("nav-loot"));
+  loadLoot();
+  readFile(path);
 }
 function exportMarkdown() {
   wsSend("export_markdown",{domain:document.getElementById("inp-dom").value});
@@ -4599,6 +4753,130 @@ function updateResultStats() {
 function loadResultsSummary() {
   wsSend("get_results_summary",{domain:document.getElementById("inp-dom").value});
 }
+function extractLootPathRef(text, fallbackPath="") {
+  const raw = String(text || "");
+  const m = raw.match(/([A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+\.[A-Za-z0-9_-]+)/);
+  return m ? m[1] : (fallbackPath || "");
+}
+function extractLootFilenameRef(text) {
+  const raw = String(text || "");
+  const matches = raw.match(/([A-Za-z0-9_. -]+\.[A-Za-z0-9]{2,8})/g) || [];
+  const cleaned = matches
+    .map(s => String(s || "").trim().replace(/^[./\\]+/, "").replace(/[),;:]+$/, ""))
+    .filter(Boolean);
+  if(!cleaned.length) return "";
+  cleaned.sort((a,b)=>b.length-a.length);
+  return cleaned[0] || "";
+}
+function findLootPathByFilename(name) {
+  const fileName = String(name || "").trim().toLowerCase();
+  if(!fileName || !Array.isArray(_lootFilesCache) || !_lootFilesCache.length) return "";
+  const exact = _lootFilesCache.filter(f => (f?.path || "").split("/").pop().toLowerCase() === fileName);
+  const ranked = exact.length ? exact : _lootFilesCache.filter(f => (f?.path || "").toLowerCase().includes(fileName));
+  if(!ranked.length) return "";
+  const prefer = [
+    "/downloads/smbmap_loot/",
+    "/downloads/smbmap_loot_anon/",
+    "/downloads/",
+  ];
+  ranked.sort((a,b)=>{
+    const pa = String(a?.path || "");
+    const pb = String(b?.path || "");
+    const ra = prefer.findIndex(p => pa.includes(p));
+    const rb = prefer.findIndex(p => pb.includes(p));
+    const sa = ra === -1 ? 99 : ra;
+    const sb = rb === -1 ? 99 : rb;
+    if(sa !== sb) return sa - sb;
+    return pa.length - pb.length;
+  });
+  return ranked[0]?.path || "";
+}
+function resolveLootReadPath(text, fallbackPath="") {
+  const explicitPath = extractLootPathRef(text, fallbackPath);
+  if(explicitPath) return explicitPath;
+  const fileName = extractLootFilenameRef(text);
+  return fileName ? findLootPathByFilename(fileName) : "";
+}
+function renderLootLinkedLine(text, fallbackPath="") {
+  const raw = String(text || "");
+  const path = extractLootPathRef(raw, fallbackPath);
+  if(!path) return escapeHtml(raw);
+  const idx = raw.indexOf(path);
+  if(idx < 0) {
+    return `<a class="res-inline-link" onclick="openLootPath('${escapeHtml(path)}')">${escapeHtml(raw)}</a>`;
+  }
+  const before = escapeHtml(raw.slice(0, idx));
+  const after = escapeHtml(raw.slice(idx + path.length));
+  return `${before}<a class="res-inline-link" onclick="openLootPath('${escapeHtml(path)}')">${escapeHtml(path)}</a>${after}`;
+}
+function normalizeOpsEntry(entry) {
+  return typeof entry === "string" ? {text: entry} : (entry || {});
+}
+function renderSourceButton(path, cls="ops-source-btn") {
+  if(!path) return "";
+  return ` <button class="${cls}" onclick="openLootPath('${escapeHtml(path)}')">◈</button>`;
+}
+function renderReadButton(text, fallbackPath="", cls="detail-loot-link") {
+  const path = resolveLootReadPath(text, fallbackPath);
+  if(!path || path === fallbackPath) return "";
+  return ` <a class="${cls}" onclick="openLootPath('${escapeHtml(path)}')">${getUiLang()==="fr"?"[lire]":"[read]"}</a>`;
+}
+function renderOpsTextItem(entry, btnClass="ops-source-btn") {
+  const item = normalizeOpsEntry(entry);
+  const path = item.path || extractLootPathRef(item.text || "");
+  return `<div class="cat-item"><span class="ci-icon">·</span><span class="ci-label" style="grid-column:span 2">${renderLootLinkedLine(item.text || "", path)}${renderReadButton(item.text || "", path, btnClass)}${renderSourceButton(path, btnClass)}</span></div>`;
+}
+function renderPlaybookTextItem(entry) {
+  const item = normalizeOpsEntry(entry);
+  const path = item.path || extractLootPathRef(item.text || "");
+  return `<div class="playbook-item">${renderLootLinkedLine(item.text || "", path)}${renderReadButton(item.text || "", path, "playbook-source-btn")}${renderSourceButton(path, "playbook-source-btn")}</div>`;
+}
+function renderAnomalyCards(items, stats={}) {
+  const rows = Array.isArray(items) ? items : [];
+  if(!rows.length) {
+    return `<div class="res-find-empty">${getUiLang()==="fr"?"Aucune faiblesse évidente remontée par le loot pour le moment.":"No obvious weakness surfaced from the loot yet."}</div>`;
+  }
+  const labels = {
+    critical: getUiLang()==="fr" ? "critique" : "critical",
+    high: getUiLang()==="fr" ? "élevé" : "high",
+    medium: getUiLang()==="fr" ? "moyen" : "medium",
+    low: getUiLang()==="fr" ? "faible" : "low",
+  };
+  const chips = ["critical","high","medium","low"]
+    .filter(sev => Number(stats?.[sev] || 0) > 0)
+    .map(sev => `<span class="anom-chip">${stats[sev]} ${labels[sev]}</span>`)
+    .join("");
+  const cards = rows.map(entry => {
+    const item = normalizeOpsEntry(entry);
+    const sev = item.severity || "medium";
+    const path = item.path || extractLootPathRef(item.text || item.title || "");
+    const title = item.title || item.text || "";
+    return `<div class="anom-card ${escapeHtml(sev)}">
+      <div class="anom-top">
+        <div class="anom-title">${renderLootLinkedLine(title, path)}${renderReadButton([title, item.evidence || "", item.text || ""].filter(Boolean).join(" "), path, "playbook-source-btn")}${renderSourceButton(path, "playbook-source-btn")}</div>
+        <span class="anom-sev ${escapeHtml(sev)}">${escapeHtml(labels[sev] || sev)}</span>
+      </div>
+      <div class="anom-body">
+        ${item.why ? `<div class="anom-line"><span class="anom-label">${getUiLang()==="fr"?"Pourquoi":"Why"}:</span>${escapeHtml(item.why)}</div>` : ""}
+        ${item.impact ? `<div class="anom-line"><span class="anom-label">${getUiLang()==="fr"?"Impact":"Impact"}:</span>${escapeHtml(item.impact)}</div>` : ""}
+        ${item.evidence ? `<div class="anom-line"><span class="anom-label">${getUiLang()==="fr"?"Preuve":"Evidence"}:</span>${renderLootLinkedLine(item.evidence, path)}</div>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+  return `${chips ? `<div class="anom-summary">${chips}</div>` : ""}<div class="anom-list">${cards}</div>`;
+}
+function renderResultList(containerId, items, emptyText) {
+  const box = document.getElementById(containerId);
+  if(!box) return;
+  const rows = Array.isArray(items) ? items : [];
+  box.innerHTML = rows.length
+      ? rows.map(entry => {
+        const line = typeof entry === "string" ? {text: entry} : (entry || {});
+        const path = line.path || extractLootPathRef(line.text || "");
+        return `<div class="res-find-item">${renderLootLinkedLine(line.text || "", path)}${renderReadButton(line.text || "", path)}${path ? ` <a class="detail-loot-link" onclick="openLootPath('${escapeHtml(path)}')">[loot]</a>` : ""}</div>`;
+      }).join("")
+    : `<div class="res-find-empty">${escapeHtml(emptyText)}</div>`;
+}
 function applyResultsLayout(data){
   const layout = data.layout || {};
   const sections = layout.sections || {};
@@ -4609,6 +4887,7 @@ function applyResultsLayout(data){
     stats:"section-stats",
     categories:"section-categories",
     interesting:"section-interesting",
+    anomalies:"section-anomalies",
     users:"section-users",
     groups:"section-groups",
     operational:"section-operational",
@@ -4648,6 +4927,7 @@ function applyResultsLayout(data){
 function renderResultsSummary(data) {
   LAST_RESULTS_SUMMARY = data;
   applyResultsLayout(data);
+  const activeCred = getActiveCredentialInfo();
   document.getElementById("stat-users").textContent   = data.users ?? 0;
   document.getElementById("stat-groups").textContent  = data.groups ?? 0;
   document.getElementById("stat-asrep").textContent   = data.asrep_hashes ?? 0;
@@ -4658,10 +4938,22 @@ function renderResultsSummary(data) {
   document.getElementById("stat-adcs").textContent    = data.adcs_esc?.length ? data.adcs_esc.join(" ") : "—";
   const findings = document.getElementById("res-findings-list");
   if(findings){
-    const items = Array.isArray(data.interesting) ? data.interesting : [];
-    findings.innerHTML = items.length
-      ? items.map(item=>`<div class="res-find-item">${escapeHtml(item)}</div>`).join("")
-      : `<div class="res-find-empty">${getUiLang()==="fr"?"Aucun élément marquant détecté dans ce loot.":"No notable item detected in this loot."}</div>`;
+    const findingsRows = Array.isArray(data.interesting) ? [...data.interesting] : [];
+    if(activeCred) {
+      findingsRows.unshift(`${t("active_credential")}: ${activeCred.user} (${activeCred.mode})`);
+    }
+    renderResultList(
+      "res-findings-list",
+      findingsRows,
+      getUiLang()==="fr"?"Aucun élément marquant détecté dans ce loot.":"No notable item detected in this loot."
+    );
+  }
+  const anomalies = document.getElementById("res-anomalies-list");
+  if(anomalies){
+    anomalies.innerHTML = renderAnomalyCards(
+      Array.isArray(data.anomalies) ? data.anomalies : [],
+      data.anomaly_stats || {}
+    );
   }
   const usersBox = document.getElementById("user-profiles-list");
   if(usersBox){
@@ -4723,6 +5015,7 @@ function renderPlaybook() {
   const modeLabel = getOpModeLabel(mode);
   const strategy = getStrategyPlan(_contextSuggestion.target_type, mode);
   const recommendedParallel = computeRecommendedParallelism();
+  const activeCred = getActiveCredentialInfo();
   const confPct = Math.round((_contextSuggestion.confidence || 0) * 100);
   const confCls = confPct >= 80 ? "conf-high" : confPct >= 55 ? "conf-mid" : "conf-low";
   const summaryPills = [
@@ -4731,6 +5024,7 @@ function renderPlaybook() {
     `auth ${getAuthMode()}`,
     `${getUiLang()==="fr"?"contexte":"context"} ${_contextSuggestion.target_type}`,
     `${getUiLang()==="fr"?"mode":"mode"} ${modeLabel}`,
+    activeCred ? `${t("active_credential")} ${activeCred.user}` : "",
     `P${runParallel}${_autoParallelism ? " auto" : ""} / rec P${recommendedParallel}`,
     ports.length ? `${getUiLang()==="fr"?"ports":"ports"} ${ports.slice(0,8).join(",")}${ports.length>8?"…":""}` : (getUiLang()==="fr"?"ports inconnus":"unknown ports"),
     data.winrm ? `winrm ${data.winrm}` : "",
@@ -4779,7 +5073,7 @@ function renderPlaybook() {
           <div class="playbook-head"><span>${block.icon}</span><strong>${escapeHtml(block.title)}</strong><span>${block.items.length||""}</span></div>
           <div class="playbook-body">
             ${block.items.length
-              ? block.items.slice(0,8).map(item => `<div class="playbook-item">${escapeHtml(String(item))}</div>`).join("")
+              ? block.items.slice(0,8).map(item => renderPlaybookTextItem(item)).join("")
               : `<div class="playbook-empty">${getUiLang()==="fr"?"Aucun élément.":"No item."}</div>`}
           </div>
         </div>
@@ -4879,7 +5173,11 @@ function renderDetailSections(sections) {
           <span class="cat-count">${(sec.items || []).length}</span>
         </div>
         <div class="cat-body open">
-          ${(sec.items || []).map(line=>`<div class="cat-item"><span class="ci-icon">·</span><span class="ci-label" style="grid-column:span 2">${escapeHtml(line)}</span></div>`).join("")}
+          ${(sec.items || []).map(entry=>{
+            const line = typeof entry === "string" ? {text: entry} : (entry || {});
+            const path = line.path || extractLootPathRef(line.text || "");
+            return `<div class="cat-item"><span class="ci-icon">·</span><span class="ci-label" style="grid-column:span 2">${renderLootLinkedLine(line.text || "", path)}${renderReadButton(line.text || "", path)}${path ? ` <a class="detail-loot-link" onclick="openLootPath('${escapeHtml(path)}')">[loot]</a>` : ""}</span></div>`;
+          }).join("")}
         </div>
       </div>`).join("")
     : '<div style="color:var(--text3);font-size:11px;padding:10px">Le détail du loot apparaîtra ici.</div>';
@@ -4915,7 +5213,7 @@ function renderOperationalView(ops) {
         ${items.length
           ? items.map(line => isCmd
               ? buildCmdRow(line)
-              : `<div class="cat-item"><span class="ci-icon">·</span><span class="ci-label" style="grid-column:span 2">${escapeHtml(line)}</span></div>`
+              : renderOpsTextItem(line)
             ).join("")
           : `<div style="padding:8px 0;font-size:10px;color:var(--text3)">${t("no_item")}</div>`}
       </div>
@@ -5092,27 +5390,8 @@ function showCredDetected(msg) {
 
 function applyDetectedCred(btn, user, pass, hash, ccache="", chain=false) {
   _seenCreds.add(_credKey(user, pass, hash || ccache));
-  const uEl = document.getElementById("inp-user");
-  const pEl = document.getElementById("inp-pass");
-  const hEl = document.getElementById("inp-nt");
-  const cEl = document.getElementById("inp-cc");
-  if(uEl && user) uEl.value = user;
-  if(pEl) pEl.value = pass || "";
-  if(hEl) hEl.value = hash || "";
-  if(cEl) cEl.value = ccache || "";
-  saveConfig();
-  toast(t("credential_applied",{user, mode:(ccache ? "ccache" : hash ? "hash" : getUiLang()==="fr" ? "mot de passe" : "password")}), "ok");
+  applyActiveCredential(user, pass, hash, ccache, {chain});
   btn.closest(".toast-cred").remove();
-  if(chain) {
-    const authTools = getAuthChainTools();
-    if(authTools.length) {
-      selectToolSet(authTools, {preserve:false});
-      toast(t("auth_chain_selected",{n:authTools.length}), "ok");
-      setTimeout(runSelected, 90);
-    } else {
-      toast(t("no_auth_chain"), "err");
-    }
-  }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -5642,7 +5921,10 @@ function applyConfig(cfg){
   if(!cfg) return;
   if(cfg.ui_language != null) document.getElementById("inp-lang").value=cfg.ui_language;
   if(cfg.target_type != null) document.getElementById("inp-type").value=cfg.target_type;
-  if(cfg.op_mode != null) document.getElementById("inp-opmode").value=cfg.op_mode;
+  if(cfg.op_mode != null){
+    const wanted = ENABLED_OP_MODES.includes(cfg.op_mode) ? cfg.op_mode : DEFAULT_OP_MODE;
+    document.getElementById("inp-opmode").value = wanted;
+  }
   if(cfg.target != null) document.getElementById("inp-target").value=cfg.target;
   if(cfg.domain != null) document.getElementById("inp-dom").value=cfg.domain;
   if(cfg.dc != null) document.getElementById("inp-dc").value=cfg.dc;
@@ -6085,6 +6367,7 @@ function submitCred() {
   const hash  = document.getElementById("cred-inp-hash").value.trim();
   const note  = document.getElementById("cred-inp-note").value.trim();
   if(!user) { toast(t("user_required"),"err"); return; }
+  _pendingCredAutoApply = {user, pass, hash};
   wsSend("save_cred", {
     domain: document.getElementById("inp-dom").value,
     cred: {user, pass, hash, note}
@@ -6094,12 +6377,13 @@ function submitCred() {
 function deleteCred(id) {
   wsSend("delete_cred", {domain: document.getElementById("inp-dom").value, id});
 }
-function useCredRow(user, pass, hash) {
-  if(user) document.getElementById("inp-user").value = user;
-  if(pass) document.getElementById("inp-pass").value = pass;
-  if(hash) document.getElementById("inp-nt").value   = hash;
-  saveConfig();
-  toast(`${getUiLang()==="fr"?"Credential appliqué":"Credential applied"} : ${user}`,"ok");
+function useCredRow(user, pass, hash, mode="use") {
+  const opts = {
+    toast: true,
+    chain: mode === "chain",
+    retest: mode === "retest",
+  };
+  applyActiveCredential(user, pass, hash, "", opts);
 }
 function renderCreds(creds) {
   const list  = document.getElementById("creds-list");
@@ -6114,6 +6398,14 @@ function renderCreds(creds) {
   empty.style.display = "none";
   badge.textContent = creds.length;
   badge.style.display = "";
+  if(_pendingCredAutoApply) {
+    const pending = _pendingCredAutoApply;
+    const match = creds.find(c => (c.user||"") === pending.user && (c.pass||"") === pending.pass && (c.hash||"") === pending.hash);
+    if(match) {
+      _pendingCredAutoApply = null;
+      setTimeout(() => applyActiveCredential(match.user || "", match.pass || "", match.hash || "", "", {retest:true}), 60);
+    }
+  }
   list.innerHTML = creds.map(c => {
     const passHtml = c.pass
       ? `<div class="cred-row-secret">pass: ${escapeHtml(c.pass)}</div>` : "";
@@ -6128,8 +6420,14 @@ function renderCreds(creds) {
       </div>
       <div class="cred-btns">
         <button class="cred-btn use"
-          onclick="useCredRow('${escapeHtml(c.user||'')}','${escapeHtml(c.pass||'')}','${escapeHtml(c.hash||'')}')">
+          onclick="useCredRow('${escapeHtml(c.user||'')}','${escapeHtml(c.pass||'')}','${escapeHtml(c.hash||'')}','use')">
           ${t("use")}</button>
+        <button class="cred-btn use"
+          onclick="useCredRow('${escapeHtml(c.user||'')}','${escapeHtml(c.pass||'')}','${escapeHtml(c.hash||'')}','chain')">
+          ${t("apply_and_chain")}</button>
+        <button class="cred-btn use"
+          onclick="useCredRow('${escapeHtml(c.user||'')}','${escapeHtml(c.pass||'')}','${escapeHtml(c.hash||'')}','retest')">
+          ${t("use_and_retest")}</button>
         <button class="cred-btn del"
           onclick="deleteCred('${escapeHtml(c.id||'')}')">✕</button>
       </div>
