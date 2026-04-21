@@ -1,302 +1,1062 @@
 {
   "version": 1,
   "target_types": [
-    {"id": "windows", "title": "Windows", "description": "SMB, LDAP, Kerberos, WinRM, ADCS, RPC"},
-    {"id": "linux",   "title": "Linux",   "description": "SSH, NFS, sudo hints, services exposes"},
-    {"id": "web",     "title": "Web",     "description": "HTTP/HTTPS, TLS, vhosts, dir enum, fingerprint"},
-    {"id": "hybrid",  "title": "Hybrid",  "description": "Combine host, service and web surface auditing"},
-    {"id": "challenge","title": "Challenge","description": "HTB Academy / CTF challenge workflow: web, pwn, reverse, crypto, forensics"}
+    {
+      "id": "windows",
+      "title": "Windows",
+      "description": "SMB, LDAP, Kerberos, WinRM, ADCS, RPC",
+      "title_en": "Windows",
+      "description_en": "SMB, LDAP, Kerberos, WinRM, ADCS, RPC"
+    },
+    {
+      "id": "linux",
+      "title": "Linux",
+      "description": "SSH, NFS, sudo hints, services exposes",
+      "title_en": "Linux",
+      "description_en": "SSH, NFS, sudo hints, exposed services"
+    },
+    {
+      "id": "web",
+      "title": "Web",
+      "description": "HTTP/HTTPS, TLS, vhosts, dir enum, fingerprint",
+      "title_en": "Web",
+      "description_en": "HTTP/HTTPS, TLS, vhosts, directory enumeration, fingerprinting"
+    },
+    {
+      "id": "hybrid",
+      "title": "Hybrid",
+      "description": "Combine host, service and web surface auditing",
+      "title_en": "Hybrid",
+      "description_en": "Combined host, service, and web surface auditing"
+    },
+    {
+      "id": "challenge",
+      "title": "Challenge",
+      "description": "HTB Academy / CTF challenge workflow: web, pwn, reverse, crypto, forensics",
+      "title_en": "Challenge",
+      "description_en": "HTB Academy / CTF challenge workflow: web, pwn, reverse, crypto, forensics"
+    }
   ],
   "groups": [
     {
-      "id": "recon", "icon": "🔍", "title": "Recon",
-      "target_types": ["windows", "linux", "web", "hybrid"],
+      "id": "recon",
+      "icon": "🔍",
+      "title": "Recon",
+      "target_types": [
+        "windows",
+        "linux",
+        "web",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"rustscan_fast",         "label":"<b>rustscan</b> fast full port sweep",      "source":"legacy",
-          "desc":"Scan ultra-rapide des 65535 ports via rustscan (~30s au lieu de 3-5 min pour nmap). Identifie tous les ports ouverts. Le résultat alimente nmap_targeted et l'auto-sélection des modules côté UI."},
-        {"id":"nmap_targeted",         "label":"<b>nmap</b> targeted (-sC -sV on open)",    "source":"legacy",
-          "desc":"Lance nmap -sC -sV uniquement sur les ports découverts par rustscan_fast. 10x plus rapide que nmap_baseline. Fingerprinting complet + scripts NSE sur les ports pertinents."},
-        {"id":"hosts_autoconf",        "label":"<b>/etc/hosts</b> auto-populate (FQDN)",     "source":"legacy",
-          "desc":"Parse la sortie nmap/rustscan pour extraire le FQDN du DC (ex: DC01.corp.htb) et l'ajoute automatiquement à /etc/hosts avec sudo. Évite les échecs Kerberos/LDAP dus à la résolution DNS."},
-        {"id":"nmap_baseline",         "label":"<b>nmap</b> -A -sC -sV baseline (slow)",    "source":"legacy",
-          "desc":"Scan complet avec détection de version, scripts NSE par défaut et fingerprinting OS. LENT — préférer rustscan_fast + nmap_targeted. Génère rapport texte + XML."},
-        {"id":"smb_signing",           "label":"<b>SMB signing</b> + relay list",             "source":"legacy",
-          "desc":"Vérifie si la signature SMB est requise ou désactivée. Une signature absente rend le relay NTLM possible — génère la liste des cibles relayables."},
-        {"id":"ntp_sync",              "label":"<b>ntpdate</b> Kerberos sync",                "source":"legacy",
-          "desc":"Synchronise l'horloge locale avec le DC via NTP. Indispensable pour Kerberos : un déphasage supérieur à 5 minutes invalide tous les tickets."},
-        {"id":"snmp_enum",             "label":"<b>SNMP</b> community brute + walk",          "source":"legacy",
-          "desc":"Bruteforce les community strings SNMP v1/v2c puis effectue un walk complet : interfaces, routes, processus, logiciels installés."},
-        {"id":"ftp_enum",              "label":"<b>FTP</b> anon + auth",                      "source":"legacy",
-          "desc":"Teste la connexion FTP anonyme puis authentifiée. Liste les fichiers accessibles et tente de récupérer les contenus sensibles."},
-        {"id":"web_enum",              "label":"<b>Web</b> banner / headers",                 "source":"legacy",
-          "desc":"Récupère les headers HTTP/HTTPS, le titre de la page et les technologies détectées. Premier point d'entrée pour identifier le stack applicatif."},
-        {"id":"dns_enum",              "label":"<b>DNS</b> AXFR + SRV",                       "source":"legacy",
-          "desc":"Tente un transfert de zone DNS (AXFR) pour obtenir tous les enregistrements, puis énumère les SRV records (LDAP, Kerberos, MSSQL)."},
-        {"id":"adfs_probe",            "label":"<b>ADFS</b> detect + endpoints",              "source":"legacy",
-          "desc":"Détecte ADFS (redirection HTTP, endpoints /adfs/ls/, WS-Trust, ROPC, WS-Fed). Sur HTB ADFS tourne souvent sur un serveur interne — identifie les vhosts et redirections."}
-      ]
+        {
+          "id": "rustscan_fast",
+          "label": "<b>rustscan</b> fast full port sweep",
+          "source": "legacy",
+          "desc": "Scan ultra-rapide des 65535 ports via rustscan (~30s au lieu de 3-5 min pour nmap). Identifie tous les ports ouverts. Le résultat alimente nmap_targeted et l'auto-sélection des modules côté UI.",
+          "label_en": "<b>rustscan</b> fast full port sweep",
+          "desc_en": "Very fast full-port sweep with rustscan. Finds all open ports quickly and feeds targeted nmap plus UI auto-selection."
+        },
+        {
+          "id": "nmap_targeted",
+          "label": "<b>nmap</b> targeted (-sC -sV on open)",
+          "source": "legacy",
+          "desc": "Lance nmap -sC -sV uniquement sur les ports découverts par rustscan_fast. 10x plus rapide que nmap_baseline. Fingerprinting complet + scripts NSE sur les ports pertinents.",
+          "label_en": "<b>nmap</b> targeted (-sC -sV on open)",
+          "desc_en": "Runs nmap -sC -sV only on ports discovered by rustscan_fast. Much faster than a full baseline scan while keeping useful service fingerprinting."
+        },
+        {
+          "id": "hosts_autoconf",
+          "label": "<b>/etc/hosts</b> auto-populate (FQDN)",
+          "source": "legacy",
+          "desc": "Parse la sortie nmap/rustscan pour extraire le FQDN du DC (ex: DC01.corp.htb) et l'ajoute automatiquement à /etc/hosts avec sudo. Évite les échecs Kerberos/LDAP dus à la résolution DNS.",
+          "label_en": "<b>/etc/hosts</b> auto-populate (FQDN)",
+          "desc_en": "Parses nmap/rustscan output to extract the DC FQDN and adds it to /etc/hosts with sudo. Helps avoid Kerberos and LDAP failures caused by DNS resolution issues."
+        },
+        {
+          "id": "nmap_baseline",
+          "label": "<b>nmap</b> -A -sC -sV baseline (slow)",
+          "source": "legacy",
+          "desc": "Scan complet avec détection de version, scripts NSE par défaut et fingerprinting OS. LENT — préférer rustscan_fast + nmap_targeted. Génère rapport texte + XML.",
+          "label_en": "<b>nmap</b> -A -sC -sV baseline (slow)",
+          "desc_en": "Full baseline scan with version detection, default NSE scripts, and OS fingerprinting. Slower than rustscan_fast plus nmap_targeted."
+        },
+        {
+          "id": "smb_signing",
+          "label": "<b>SMB signing</b> + relay list",
+          "source": "legacy",
+          "desc": "Vérifie si la signature SMB est requise ou désactivée. Une signature absente rend le relay NTLM possible — génère la liste des cibles relayables.",
+          "label_en": "<b>SMB signing</b> + relay list",
+          "desc_en": "Checks whether SMB signing is required. If signing is disabled, NTLM relay may be possible and a relay target list is generated."
+        },
+        {
+          "id": "ntp_sync",
+          "label": "<b>ntpdate</b> Kerberos sync",
+          "source": "legacy",
+          "desc": "Synchronise l'horloge locale avec le DC via NTP. Indispensable pour Kerberos : un déphasage supérieur à 5 minutes invalide tous les tickets.",
+          "label_en": "<b>ntpdate</b> Kerberos sync",
+          "desc_en": "Synchronizes the local clock with the DC over NTP. Essential for Kerberos when clock skew is too large."
+        },
+        {
+          "id": "snmp_enum",
+          "label": "<b>SNMP</b> community brute + walk",
+          "source": "legacy",
+          "desc": "Bruteforce les community strings SNMP v1/v2c puis effectue un walk complet : interfaces, routes, processus, logiciels installés.",
+          "label_en": "<b>SNMP</b> community brute + walk",
+          "desc_en": "Bruteforces common SNMP community strings and performs a walk to collect interfaces, routes, processes, and installed software."
+        },
+        {
+          "id": "ftp_enum",
+          "label": "<b>FTP</b> anon + auth",
+          "source": "legacy",
+          "desc": "Teste la connexion FTP anonyme puis authentifiée. Liste les fichiers accessibles et tente de récupérer les contenus sensibles.",
+          "label_en": "<b>FTP</b> anon + auth",
+          "desc_en": "Tests anonymous and authenticated FTP access, lists reachable files, and looks for sensitive content."
+        },
+        {
+          "id": "web_enum",
+          "label": "<b>Web</b> banner / headers",
+          "source": "legacy",
+          "desc": "Récupère les headers HTTP/HTTPS, le titre de la page et les technologies détectées. Premier point d'entrée pour identifier le stack applicatif.",
+          "label_en": "<b>Web</b> banner / headers",
+          "desc_en": "Collects HTTP/HTTPS headers, page title, and basic technology hints. Useful as a first pass on the web stack."
+        },
+        {
+          "id": "dns_enum",
+          "label": "<b>DNS</b> AXFR + SRV",
+          "source": "legacy",
+          "desc": "Tente un transfert de zone DNS (AXFR) pour obtenir tous les enregistrements, puis énumère les SRV records (LDAP, Kerberos, MSSQL).",
+          "label_en": "<b>DNS</b> AXFR + SRV",
+          "desc_en": "Attempts a DNS zone transfer and enumerates useful SRV records such as LDAP, Kerberos, and MSSQL."
+        },
+        {
+          "id": "adfs_probe",
+          "label": "<b>ADFS</b> detect + endpoints",
+          "source": "legacy",
+          "desc": "Détecte ADFS (redirection HTTP, endpoints /adfs/ls/, WS-Trust, ROPC, WS-Fed). Sur HTB ADFS tourne souvent sur un serveur interne — identifie les vhosts et redirections.",
+          "label_en": "<b>ADFS</b> detect + endpoints",
+          "desc_en": "Detects ADFS-related behavior such as redirects and common endpoints. Useful for identifying internal federation surfaces and vhosts."
+        }
+      ],
+      "title_en": "Recon"
     },
     {
-      "id": "winrm", "icon": "🖥", "title": "WinRM",
-      "target_types": ["windows", "hybrid"],
+      "id": "winrm",
+      "icon": "🖥",
+      "title": "WinRM",
+      "target_types": [
+        "windows",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"winrm_checks",          "label":"<b>WinRM</b> wsman + auth + hint",            "source":"legacy",
-          "desc":"Vérifie la présence de WSMan sur 5985/5986, teste l'authentification WinRM avec les credentials fournis via netexec, puis génère un hint evil-winrm exploitable."}
-      ]
+        {
+          "id": "winrm_checks",
+          "label": "<b>WinRM</b> wsman + auth + hint",
+          "source": "legacy",
+          "desc": "Vérifie la présence de WSMan sur 5985/5986, teste l'authentification WinRM avec les credentials fournis via netexec, puis génère un hint evil-winrm exploitable.",
+          "label_en": "<b>WinRM</b> wsman + auth + hint",
+          "desc_en": "Checks whether WSMan is exposed on 5985/5986, tests WinRM authentication with provided creds, and builds an Evil-WinRM usage hint."
+        }
+      ],
+      "title_en": "WinRM"
     },
     {
-      "id": "smb", "icon": "📂", "title": "SMB / Shares",
-      "target_types": ["windows", "hybrid"],
+      "id": "smb",
+      "icon": "📂",
+      "title": "SMB / Shares",
+      "target_types": [
+        "windows",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"nxc_anon_probe",        "label":"<b>nxc smb</b> anonymous probe",              "source":"legacy",
-          "desc":"Sonde SMB sans authentification via netexec pour récupérer le nom de machine, domaine, version OS et informations de partage disponibles publiquement."},
-        {"id":"smbclient_list",        "label":"<b>smbclient</b> -L share list",               "source":"legacy",
-          "desc":"Liste les partages SMB sans authentification (-L). Identifie les partages ouverts (SYSVOL, NETLOGON, IPC$) et ceux potentiellement accessibles sans identifiants."},
-        {"id":"nxc_smb_shares",        "label":"<b>nxc smb</b> --shares (auth)",               "source":"legacy",
-          "desc":"Énumère tous les partages SMB accessibles avec les credentials fournis et affiche le niveau d'accès (READ/WRITE) pour chaque partage."},
-        {"id":"nxc_smb_users",         "label":"<b>nxc smb</b> --users (auth)",                "source":"legacy",
-          "desc":"Extrait la liste des utilisateurs du domaine via SMB authentifié. Alternative utile quand LDAP n'est pas accessible directement."},
-        {"id":"nxc_smb_passpol",       "label":"<b>nxc smb</b> --pass-pol",                   "source":"legacy",
-          "desc":"Récupère la politique de mot de passe : longueur minimale, complexité, seuil de lockout. Essentiel avant tout password spray."},
-        {"id":"nxc_rid_brute",         "label":"<b>nxc smb</b> --rid-brute",                  "source":"legacy", "noisy":true,
-          "desc":"Bruteforce les RID via SMB pour énumérer utilisateurs et groupes même sans accès LDAP. Génère de nombreux événements dans les logs Windows."},
-        {"id":"smb_loot",              "label":"<b>SMB</b> SYSVOL/share loot",                 "source":"legacy",
-          "desc":"Parcourt SYSVOL et les partages accessibles à la recherche de fichiers sensibles : GPP passwords, scripts de login, credentials en clair."},
-        {"id":"smbmap_enum",           "label":"<b>smbmap</b> recursive enum",                 "source":"legacy",
-          "desc":"Énumération récursive des partages SMB via smbmap : liste les permissions (READ/WRITE) et parcourt l'arborescence de fichiers en profondeur."}
-      ]
+        {
+          "id": "nxc_anon_probe",
+          "label": "<b>nxc smb</b> anonymous probe",
+          "source": "legacy",
+          "desc": "Sonde SMB sans authentification via netexec pour récupérer le nom de machine, domaine, version OS et informations de partage disponibles publiquement.",
+          "label_en": "<b>nxc smb</b> anonymous probe",
+          "desc_en": "Probes SMB without authentication through netexec to recover hostname, domain, OS version, and other public details."
+        },
+        {
+          "id": "smbclient_list",
+          "label": "<b>smbclient</b> -L share list",
+          "source": "legacy",
+          "desc": "Liste les partages SMB sans authentification (-L). Identifie les partages ouverts (SYSVOL, NETLOGON, IPC$) et ceux potentiellement accessibles sans identifiants.",
+          "label_en": "<b>smbclient</b> -L share list",
+          "desc_en": "Lists SMB shares without authentication and highlights shares that may be readable anonymously."
+        },
+        {
+          "id": "nxc_smb_shares",
+          "label": "<b>nxc smb</b> --shares (auth)",
+          "source": "legacy",
+          "desc": "Énumère tous les partages SMB accessibles avec les credentials fournis et affiche le niveau d'accès (READ/WRITE) pour chaque partage.",
+          "label_en": "<b>nxc smb</b> --shares (auth)",
+          "desc_en": "Enumerates shares accessible with the supplied credentials and shows effective access such as READ or WRITE."
+        },
+        {
+          "id": "nxc_smb_users",
+          "label": "<b>nxc smb</b> --users (auth)",
+          "source": "legacy",
+          "desc": "Extrait la liste des utilisateurs du domaine via SMB authentifié. Alternative utile quand LDAP n'est pas accessible directement.",
+          "label_en": "<b>nxc smb</b> --users (auth)",
+          "desc_en": "Extracts a domain user list over authenticated SMB. Useful when LDAP is blocked or less reliable."
+        },
+        {
+          "id": "nxc_smb_passpol",
+          "label": "<b>nxc smb</b> --pass-pol",
+          "source": "legacy",
+          "desc": "Récupère la politique de mot de passe : longueur minimale, complexité, seuil de lockout. Essentiel avant tout password spray.",
+          "label_en": "<b>nxc smb</b> --pass-pol",
+          "desc_en": "Retrieves password policy settings such as minimum length, complexity, and lockout threshold before any spray attempt."
+        },
+        {
+          "id": "nxc_rid_brute",
+          "label": "<b>nxc smb</b> --rid-brute",
+          "source": "legacy",
+          "noisy": true,
+          "desc": "Bruteforce les RID via SMB pour énumérer utilisateurs et groupes même sans accès LDAP. Génère de nombreux événements dans les logs Windows.",
+          "label_en": "<b>nxc smb</b> --rid-brute",
+          "desc_en": "Bruteforces RIDs over SMB to enumerate users and groups even when LDAP access is limited. Noisy in Windows logs."
+        },
+        {
+          "id": "smb_loot",
+          "label": "<b>SMB</b> SYSVOL/share loot",
+          "source": "legacy",
+          "desc": "Parcourt SYSVOL et les partages accessibles à la recherche de fichiers sensibles : GPP passwords, scripts de login, credentials en clair.",
+          "label_en": "<b>SMB</b> SYSVOL/share loot",
+          "desc_en": "Searches SYSVOL and other readable shares for sensitive files such as GPP passwords, login scripts, and cleartext secrets."
+        },
+        {
+          "id": "smbmap_enum",
+          "label": "<b>smbmap</b> recursive enum",
+          "source": "legacy",
+          "desc": "Énumération récursive des partages SMB via smbmap : liste les permissions (READ/WRITE) et parcourt l'arborescence de fichiers en profondeur.",
+          "label_en": "<b>smbmap</b> recursive enum",
+          "desc_en": "Performs recursive share enumeration with smbmap, including permissions and deep file listings."
+        }
+      ],
+      "title_en": "SMB / Shares"
     },
     {
-      "id": "ldap", "icon": "📋", "title": "LDAP / AD Directory",
-      "target_types": ["windows", "hybrid"],
+      "id": "ldap",
+      "icon": "📋",
+      "title": "LDAP / AD Directory",
+      "target_types": [
+        "windows",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"ldap_anon_base",        "label":"<b>ldapsearch</b> anonymous base",             "source":"legacy",
-          "desc":"Requête LDAP anonyme pour récupérer le base DN, le naming context et les métadonnées de l'annuaire AD sans aucun credential."},
-        {"id":"ldap_users_auth",       "label":"<b>ldapsearch</b> users (auth)",               "source":"legacy",
-          "desc":"Extrait la liste complète des utilisateurs AD avec leurs attributs clés (sAMAccountName, userAccountControl, memberOf, badPwdCount)."},
-        {"id":"ldap_kerberoastable",   "label":"<b>ldapsearch</b> SPNs → Kerberoast",          "source":"legacy",
-          "desc":"Recherche les comptes ayant un SPN défini. Ces comptes permettent de demander un ticket TGS crackable hors-ligne (hashcat -m 13100)."},
-        {"id":"ldap_asrep_candidates", "label":"<b>ldapsearch</b> DONT_REQ_PREAUTH",           "source":"legacy",
-          "desc":"Identifie les comptes avec DONT_REQUIRE_PREAUTH. Ces comptes sont vulnérables à l'AS-REP Roasting sans credential (hashcat -m 18200)."},
-        {"id":"ldapdomaindump",        "label":"<b>ldapdomaindump</b> full",                   "source":"legacy",
-          "desc":"Dump complet de l'AD en JSON/HTML : utilisateurs, groupes, ordinateurs, GPO, trusts, délégations. Vue d'ensemble exploitable de l'annuaire."},
-        {"id":"ldaps_probe",           "label":"<b>LDAPS</b> port 636",                        "source":"legacy",
-          "desc":"Vérifie si LDAP over TLS (LDAPS) est disponible sur le port 636. Requis pour certaines attaques ADCS (ESC8, relay vers enrollment web)."},
-        {"id":"ldap_constrained_deleg","label":"<b>LDAP</b> constrained delegation",           "source":"legacy",
-          "desc":"Trouve les comptes avec délégation contrainte (msDS-AllowedToDelegateTo). Peuvent demander des tickets S4U2Proxy pour usurper n'importe quel utilisateur."},
-        {"id":"ldap_gmsa_readable",    "label":"<b>LDAP</b> gMSA accounts enum",               "source":"legacy",
-          "desc":"Énumère les Group Managed Service Accounts (gMSA). Les gMSA dont tu es membre du groupe de lecture exposent leur NTLM hash via nxc --gmsa."}
-      ]
+        {
+          "id": "ldap_anon_base",
+          "label": "<b>ldapsearch</b> anonymous base",
+          "source": "legacy",
+          "desc": "Requête LDAP anonyme pour récupérer le base DN, le naming context et les métadonnées de l'annuaire AD sans aucun credential.",
+          "label_en": "<b>ldapsearch</b> anonymous base",
+          "desc_en": "Performs an anonymous LDAP query to recover the base DN, naming context, and directory metadata without credentials."
+        },
+        {
+          "id": "ldap_users_auth",
+          "label": "<b>ldapsearch</b> users (auth)",
+          "source": "legacy",
+          "desc": "Extrait la liste complète des utilisateurs AD avec leurs attributs clés (sAMAccountName, userAccountControl, memberOf, badPwdCount).",
+          "label_en": "<b>ldapsearch</b> users (auth)",
+          "desc_en": "Pulls a full AD user listing with key attributes such as sAMAccountName, userAccountControl, memberOf, and badPwdCount."
+        },
+        {
+          "id": "ldap_kerberoastable",
+          "label": "<b>ldapsearch</b> SPNs → Kerberoast",
+          "source": "legacy",
+          "desc": "Recherche les comptes ayant un SPN défini. Ces comptes permettent de demander un ticket TGS crackable hors-ligne (hashcat -m 13100).",
+          "label_en": "<b>ldapsearch</b> SPNs → Kerberoast",
+          "desc_en": "Finds accounts with SPNs that can be targeted for Kerberoasting and offline cracking."
+        },
+        {
+          "id": "ldap_asrep_candidates",
+          "label": "<b>ldapsearch</b> DONT_REQ_PREAUTH",
+          "source": "legacy",
+          "desc": "Identifie les comptes avec DONT_REQUIRE_PREAUTH. Ces comptes sont vulnérables à l'AS-REP Roasting sans credential (hashcat -m 18200).",
+          "label_en": "<b>ldapsearch</b> DONT_REQ_PREAUTH",
+          "desc_en": "Identifies accounts with DONT_REQUIRE_PREAUTH set, which may be vulnerable to AS-REP roasting without credentials."
+        },
+        {
+          "id": "ldapdomaindump",
+          "label": "<b>ldapdomaindump</b> full",
+          "source": "legacy",
+          "desc": "Dump complet de l'AD en JSON/HTML : utilisateurs, groupes, ordinateurs, GPO, trusts, délégations. Vue d'ensemble exploitable de l'annuaire.",
+          "label_en": "<b>ldapdomaindump</b> full",
+          "desc_en": "Creates a broad AD dump in JSON/HTML covering users, groups, computers, GPOs, trusts, and delegation settings."
+        },
+        {
+          "id": "ldaps_probe",
+          "label": "<b>LDAPS</b> port 636",
+          "source": "legacy",
+          "desc": "Vérifie si LDAP over TLS (LDAPS) est disponible sur le port 636. Requis pour certaines attaques ADCS (ESC8, relay vers enrollment web).",
+          "label_en": "<b>LDAPS</b> port 636",
+          "desc_en": "Checks whether LDAPS is available on port 636. Important for some ADCS and relay paths."
+        },
+        {
+          "id": "ldap_constrained_deleg",
+          "label": "<b>LDAP</b> constrained delegation",
+          "source": "legacy",
+          "desc": "Trouve les comptes avec délégation contrainte (msDS-AllowedToDelegateTo). Peuvent demander des tickets S4U2Proxy pour usurper n'importe quel utilisateur.",
+          "label_en": "<b>LDAP</b> constrained delegation",
+          "desc_en": "Finds accounts configured for constrained delegation via msDS-AllowedToDelegateTo."
+        },
+        {
+          "id": "ldap_gmsa_readable",
+          "label": "<b>LDAP</b> gMSA accounts enum",
+          "source": "legacy",
+          "desc": "Énumère les Group Managed Service Accounts (gMSA). Les gMSA dont tu es membre du groupe de lecture exposent leur NTLM hash via nxc --gmsa.",
+          "label_en": "<b>LDAP</b> gMSA accounts enum",
+          "desc_en": "Enumerates gMSA accounts and highlights cases where group membership may allow reading their managed passwords."
+        }
+      ],
+      "title_en": "LDAP / AD Directory"
     },
     {
-      "id": "kerberos", "icon": "🎫", "title": "Kerberos",
-      "target_types": ["windows", "hybrid"],
+      "id": "kerberos",
+      "icon": "🎫",
+      "title": "Kerberos",
+      "target_types": [
+        "windows",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"kerbrute_userenum",     "label":"<b>kerbrute</b> userenum",                    "source":"legacy", "noisy":true,
-          "desc":"Énumère les comptes valides via AS-REQ sans pre-auth. Exploite le code d'erreur KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN. Très bruyant (événements 4768)."},
-        {"id":"getnpusers_asrep",      "label":"<b>GetNPUsers</b> AS-REP roast",              "source":"legacy",
-          "desc":"AS-REP Roasting via impacket : demande des tickets AS-REP pour les comptes sans pre-auth requise. Hashes $krb5asrep$ crackables hors-ligne (hashcat -m 18200)."},
-        {"id":"getuserspns_kerberoast","label":"<b>GetUserSPNs</b> Kerberoast",               "source":"legacy",
-          "desc":"Kerberoasting via impacket : demande des tickets TGS pour tous les SPNs accessibles. Hashes RC4 $krb5tgs$ crackables hors-ligne (hashcat -m 13100)."},
-        {"id":"gettgt",                "label":"<b>getTGT</b> demander ticket",               "source":"legacy",
-          "desc":"Demande un TGT Kerberos avec les credentials fournis et le sauvegarde au format ccache. Utilisé pour la pass-the-ticket ou l'accès Kerberos ultérieur."}
-      ]
+        {
+          "id": "kerbrute_userenum",
+          "label": "<b>kerbrute</b> userenum",
+          "source": "legacy",
+          "noisy": true,
+          "desc": "Énumère les comptes valides via AS-REQ sans pre-auth. Exploite le code d'erreur KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN. Très bruyant (événements 4768).",
+          "label_en": "<b>kerbrute</b> userenum",
+          "desc_en": "Enumerates valid usernames with AS-REQ behavior and Kerberos error codes. Very noisy on domain controllers."
+        },
+        {
+          "id": "getnpusers_asrep",
+          "label": "<b>GetNPUsers</b> AS-REP roast",
+          "source": "legacy",
+          "desc": "AS-REP Roasting via impacket : demande des tickets AS-REP pour les comptes sans pre-auth requise. Hashes $krb5asrep$ crackables hors-ligne (hashcat -m 18200).",
+          "label_en": "<b>GetNPUsers</b> AS-REP roast",
+          "desc_en": "Performs AS-REP roasting with Impacket for accounts that do not require pre-authentication. Output is crackable offline."
+        },
+        {
+          "id": "getuserspns_kerberoast",
+          "label": "<b>GetUserSPNs</b> Kerberoast",
+          "source": "legacy",
+          "desc": "Kerberoasting via impacket : demande des tickets TGS pour tous les SPNs accessibles. Hashes RC4 $krb5tgs$ crackables hors-ligne (hashcat -m 13100).",
+          "label_en": "<b>GetUserSPNs</b> Kerberoast",
+          "desc_en": "Performs Kerberoasting with Impacket by requesting TGS tickets for available SPNs. Output is crackable offline."
+        },
+        {
+          "id": "gettgt",
+          "label": "<b>getTGT</b> demander ticket",
+          "source": "legacy",
+          "desc": "Demande un TGT Kerberos avec les credentials fournis et le sauvegarde au format ccache. Utilisé pour la pass-the-ticket ou l'accès Kerberos ultérieur.",
+          "label_en": "<b>getTGT</b> request ticket",
+          "desc_en": "Requests a Kerberos TGT with the provided credentials and stores it as a ccache for later pass-the-ticket style use."
+        }
+      ],
+      "title_en": "Kerberos"
     },
     {
-      "id": "adcs", "icon": "📜", "title": "ADCS / Certipy", "enabled": false,
-      "target_types": ["windows", "hybrid"],
+      "id": "adcs",
+      "icon": "📜",
+      "title": "ADCS / Certipy",
+      "enabled": false,
+      "target_types": [
+        "windows",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"certipy_find",          "label":"<b>certipy find</b> -vulnerable",              "source":"legacy",
-          "desc":"Énumère les templates de certificats AD CS vulnérables (ESC1 à ESC13). Analyse les ACLs d'enrollment, les flags de template et les permissions sur la CA."},
-        {"id":"certipy_ca",            "label":"<b>certipy ca</b> permissions",                "source":"legacy",
-          "desc":"Vérifie les permissions sur l'autorité de certification : ManageCA et ManageCertificates. Identifie ESC7 et les élévations de privilèges via la CA."},
-        {"id":"certipy_shadow",        "label":"<b>certipy shadow</b> auto",                   "source":"legacy",
-          "desc":"Shadow Credentials : ajoute msDS-KeyCredentialLink sur un compte cible pour obtenir un certificat et récupérer son hash NT via PKINIT."}
-      ]
+        {
+          "id": "certipy_find",
+          "label": "<b>certipy find</b> -vulnerable",
+          "source": "legacy",
+          "desc": "Énumère les templates de certificats AD CS vulnérables (ESC1 à ESC13). Analyse les ACLs d'enrollment, les flags de template et les permissions sur la CA.",
+          "label_en": "<b>certipy find</b> -vulnerable",
+          "desc_en": "Enumerates vulnerable AD CS templates and highlights ESC-style paths by analyzing enrollment rights, template flags, and ACLs."
+        },
+        {
+          "id": "certipy_ca",
+          "label": "<b>certipy ca</b> permissions",
+          "source": "legacy",
+          "desc": "Vérifie les permissions sur l'autorité de certification : ManageCA et ManageCertificates. Identifie ESC7 et les élévations de privilèges via la CA.",
+          "label_en": "<b>certipy ca</b> permissions",
+          "desc_en": "Checks CA permissions such as ManageCA and ManageCertificates to surface ESC7-style abuse paths."
+        },
+        {
+          "id": "certipy_shadow",
+          "label": "<b>certipy shadow</b> auto",
+          "source": "legacy",
+          "desc": "Shadow Credentials : ajoute msDS-KeyCredentialLink sur un compte cible pour obtenir un certificat et récupérer son hash NT via PKINIT.",
+          "label_en": "<b>certipy shadow</b> auto",
+          "desc_en": "Uses Shadow Credentials by adding msDS-KeyCredentialLink to a target account in order to obtain certificate-based access and later recover the NT hash."
+        }
+      ],
+      "title_en": "ADCS / Certipy"
     },
     {
-      "id": "bh", "icon": "🩸", "title": "BloodHound + enum4linux",
-      "target_types": ["windows", "hybrid"],
+      "id": "bh",
+      "icon": "🩸",
+      "title": "BloodHound + enum4linux",
+      "target_types": [
+        "windows",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"enum4linux_ng",         "label":"<b>enum4linux-ng</b> -A JSON",                "source":"legacy",
-          "desc":"Énumération complète Windows/Samba : utilisateurs, groupes, politiques de mot de passe, partages, sessions actives. Export JSON."},
-        {"id":"rpcclient_enum",        "label":"<b>rpcclient</b> enumdomusers/groups",         "source":"legacy",
-          "desc":"Énumération RPC (port 135/445) : enumdomusers, enumdomgroups, querydominfo. Fonctionne dans certains cas où SMB filtre d'autres vecteurs."},
-        {"id":"bloodhound_collect",    "label":"<b>bloodhound-python</b> -c All",              "source":"legacy",
-          "desc":"Collecte BloodHound complète (-c All) : sessions actives, ACLs, trusts, GPO, délégations, certificats ADCS. Génère les fichiers JSON/ZIP pour analyser les chemins d'attaque."}
-      ]
+        {
+          "id": "enum4linux_ng",
+          "label": "<b>enum4linux-ng</b> -A JSON",
+          "source": "legacy",
+          "desc": "Énumération complète Windows/Samba : utilisateurs, groupes, politiques de mot de passe, partages, sessions actives. Export JSON.",
+          "label_en": "<b>enum4linux-ng</b> -A JSON",
+          "desc_en": "Runs broad Windows/Samba enumeration including users, groups, password policy, shares, and sessions, with JSON export."
+        },
+        {
+          "id": "rpcclient_enum",
+          "label": "<b>rpcclient</b> enumdomusers/groups",
+          "source": "legacy",
+          "desc": "Énumération RPC (port 135/445) : enumdomusers, enumdomgroups, querydominfo. Fonctionne dans certains cas où SMB filtre d'autres vecteurs.",
+          "label_en": "<b>rpcclient</b> enumdomusers/groups",
+          "desc_en": "Uses RPC enumeration for users, groups, and domain info on hosts where other SMB methods are more restricted."
+        },
+        {
+          "id": "bloodhound_collect",
+          "label": "<b>bloodhound-python</b> -c All",
+          "source": "legacy",
+          "desc": "Collecte BloodHound complète (-c All) : sessions actives, ACLs, trusts, GPO, délégations, certificats ADCS. Génère les fichiers JSON/ZIP pour analyser les chemins d'attaque.",
+          "label_en": "<b>bloodhound-python</b> -c All",
+          "desc_en": "Collects BloodHound data such as sessions, ACLs, trusts, GPOs, delegation, and ADCS edges to analyze attack paths."
+        }
+      ],
+      "title_en": "BloodHound + enum4linux"
     },
     {
-      "id": "postauth", "icon": "💥", "title": "Post-auth / Loot", "enabled": false,
-      "target_types": ["windows", "hybrid"],
+      "id": "postauth",
+      "icon": "💥",
+      "title": "Post-auth / Loot",
+      "enabled": false,
+      "target_types": [
+        "windows",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"secretsdump",           "label":"<b>secretsdump</b> DCSync -just-dc-ntlm",      "source":"legacy", "noisy":true,
-          "desc":"DCSync via impacket : réplique les hashes NTLM depuis le DC. Nécessite Replication-Get-Changes(-All). Très détectable dans les logs."},
-        {"id":"bloodyad_acls",         "label":"<b>bloodyAD</b> get writable ACLs",            "source":"legacy",
-          "desc":"Énumère les ACLs modifiables sur les objets AD (GenericAll, WriteDacl, WriteOwner, ForceChangePassword, AddMember). Identifie les chemins d'élévation."},
-        {"id":"gpo_parse",             "label":"<b>GPO</b> SYSVOL / cpassword",                "source":"legacy",
-          "desc":"Analyse les GPO dans SYSVOL à la recherche de cpassword (Group Policy Preferences), scripts de login et configs sensibles."},
-        {"id":"hash_hints",            "label":"<b>Hash hints</b> hashcat / john",             "source":"legacy",
-          "desc":"Génère les commandes hashcat/john prêtes à l'emploi pour les hashes collectés (NTLM -m 1000, AS-REP -m 18200, Kerberoast -m 13100)."},
-        {"id":"postauth_hints",        "label":"<b>Post-auth</b> exec / rdp / ptk",            "source":"legacy",
-          "desc":"Commandes d'exécution distante adaptées aux credentials : psexec, wmiexec, evil-winrm, xfreerdp, pass-the-hash et pass-the-ticket."},
-        {"id":"password_spray",        "label":"<b>Password spray</b>",                        "source":"legacy", "noisy":true,
-          "desc":"Spray de mot de passe sur l'ensemble des utilisateurs énumérés, en respectant le seuil de lockout détecté. Très bruyant (centaines d'événements 4625)."},
-        {"id":"pre2k_check",           "label":"<b>pre2k</b> machine account enum",            "source":"legacy",
-          "desc":"Teste si des comptes machine ont conservé leur mot de passe pré-Windows 2000 (= hostname en minuscules sans $). Très fréquent sur HTB (MS01$, EXCH01$...)."},
-        {"id":"gmsa_extract",          "label":"<b>gMSA</b> password extract",                 "source":"legacy",
-          "desc":"Extrait le hash NTLM des comptes gMSA via LDAP. Fonctionne avec kcache ou credentials directs. Fréquent sur boxes HTB récentes (gMSA_ADCS_prod$...)."},
-        {"id":"forcechangepwd",        "label":"<b>ForceChangePassword</b> abuse",             "source":"legacy",
-          "desc":"Abuse ForceChangePassword (BloodHound edge) pour réinitialiser le mot de passe d'un compte cible sans connaître l'ancien. Via bloodyAD set password ou rpcclient."},
-        {"id":"getST_constrained",     "label":"<b>getST</b> S4U2Proxy deleg",                 "source":"legacy",
-          "desc":"Exploite la délégation contrainte via impacket getST : impersonne Administrator vers le SPN cible (ex: http/WEB01). Pré-requis : compte avec msDS-AllowedToDelegateTo."},
-        {"id":"spnjacking_enum",       "label":"<b>SPN Jacking</b> WriteSPN check",            "source":"legacy",
-          "desc":"Identifie les comptes avec WriteSPN via BloodHound/bloodyAD. Un WriteSPN + délégation contrainte permet le SPN Jacking : ajouter un SPN pour usurper un service légitime."},
-        {"id":"rbcd_check",            "label":"<b>RBCD</b> read + set delegation",            "source":"legacy",
-          "desc":"Resource-Based Constrained Delegation : lit msDS-AllowedToActOnBehalfOfOtherIdentity et affiche les commandes pour abuser de la délégation."},
-        {"id":"dacledit_read",         "label":"<b>dacledit</b> read ACEs",                    "source":"legacy",
-          "desc":"Lit les ACEs d'un objet AD via dacledit (impacket). Identifie les permissions abusables : GenericAll, WriteDacl, WriteOwner."},
-        {"id":"owneredit_read",        "label":"<b>owneredit</b> read owner",                  "source":"legacy",
-          "desc":"Lit le propriétaire d'un objet AD via owneredit (impacket). Un propriétaire peut se donner des droits arbitraires via WriteDacl."},
-        {"id":"addcomputer",           "label":"<b>addcomputer</b> machine account",           "source":"legacy",
-          "desc":"Ajoute un compte machine via impacket-addcomputer en exploitant ms-DS-MachineAccountQuota. Pré-requis pour RBCD, NTLM relay ou Shadow Credentials."},
-        {"id":"ntlmrelayx_run",        "label":"<b>ntlmrelayx</b> active listener",            "source":"legacy", "noisy":true, "daemon":true,
-          "desc":"Lance ntlmrelayx en écoute active pour relayer les authentifications NTLM vers la cible (SMB, LDAP, HTTP). Combine avec Responder ou Coercer."}
-      ]
+        {
+          "id": "secretsdump",
+          "label": "<b>secretsdump</b> DCSync -just-dc-ntlm",
+          "source": "legacy",
+          "noisy": true,
+          "desc": "DCSync via impacket : réplique les hashes NTLM depuis le DC. Nécessite Replication-Get-Changes(-All). Très détectable dans les logs.",
+          "label_en": "<b>secretsdump</b> DCSync -just-dc-ntlm",
+          "desc_en": "Runs DCSync-style NTLM extraction from a DC when replication rights are present. Powerful but highly detectable."
+        },
+        {
+          "id": "bloodyad_acls",
+          "label": "<b>bloodyAD</b> get writable ACLs",
+          "source": "legacy",
+          "desc": "Énumère les ACLs modifiables sur les objets AD (GenericAll, WriteDacl, WriteOwner, ForceChangePassword, AddMember). Identifie les chemins d'élévation.",
+          "label_en": "<b>bloodyAD</b> get writable ACLs",
+          "desc_en": "Enumerates writable AD ACLs such as GenericAll, WriteDacl, WriteOwner, ForceChangePassword, and AddMember."
+        },
+        {
+          "id": "gpo_parse",
+          "label": "<b>GPO</b> SYSVOL / cpassword",
+          "source": "legacy",
+          "desc": "Analyse les GPO dans SYSVOL à la recherche de cpassword (Group Policy Preferences), scripts de login et configs sensibles.",
+          "label_en": "<b>GPO</b> SYSVOL / cpassword",
+          "desc_en": "Parses SYSVOL GPO content for cpassword values, login scripts, and other sensitive settings."
+        },
+        {
+          "id": "hash_hints",
+          "label": "<b>Hash hints</b> hashcat / john",
+          "source": "legacy",
+          "desc": "Génère les commandes hashcat/john prêtes à l'emploi pour les hashes collectés (NTLM -m 1000, AS-REP -m 18200, Kerberoast -m 13100).",
+          "label_en": "<b>Hash hints</b> hashcat / john",
+          "desc_en": "Builds ready-to-run hashcat and john commands for NTLM, AS-REP, and Kerberoast material found in loot."
+        },
+        {
+          "id": "postauth_hints",
+          "label": "<b>Post-auth</b> exec / rdp / ptk",
+          "source": "legacy",
+          "desc": "Commandes d'exécution distante adaptées aux credentials : psexec, wmiexec, evil-winrm, xfreerdp, pass-the-hash et pass-the-ticket.",
+          "label_en": "<b>Post-auth</b> exec / rdp / ptk",
+          "desc_en": "Generates post-auth execution hints such as psexec, wmiexec, Evil-WinRM, xfreerdp, pass-the-hash, and pass-the-ticket."
+        },
+        {
+          "id": "password_spray",
+          "label": "<b>Password spray</b>",
+          "source": "legacy",
+          "noisy": true,
+          "desc": "Spray de mot de passe sur l'ensemble des utilisateurs énumérés, en respectant le seuil de lockout détecté. Très bruyant (centaines d'événements 4625).",
+          "label_en": "<b>Password spray</b>",
+          "desc_en": "Performs password spraying against enumerated users while taking detected lockout policy into account. Very noisy."
+        },
+        {
+          "id": "pre2k_check",
+          "label": "<b>pre2k</b> machine account enum",
+          "source": "legacy",
+          "desc": "Teste si des comptes machine ont conservé leur mot de passe pré-Windows 2000 (= hostname en minuscules sans $). Très fréquent sur HTB (MS01$, EXCH01$...).",
+          "label_en": "<b>pre2k</b> machine account enum",
+          "desc_en": "Checks whether machine accounts still use predictable pre-Windows 2000 passwords based on the hostname."
+        },
+        {
+          "id": "gmsa_extract",
+          "label": "<b>gMSA</b> password extract",
+          "source": "legacy",
+          "desc": "Extrait le hash NTLM des comptes gMSA via LDAP. Fonctionne avec kcache ou credentials directs. Fréquent sur boxes HTB récentes (gMSA_ADCS_prod$...).",
+          "label_en": "<b>gMSA</b> password extract",
+          "desc_en": "Extracts gMSA NTLM material through LDAP when readable, using ccache or supplied credentials."
+        },
+        {
+          "id": "forcechangepwd",
+          "label": "<b>ForceChangePassword</b> abuse",
+          "source": "legacy",
+          "desc": "Abuse ForceChangePassword (BloodHound edge) pour réinitialiser le mot de passe d'un compte cible sans connaître l'ancien. Via bloodyAD set password ou rpcclient.",
+          "label_en": "<b>ForceChangePassword</b> abuse",
+          "desc_en": "Abuses ForceChangePassword rights to reset a target account password without knowing the old one."
+        },
+        {
+          "id": "getST_constrained",
+          "label": "<b>getST</b> S4U2Proxy deleg",
+          "source": "legacy",
+          "desc": "Exploite la délégation contrainte via impacket getST : impersonne Administrator vers le SPN cible (ex: http/WEB01). Pré-requis : compte avec msDS-AllowedToDelegateTo.",
+          "label_en": "<b>getST</b> S4U2Proxy deleg",
+          "desc_en": "Uses Impacket getST for constrained delegation and S4U abuse to impersonate a target user to a delegated SPN."
+        },
+        {
+          "id": "spnjacking_enum",
+          "label": "<b>SPN Jacking</b> WriteSPN check",
+          "source": "legacy",
+          "desc": "Identifie les comptes avec WriteSPN via BloodHound/bloodyAD. Un WriteSPN + délégation contrainte permet le SPN Jacking : ajouter un SPN pour usurper un service légitime.",
+          "label_en": "<b>SPN Jacking</b> WriteSPN check",
+          "desc_en": "Looks for WriteSPN situations that may allow SPN jacking when combined with delegation or service abuse."
+        },
+        {
+          "id": "rbcd_check",
+          "label": "<b>RBCD</b> read + set delegation",
+          "source": "legacy",
+          "desc": "Resource-Based Constrained Delegation : lit msDS-AllowedToActOnBehalfOfOtherIdentity et affiche les commandes pour abuser de la délégation.",
+          "label_en": "<b>RBCD</b> read + set delegation",
+          "desc_en": "Reads or prepares resource-based constrained delegation settings through msDS-AllowedToActOnBehalfOfOtherIdentity."
+        },
+        {
+          "id": "dacledit_read",
+          "label": "<b>dacledit</b> read ACEs",
+          "source": "legacy",
+          "desc": "Lit les ACEs d'un objet AD via dacledit (impacket). Identifie les permissions abusables : GenericAll, WriteDacl, WriteOwner.",
+          "label_en": "<b>dacledit</b> read ACEs",
+          "desc_en": "Reads ACEs on AD objects with dacledit to highlight interesting rights such as GenericAll, WriteDacl, and WriteOwner."
+        },
+        {
+          "id": "owneredit_read",
+          "label": "<b>owneredit</b> read owner",
+          "source": "legacy",
+          "desc": "Lit le propriétaire d'un objet AD via owneredit (impacket). Un propriétaire peut se donner des droits arbitraires via WriteDacl.",
+          "label_en": "<b>owneredit</b> read owner",
+          "desc_en": "Reads the owner of an AD object. Ownership can often be turned into effective control by granting new rights."
+        },
+        {
+          "id": "addcomputer",
+          "label": "<b>addcomputer</b> machine account",
+          "source": "legacy",
+          "desc": "Ajoute un compte machine via impacket-addcomputer en exploitant ms-DS-MachineAccountQuota. Pré-requis pour RBCD, NTLM relay ou Shadow Credentials.",
+          "label_en": "<b>addcomputer</b> machine account",
+          "desc_en": "Adds a machine account through MachineAccountQuota abuse, which is useful for RBCD, relay, or Shadow Credentials paths."
+        },
+        {
+          "id": "ntlmrelayx_run",
+          "label": "<b>ntlmrelayx</b> active listener",
+          "source": "legacy",
+          "noisy": true,
+          "daemon": true,
+          "desc": "Lance ntlmrelayx en écoute active pour relayer les authentifications NTLM vers la cible (SMB, LDAP, HTTP). Combine avec Responder ou Coercer.",
+          "label_en": "<b>ntlmrelayx</b> active listener",
+          "desc_en": "Starts ntlmrelayx in active listener mode to relay NTLM authentication toward SMB, LDAP, or HTTP targets."
+        }
+      ],
+      "title_en": "Post-auth / Loot"
     },
     {
-      "id": "linux", "icon": "🐧", "title": "Linux Services",
-      "target_types": ["linux", "hybrid"],
+      "id": "linux",
+      "icon": "🐧",
+      "title": "Linux Services",
+      "target_types": [
+        "linux",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"ssh_banner",            "label":"<b>SSH</b> banner + algos + hostkeys",         "source":"native",
-          "desc":"Récupère la bannière SSH, les algorithmes de chiffrement supportés et les fingerprints des clés hôte pour identifier la version exacte du serveur."},
-        {"id":"ssh_auth_methods",      "label":"<b>SSH</b> auth methods",                      "source":"native",
-          "desc":"Interroge le serveur SSH pour lister les méthodes d'authentification acceptées : password, publickey, keyboard-interactive, GSSAPI. Aide à cibler la bonne approche."},
-        {"id":"nfs_probe",             "label":"<b>NFS</b> exports / mount probe",             "source":"native",
-          "desc":"Sonde le service NFS via showmount -e pour lister les exports. Tente de monter les partages pour identifier les accès non authentifiés."},
-        {"id":"linux_http_fingerprint","label":"<b>HTTP</b> stack / server fingerprint",       "source":"native",
-          "desc":"Fingerprinting HTTP du serveur Linux : headers de réponse (Server, X-Powered-By), détection du CMS ou framework via whatweb."},
-        {"id":"hydra_ssh",             "label":"<b>hydra</b> SSH bruteforce",                  "source":"legacy", "noisy":true,
-          "desc":"Bruteforce SSH via hydra avec les credentials configurés ou une wordlist. Utilise rockyou.txt si aucun mot de passe n'est configuré."},
-        {"id":"sudo_enum",             "label":"<b>sudo -l</b> privilege check",               "source":"legacy",
-          "desc":"Exécute sudo -l via SSH pour lister les commandes autorisées sans mot de passe ou avec le mot de passe configuré. Référence automatique GTFOBins pour les binaires trouvés."},
-        {"id":"suid_sgid_find",        "label":"<b>SUID/SGID</b> find + GTFOBins",            "source":"legacy",
-          "desc":"Recherche tous les binaires SUID et SGID via find via SSH. Affiche les résultats et référence GTFOBins pour identifier les vecteurs d'escalade de privilèges exploitables."},
-        {"id":"linux_caps_check",      "label":"<b>capabilities</b> getcap -r",               "source":"legacy",
-          "desc":"Recherche les binaires avec capabilities Linux (getcap -r /) via SSH. cap_setuid/cap_net_raw sur Python, Perl, Node = escalade directe vers root."},
-        {"id":"linux_cron_check",      "label":"<b>cron</b> world-writable scripts",           "source":"legacy",
-          "desc":"Examine les crontabs (root, système, user) et recherche les scripts appelés en cron qui sont modifiables. Un script world-writable exécuté en root = PrivEsc."},
-        {"id":"linux_services_enum",   "label":"<b>services</b> ports + processes",            "source":"legacy",
-          "desc":"Énumère les services locaux (ss -tlnp), les processus en cours (ps aux), les ports en écoute et les services systemd actifs via SSH. Révèle les services internes non exposés."},
-        {"id":"linux_privesc_check",   "label":"<b>LinPEAS</b> full privesc scan",             "source":"legacy",
-          "desc":"Télécharge LinPEAS, démarre un serveur HTTP local et exécute le scan via SSH. Analyse complète : sudo, SUID, capabilities, cron, PATH, configs writable, credentials, CVEs kernel."},
-        {"id":"pspy_monitor",          "label":"<b>pspy</b> process spy (hint)",              "source":"legacy",
-          "desc":"Télécharge pspy64, démarre un serveur HTTP local et génère la commande à exécuter sur la cible pour surveiller les processus en temps réel sans root. Détecte les cronjobs qui fuient des credentials dans leurs arguments."},
-        {"id":"linux_docker_check",    "label":"<b>Docker</b> group / escape check",           "source":"legacy",
-          "desc":"Vérifie si l'utilisateur est dans le groupe docker via SSH. Un accès docker sans sudo = escalade root triviale via montage /. Vérifie aussi les containers en cours et les images disponibles."}
-      ]
+        {
+          "id": "ssh_banner",
+          "label": "<b>SSH</b> banner + algos + hostkeys",
+          "source": "native",
+          "desc": "Récupère la bannière SSH, les algorithmes de chiffrement supportés et les fingerprints des clés hôte pour identifier la version exacte du serveur.",
+          "label_en": "<b>SSH</b> banner + algos + host keys",
+          "desc_en": "Collects the SSH banner, supported algorithms, and host key fingerprints to identify the service more precisely."
+        },
+        {
+          "id": "ssh_auth_methods",
+          "label": "<b>SSH</b> auth methods",
+          "source": "native",
+          "desc": "Interroge le serveur SSH pour lister les méthodes d'authentification acceptées : password, publickey, keyboard-interactive, GSSAPI. Aide à cibler la bonne approche.",
+          "label_en": "<b>SSH</b> auth methods",
+          "desc_en": "Queries supported SSH authentication methods such as password, publickey, keyboard-interactive, and GSSAPI."
+        },
+        {
+          "id": "nfs_probe",
+          "label": "<b>NFS</b> exports / mount probe",
+          "source": "native",
+          "desc": "Sonde le service NFS via showmount -e pour lister les exports. Tente de monter les partages pour identifier les accès non authentifiés.",
+          "label_en": "<b>NFS</b> exports / mount probe",
+          "desc_en": "Enumerates NFS exports with showmount and tests whether they can be mounted anonymously."
+        },
+        {
+          "id": "linux_http_fingerprint",
+          "label": "<b>HTTP</b> stack / server fingerprint",
+          "source": "native",
+          "desc": "Fingerprinting HTTP du serveur Linux : headers de réponse (Server, X-Powered-By), détection du CMS ou framework via whatweb.",
+          "label_en": "<b>HTTP</b> stack / server fingerprint",
+          "desc_en": "Fingerprints the local HTTP stack on Linux through response headers and technology hints."
+        },
+        {
+          "id": "hydra_ssh",
+          "label": "<b>hydra</b> SSH bruteforce",
+          "source": "legacy",
+          "noisy": true,
+          "desc": "Bruteforce SSH via hydra avec les credentials configurés ou une wordlist. Utilise rockyou.txt si aucun mot de passe n'est configuré.",
+          "label_en": "<b>hydra</b> SSH bruteforce",
+          "desc_en": "Runs SSH bruteforce with hydra using configured credentials or a wordlist. Noisy and best used carefully."
+        },
+        {
+          "id": "sudo_enum",
+          "label": "<b>sudo -l</b> privilege check",
+          "source": "legacy",
+          "desc": "Exécute sudo -l via SSH pour lister les commandes autorisées sans mot de passe ou avec le mot de passe configuré. Référence automatique GTFOBins pour les binaires trouvés.",
+          "label_en": "<b>sudo -l</b> privilege check",
+          "desc_en": "Runs sudo -l over SSH and highlights allowed commands plus useful GTFOBins references."
+        },
+        {
+          "id": "suid_sgid_find",
+          "label": "<b>SUID/SGID</b> find + GTFOBins",
+          "source": "legacy",
+          "desc": "Recherche tous les binaires SUID et SGID via find via SSH. Affiche les résultats et référence GTFOBins pour identifier les vecteurs d'escalade de privilèges exploitables.",
+          "label_en": "<b>SUID/SGID</b> find + GTFOBins",
+          "desc_en": "Finds SUID and SGID binaries over SSH and points to likely privilege-escalation options."
+        },
+        {
+          "id": "linux_caps_check",
+          "label": "<b>capabilities</b> getcap -r",
+          "source": "legacy",
+          "desc": "Recherche les binaires avec capabilities Linux (getcap -r /) via SSH. cap_setuid/cap_net_raw sur Python, Perl, Node = escalade directe vers root.",
+          "label_en": "<b>capabilities</b> getcap -r",
+          "desc_en": "Searches for Linux file capabilities that may provide direct privilege escalation, such as cap_setuid on scripting runtimes."
+        },
+        {
+          "id": "linux_cron_check",
+          "label": "<b>cron</b> world-writable scripts",
+          "source": "legacy",
+          "desc": "Examine les crontabs (root, système, user) et recherche les scripts appelés en cron qui sont modifiables. Un script world-writable exécuté en root = PrivEsc.",
+          "label_en": "<b>cron</b> world-writable scripts",
+          "desc_en": "Reviews cron jobs and writable scripts called by cron to spot privilege-escalation opportunities."
+        },
+        {
+          "id": "linux_services_enum",
+          "label": "<b>services</b> ports + processes",
+          "source": "legacy",
+          "desc": "Énumère les services locaux (ss -tlnp), les processus en cours (ps aux), les ports en écoute et les services systemd actifs via SSH. Révèle les services internes non exposés.",
+          "label_en": "<b>services</b> ports + processes",
+          "desc_en": "Enumerates listening ports, running processes, and active systemd services over SSH to reveal internal-only services."
+        },
+        {
+          "id": "linux_privesc_check",
+          "label": "<b>LinPEAS</b> full privesc scan",
+          "source": "legacy",
+          "desc": "Télécharge LinPEAS, démarre un serveur HTTP local et exécute le scan via SSH. Analyse complète : sudo, SUID, capabilities, cron, PATH, configs writable, credentials, CVEs kernel.",
+          "label_en": "<b>LinPEAS</b> full privesc scan",
+          "desc_en": "Deploys and runs LinPEAS through SSH for a broad Linux privilege-escalation survey."
+        },
+        {
+          "id": "pspy_monitor",
+          "label": "<b>pspy</b> process spy (hint)",
+          "source": "legacy",
+          "desc": "Télécharge pspy64, démarre un serveur HTTP local et génère la commande à exécuter sur la cible pour surveiller les processus en temps réel sans root. Détecte les cronjobs qui fuient des credentials dans leurs arguments.",
+          "label_en": "<b>pspy</b> process spy (hint)",
+          "desc_en": "Provides a pspy-based workflow to watch processes on the target in real time without root."
+        },
+        {
+          "id": "linux_docker_check",
+          "label": "<b>Docker</b> group / escape check",
+          "source": "legacy",
+          "desc": "Vérifie si l'utilisateur est dans le groupe docker via SSH. Un accès docker sans sudo = escalade root triviale via montage /. Vérifie aussi les containers en cours et les images disponibles.",
+          "label_en": "<b>Docker</b> group / escape check",
+          "desc_en": "Checks whether the current user can abuse Docker membership or container access for privilege escalation."
+        }
+      ],
+      "title_en": "Linux Services"
     },
     {
-      "id": "web", "icon": "🌐", "title": "Web Surface",
-      "target_types": ["web", "hybrid", "linux", "windows"],
+      "id": "web",
+      "icon": "🌐",
+      "title": "Web Surface",
+      "target_types": [
+        "web",
+        "hybrid",
+        "linux",
+        "windows"
+      ],
       "tools": [
-        {"id":"tls_probe",             "label":"<b>TLS</b> cert + ciphers quick check",        "source":"native",
-          "desc":"Vérifie la configuration TLS : versions obsolètes (TLS 1.0/1.1), ciphers faibles (RC4, 3DES), validité du certificat, noms SAN et intégrité de la chaîne."},
-        {"id":"web_robots",            "label":"<b>robots</b> + sitemap",                      "source":"native",
-          "desc":"Récupère robots.txt et sitemap.xml. Ces fichiers révèlent souvent des répertoires d'admin ou des endpoints non documentés."},
-        {"id":"web_tech_detect",       "label":"<b>Tech detect</b> headers / whatweb",         "source":"native",
-          "desc":"Détecte les technologies web via les headers HTTP et whatweb : framework backend, CMS, version du serveur, bibliothèques JS exposées, présence d'un WAF."},
-        {"id":"web_dir_quick",         "label":"<b>Dir enum</b> quick",                        "source":"native",
-          "desc":"Énumération rapide de répertoires et fichiers web via feroxbuster ou gobuster. Identifie les endpoints cachés, panneaux d'administration et fichiers de configuration."},
-        {"id":"web_nuclei_safe",       "label":"<b>nuclei</b> safe templates",                 "source":"native",
-          "desc":"Scan nuclei avec templates non-intrusifs : CVE connues, mauvaises configurations, endpoints d'admin exposés, fichiers sensibles (.env, backup, .git)."},
-        {"id":"ffuf_vhost",            "label":"<b>ffuf</b> vhost fuzzing",                    "source":"legacy",
-          "desc":"Fuzzing de virtual hosts via ffuf : teste des sous-domaines dans le header Host pour découvrir des vhosts cachés non référencés dans le DNS."},
-        {"id":"ffuf_dir_fast",         "label":"<b>ffuf</b> dir fast (JSON out)",              "source":"legacy",
-          "desc":"Énumération de répertoires ultra-rapide via ffuf avec wordlist SecLists. Sortie JSON structurée. Supporte les extensions php, html, txt, json, bak."},
-        {"id":"wfuzz_params",          "label":"<b>wfuzz</b> param fuzzing",                   "source":"legacy",
-          "desc":"Fuzzing de paramètres GET via wfuzz avec burp-parameter-names. Identifie les paramètres cachés, IDOR, injections et endpoints non documentés."},
-        {"id":"nikto_scan",            "label":"<b>nikto</b> full web scan",                   "source":"legacy",
-          "desc":"Scan nikto complet : vulnérabilités web communes, headers dangereux (X-Frame-Options, CORS), fichiers exposés (.git, .svn, backup), méthodes HTTP autorisées, CVEs connues."},
-        {"id":"waf_detect",            "label":"<b>wafw00f</b> WAF detection",                 "source":"legacy",
-          "desc":"Détecte la présence d'un Web Application Firewall via wafw00f. Identifie le vendor (CloudFlare, ModSecurity, F5, Imperva...) pour adapter les attaques suivantes."},
-        {"id":"cms_scan",              "label":"<b>CMS scan</b> wpscan/droopescan",            "source":"legacy",
-          "desc":"Détecte le CMS (WordPress/Drupal/Joomla) puis lance le scanner approprié. wpscan pour WordPress : plugins vulnérables, users enum, xmlrpc. droopescan pour Drupal/Silverstripe."},
-        {"id":"lfi_probe",             "label":"<b>LFI</b> path traversal probe",             "source":"legacy",
-          "desc":"Fuzzing LFI/Path Traversal avec ffuf et la wordlist LFI-Jhaddix de SecLists. Teste automatiquement les paramètres courants (file, path, page, include, load, template...)."},
-        {"id":"sqlmap_basic",          "label":"<b>sqlmap</b> basic injection scan",           "source":"legacy", "noisy":true,
-          "desc":"Lance sqlmap sur l'URL cible pour détecter les injections SQL (GET params). Mode batch non-interactif, level 2, risk 1. Détecte MySQL, MSSQL, PostgreSQL, SQLite, Oracle."},
-        {"id":"web_login_brute",       "label":"<b>hydra</b> HTTP login brute",               "source":"legacy", "noisy":true,
-          "desc":"Bruteforce de formulaire de login HTTP POST via hydra avec la wordlist rockyou.txt. Adapte automatiquement le chemin /login selon la tech détectée. Tente aussi admin/admin, admin/password."}
-      ]
+        {
+          "id": "tls_probe",
+          "label": "<b>TLS</b> cert + ciphers quick check",
+          "source": "native",
+          "desc": "Vérifie la configuration TLS : versions obsolètes (TLS 1.0/1.1), ciphers faibles (RC4, 3DES), validité du certificat, noms SAN et intégrité de la chaîne.",
+          "label_en": "<b>TLS</b> cert + ciphers quick check",
+          "desc_en": "Checks TLS versions, weak ciphers, certificate validity, SAN names, and certificate chain quality."
+        },
+        {
+          "id": "web_robots",
+          "label": "<b>robots</b> + sitemap",
+          "source": "native",
+          "desc": "Récupère robots.txt et sitemap.xml. Ces fichiers révèlent souvent des répertoires d'admin ou des endpoints non documentés.",
+          "label_en": "<b>robots</b> + sitemap",
+          "desc_en": "Fetches robots.txt and sitemap.xml to reveal hidden paths, admin areas, and documented endpoints."
+        },
+        {
+          "id": "web_tech_detect",
+          "label": "<b>Tech detect</b> headers / whatweb",
+          "source": "native",
+          "desc": "Détecte les technologies web via les headers HTTP et whatweb : framework backend, CMS, version du serveur, bibliothèques JS exposées, présence d'un WAF.",
+          "label_en": "<b>Tech detect</b> headers / whatweb",
+          "desc_en": "Identifies web technologies from headers and whatweb, including backend framework, CMS, libraries, and WAF hints."
+        },
+        {
+          "id": "web_dir_quick",
+          "label": "<b>Dir enum</b> quick",
+          "source": "native",
+          "desc": "Énumération rapide de répertoires et fichiers web via feroxbuster ou gobuster. Identifie les endpoints cachés, panneaux d'administration et fichiers de configuration.",
+          "label_en": "<b>Dir enum</b> quick",
+          "desc_en": "Runs a quick directory and file enumeration to find hidden endpoints, admin panels, and config files."
+        },
+        {
+          "id": "web_nuclei_safe",
+          "label": "<b>nuclei</b> safe templates",
+          "source": "native",
+          "desc": "Scan nuclei avec templates non-intrusifs : CVE connues, mauvaises configurations, endpoints d'admin exposés, fichiers sensibles (.env, backup, .git).",
+          "label_en": "<b>nuclei</b> safe templates",
+          "desc_en": "Runs safe nuclei templates to find known issues, exposed admin panels, and sensitive files without aggressive checks."
+        },
+        {
+          "id": "ffuf_vhost",
+          "label": "<b>ffuf</b> vhost fuzzing",
+          "source": "legacy",
+          "desc": "Fuzzing de virtual hosts via ffuf : teste des sous-domaines dans le header Host pour découvrir des vhosts cachés non référencés dans le DNS.",
+          "label_en": "<b>ffuf</b> vhost fuzzing",
+          "desc_en": "Fuzzes Host headers to discover hidden virtual hosts that are not obvious in DNS."
+        },
+        {
+          "id": "ffuf_dir_fast",
+          "label": "<b>ffuf</b> dir fast (JSON out)",
+          "source": "legacy",
+          "desc": "Énumération de répertoires ultra-rapide via ffuf avec wordlist SecLists. Sortie JSON structurée. Supporte les extensions php, html, txt, json, bak.",
+          "label_en": "<b>ffuf</b> dir fast (JSON out)",
+          "desc_en": "Performs fast directory enumeration with ffuf and outputs structured JSON results."
+        },
+        {
+          "id": "wfuzz_params",
+          "label": "<b>wfuzz</b> param fuzzing",
+          "source": "legacy",
+          "desc": "Fuzzing de paramètres GET via wfuzz avec burp-parameter-names. Identifie les paramètres cachés, IDOR, injections et endpoints non documentés.",
+          "label_en": "<b>wfuzz</b> param fuzzing",
+          "desc_en": "Fuzzes common GET parameter names to discover hidden parameters, IDORs, and possible injection points."
+        },
+        {
+          "id": "nikto_scan",
+          "label": "<b>nikto</b> full web scan",
+          "source": "legacy",
+          "desc": "Scan nikto complet : vulnérabilités web communes, headers dangereux (X-Frame-Options, CORS), fichiers exposés (.git, .svn, backup), méthodes HTTP autorisées, CVEs connues.",
+          "label_en": "<b>nikto</b> full web scan",
+          "desc_en": "Runs a broad Nikto scan for common web issues, risky headers, exposed files, allowed HTTP methods, and known signatures."
+        },
+        {
+          "id": "waf_detect",
+          "label": "<b>wafw00f</b> WAF detection",
+          "source": "legacy",
+          "desc": "Détecte la présence d'un Web Application Firewall via wafw00f. Identifie le vendor (CloudFlare, ModSecurity, F5, Imperva...) pour adapter les attaques suivantes.",
+          "label_en": "<b>wafw00f</b> WAF detection",
+          "desc_en": "Detects the presence and likely vendor of a WAF so later web testing can be adapted."
+        },
+        {
+          "id": "cms_scan",
+          "label": "<b>CMS scan</b> wpscan/droopescan",
+          "source": "legacy",
+          "desc": "Détecte le CMS (WordPress/Drupal/Joomla) puis lance le scanner approprié. wpscan pour WordPress : plugins vulnérables, users enum, xmlrpc. droopescan pour Drupal/Silverstripe.",
+          "label_en": "<b>CMS scan</b> wpscan/droopescan",
+          "desc_en": "Detects common CMS platforms and launches the matching scanner such as WPScan or Droopescan."
+        },
+        {
+          "id": "lfi_probe",
+          "label": "<b>LFI</b> path traversal probe",
+          "source": "legacy",
+          "desc": "Fuzzing LFI/Path Traversal avec ffuf et la wordlist LFI-Jhaddix de SecLists. Teste automatiquement les paramètres courants (file, path, page, include, load, template...).",
+          "label_en": "<b>LFI</b> path traversal probe",
+          "desc_en": "Tests common parameters for LFI and path traversal behavior with a tuned fuzzing workflow."
+        },
+        {
+          "id": "sqlmap_basic",
+          "label": "<b>sqlmap</b> basic injection scan",
+          "source": "legacy",
+          "noisy": true,
+          "desc": "Lance sqlmap sur l'URL cible pour détecter les injections SQL (GET params). Mode batch non-interactif, level 2, risk 1. Détecte MySQL, MSSQL, PostgreSQL, SQLite, Oracle.",
+          "label_en": "<b>sqlmap</b> basic injection scan",
+          "desc_en": "Runs a basic sqlmap scan against the target URL to detect common SQL injection issues in GET parameters."
+        },
+        {
+          "id": "web_login_brute",
+          "label": "<b>hydra</b> HTTP login brute",
+          "source": "legacy",
+          "noisy": true,
+          "desc": "Bruteforce de formulaire de login HTTP POST via hydra avec la wordlist rockyou.txt. Adapte automatiquement le chemin /login selon la tech détectée. Tente aussi admin/admin, admin/password.",
+          "label_en": "<b>hydra</b> HTTP login brute",
+          "desc_en": "Bruteforces a web login form with hydra using common paths and default wordlists. Noisy by nature."
+        }
+      ],
+      "title_en": "Web Surface"
     },
     {
-      "id": "challenge", "icon": "🧩", "title": "HTB Challenges",
-      "target_types": ["challenge"],
+      "id": "challenge",
+      "icon": "🧩",
+      "title": "HTB Challenges",
+      "target_types": [
+        "challenge"
+      ],
       "tools": [
-        {"id":"challenge_file_info", "label":"<b>file</b> + hash + stat", "source":"native",
-          "desc":"Triage initial local d'un challenge: type de fichier, taille, permissions, hash et inventaire rapide du contenu."},
-        {"id":"challenge_archive_inventory", "label":"<b>archive</b> inventory", "source":"native",
-          "desc":"Liste le contenu d'une archive ou d'un dossier de challenge pour voir immédiatement ce qui mérite d'être ouvert ou décompressé."},
-        {"id":"challenge_strings", "label":"<b>strings</b> quick triage", "source":"native",
-          "desc":"Extrait rapidement les chaînes utiles d'un binaire, d'un dump ou d'un fichier obfusqué pour identifier flags, URLs, fonctions ou constantes."},
-        {"id":"challenge_exif", "label":"<b>exiftool</b> metadata", "source":"native",
-          "desc":"Affiche les métadonnées riches d'un artefact: image, document, audio, PDF. Très utile pour forensics, stego et osint."},
-        {"id":"challenge_binwalk", "label":"<b>binwalk</b> embedded data", "source":"native",
-          "desc":"Recherche des signatures embarquées et segments compressés dans un fichier: firmware, image, archive cachée, payload concaténé."},
-        {"id":"challenge_checksec", "label":"<b>checksec</b> hardening quick look", "source":"native",
-          "desc":"Donne immédiatement les protections ELF d'un binaire pwn/reverse: PIE, NX, RELRO, canary. Permet d'orienter la stratégie d'exploitation."},
-        {"id":"challenge_readelf", "label":"<b>readelf</b> headers + symbols", "source":"native",
-          "desc":"Affiche les en-têtes ELF, sections et symboles pour un premier travail pwn/reverse sans ouvrir tout de suite Ghidra ou Cutter."},
-        {"id":"challenge_foremost", "label":"<b>foremost</b> carving", "source":"native",
-          "desc":"Découpe les artefacts connus depuis un dump ou un fichier brut: images, documents, archives. Très utile en forensics."},
-        {"id":"challenge_http_probe", "label":"<b>HTTP probe</b> curl + whatweb", "source":"native",
-          "desc":"Probe rapide d'une URL ou d'un host de challenge web: headers, body, redirections et techno via whatweb."}
-      ]
+        {
+          "id": "challenge_file_info",
+          "label": "<b>file</b> + hash + stat",
+          "source": "native",
+          "desc": "Triage initial local d'un challenge: type de fichier, taille, permissions, hash et inventaire rapide du contenu.",
+          "label_en": "<b>file</b> + hash + stat",
+          "desc_en": "Performs quick local triage on a challenge artifact: file type, size, permissions, hash, and content inventory."
+        },
+        {
+          "id": "challenge_archive_inventory",
+          "label": "<b>archive</b> inventory",
+          "source": "native",
+          "desc": "Liste le contenu d'une archive ou d'un dossier de challenge pour voir immédiatement ce qui mérite d'être ouvert ou décompressé.",
+          "label_en": "<b>archive</b> inventory",
+          "desc_en": "Lists the contents of a challenge archive or folder to see what deserves immediate attention."
+        },
+        {
+          "id": "challenge_strings",
+          "label": "<b>strings</b> quick triage",
+          "source": "native",
+          "desc": "Extrait rapidement les chaînes utiles d'un binaire, d'un dump ou d'un fichier obfusqué pour identifier flags, URLs, fonctions ou constantes.",
+          "label_en": "<b>strings</b> quick triage",
+          "desc_en": "Extracts useful strings from a binary, dump, or obfuscated file to surface flags, URLs, symbols, and constants."
+        },
+        {
+          "id": "challenge_exif",
+          "label": "<b>exiftool</b> metadata",
+          "source": "native",
+          "desc": "Affiche les métadonnées riches d'un artefact: image, document, audio, PDF. Très utile pour forensics, stego et osint.",
+          "label_en": "<b>exiftool</b> metadata",
+          "desc_en": "Shows rich metadata from images, documents, audio, and PDFs. Useful for forensics, stego, and OSINT."
+        },
+        {
+          "id": "challenge_binwalk",
+          "label": "<b>binwalk</b> embedded data",
+          "source": "native",
+          "desc": "Recherche des signatures embarquées et segments compressés dans un fichier: firmware, image, archive cachée, payload concaténé.",
+          "label_en": "<b>binwalk</b> embedded data",
+          "desc_en": "Searches for embedded signatures and compressed segments inside a file such as firmware images or hidden archives."
+        },
+        {
+          "id": "challenge_checksec",
+          "label": "<b>checksec</b> hardening quick look",
+          "source": "native",
+          "desc": "Donne immédiatement les protections ELF d'un binaire pwn/reverse: PIE, NX, RELRO, canary. Permet d'orienter la stratégie d'exploitation.",
+          "label_en": "<b>checksec</b> hardening quick look",
+          "desc_en": "Quickly reports ELF mitigations such as PIE, NX, RELRO, and stack canary for pwn and reverse tasks."
+        },
+        {
+          "id": "challenge_readelf",
+          "label": "<b>readelf</b> headers + symbols",
+          "source": "native",
+          "desc": "Affiche les en-têtes ELF, sections et symboles pour un premier travail pwn/reverse sans ouvrir tout de suite Ghidra ou Cutter.",
+          "label_en": "<b>readelf</b> headers + symbols",
+          "desc_en": "Shows ELF headers, sections, and symbols for first-pass binary analysis without opening a heavy GUI tool."
+        },
+        {
+          "id": "challenge_foremost",
+          "label": "<b>foremost</b> carving",
+          "source": "native",
+          "desc": "Découpe les artefacts connus depuis un dump ou un fichier brut: images, documents, archives. Très utile en forensics.",
+          "label_en": "<b>foremost</b> carving",
+          "desc_en": "Carves common artifact types from a dump or raw file, which is especially useful in forensics challenges."
+        },
+        {
+          "id": "challenge_http_probe",
+          "label": "<b>HTTP probe</b> curl + whatweb",
+          "source": "native",
+          "desc": "Probe rapide d'une URL ou d'un host de challenge web: headers, body, redirections et techno via whatweb.",
+          "label_en": "<b>HTTP probe</b> curl + whatweb",
+          "desc_en": "Performs a fast HTTP probe on a challenge URL or host with curl and whatweb."
+        }
+      ],
+      "title_en": "HTB Challenges"
     },
     {
-      "id": "sql", "icon": "🗄️", "title": "SQL / Bases de données",
-      "target_types": ["windows", "linux", "web", "hybrid"],
+      "id": "sql",
+      "icon": "🗄️",
+      "title": "SQL / Bases de données",
+      "target_types": [
+        "windows",
+        "linux",
+        "web",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"mysql_probe",           "label":"<b>MySQL</b> anonymous + enum",               "source":"legacy",
-          "desc":"Sonde MySQL (3306) : connexion anonyme, nmap NSE (mysql-info, mysql-databases, mysql-empty-password, mysql-brute). Si credentials disponibles, liste les bases et vérifie les droits FILE."},
-        {"id":"mssql_probe",           "label":"<b>MSSQL</b> nxc + impacket",                "source":"legacy",
-          "desc":"Sonde MSSQL (1433) via nxc mssql et impacket-mssqlclient. Vérifie xp_cmdshell, sp_execute_external_script, linked servers et niveau de privilège (sa, sysadmin)."},
-        {"id":"postgres_probe",        "label":"<b>PostgreSQL</b> probe + enum",              "source":"legacy",
-          "desc":"Sonde PostgreSQL (5432) : connexion anonyme/postgres, nmap NSE, liste des bases et tables. Vérifie COPY TO/FROM pour lire/écrire des fichiers (superuser required)."},
-        {"id":"redis_probe",           "label":"<b>Redis</b> unauth + config dump",           "source":"legacy",
-          "desc":"Teste Redis (6379) sans authentification : INFO, CONFIG GET *, KEYS *, lecture de fichiers via CONFIG SET dir/dbfilename. Redis non authentifié = souvent RCE via crontab ou authorized_keys."},
-        {"id":"mongodb_probe",         "label":"<b>MongoDB</b> anonymous enum",               "source":"legacy",
-          "desc":"Sonde MongoDB (27017) sans authentification. Liste les bases de données, collections et documents. MongoDB sans auth = fuite de données quasi-garantie sur HTB."},
-        {"id":"sqlmap_crawl",          "label":"<b>sqlmap</b> crawl + injection",             "source":"legacy", "noisy":true,
-          "desc":"Lance sqlmap en mode crawl sur l'URL cible pour découvrir automatiquement les formulaires et paramètres injectables. Plus complet que sqlmap_basic mais plus bruyant."}
-      ]
+        {
+          "id": "mysql_probe",
+          "label": "<b>MySQL</b> anonymous + enum",
+          "source": "legacy",
+          "desc": "Sonde MySQL (3306) : connexion anonyme, nmap NSE (mysql-info, mysql-databases, mysql-empty-password, mysql-brute). Si credentials disponibles, liste les bases et vérifie les droits FILE.",
+          "label_en": "<b>MySQL</b> anonymous + enum",
+          "desc_en": "Probes MySQL for anonymous access and NSE findings, then enumerates databases and FILE capability when creds exist."
+        },
+        {
+          "id": "mssql_probe",
+          "label": "<b>MSSQL</b> nxc + impacket",
+          "source": "legacy",
+          "desc": "Sonde MSSQL (1433) via nxc mssql et impacket-mssqlclient. Vérifie xp_cmdshell, sp_execute_external_script, linked servers et niveau de privilège (sa, sysadmin).",
+          "label_en": "<b>MSSQL</b> nxc + impacket",
+          "desc_en": "Probes MSSQL through netexec and Impacket, checking xp_cmdshell, external script execution, linked servers, and privilege level."
+        },
+        {
+          "id": "postgres_probe",
+          "label": "<b>PostgreSQL</b> probe + enum",
+          "source": "legacy",
+          "desc": "Sonde PostgreSQL (5432) : connexion anonyme/postgres, nmap NSE, liste des bases et tables. Vérifie COPY TO/FROM pour lire/écrire des fichiers (superuser required).",
+          "label_en": "<b>PostgreSQL</b> probe + enum",
+          "desc_en": "Probes PostgreSQL for anonymous or default access, enumerates databases and tables, and checks useful file operations."
+        },
+        {
+          "id": "redis_probe",
+          "label": "<b>Redis</b> unauth + config dump",
+          "source": "legacy",
+          "desc": "Teste Redis (6379) sans authentification : INFO, CONFIG GET *, KEYS *, lecture de fichiers via CONFIG SET dir/dbfilename. Redis non authentifié = souvent RCE via crontab ou authorized_keys.",
+          "label_en": "<b>Redis</b> unauth + config dump",
+          "desc_en": "Tests Redis without authentication and reviews INFO, CONFIG, keys, and common file-write abuse paths."
+        },
+        {
+          "id": "mongodb_probe",
+          "label": "<b>MongoDB</b> anonymous enum",
+          "source": "legacy",
+          "desc": "Sonde MongoDB (27017) sans authentification. Liste les bases de données, collections et documents. MongoDB sans auth = fuite de données quasi-garantie sur HTB.",
+          "label_en": "<b>MongoDB</b> anonymous enum",
+          "desc_en": "Probes MongoDB for unauthenticated access and enumerates databases, collections, and sample documents."
+        },
+        {
+          "id": "sqlmap_crawl",
+          "label": "<b>sqlmap</b> crawl + injection",
+          "source": "legacy",
+          "noisy": true,
+          "desc": "Lance sqlmap en mode crawl sur l'URL cible pour découvrir automatiquement les formulaires et paramètres injectables. Plus complet que sqlmap_basic mais plus bruyant.",
+          "label_en": "<b>sqlmap</b> crawl + injection",
+          "desc_en": "Runs sqlmap in crawl mode to discover forms and injectable parameters automatically. Broader and noisier than a basic scan."
+        }
+      ],
+      "title_en": "SQL / Databases"
     },
     {
-      "id": "coercion", "icon": "🧲", "title": "Coercition NTLM", "enabled": false,
-      "target_types": ["windows", "hybrid"],
+      "id": "coercion",
+      "icon": "🧲",
+      "title": "Coercition NTLM",
+      "enabled": false,
+      "target_types": [
+        "windows",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"responder_listen",      "label":"<b>Responder</b> passive listen",              "source":"legacy", "noisy":true, "daemon":true,
-          "desc":"Lance Responder en écoute passive sur l'interface réseau pour capturer les authentifications NTLM/NTLMv2 broadcast (LLMNR, NBT-NS, mDNS). Hashes crackables hors-ligne."},
-        {"id":"ntlmrelayx_relay",      "label":"<b>ntlmrelayx</b> SMB relay",                 "source":"legacy", "noisy":true, "daemon":true,
-          "desc":"Relay NTLM automatique vers les cibles sans signature SMB. Combine avec smb_relay_targets.txt généré par smb_signing. Peut dump SAM, ajouter des comptes ou exécuter des commandes."},
-        {"id":"coercer_run",           "label":"<b>Coercer</b> force auth",                   "source":"legacy", "noisy":true,
-          "desc":"Force une authentification NTLM depuis la cible vers l'attaquant via MS-RPRN, MS-EFSR, MS-DFSNM, etc. Combiner avec Responder ou ntlmrelayx."}
-      ]
+        {
+          "id": "responder_listen",
+          "label": "<b>Responder</b> passive listen",
+          "source": "legacy",
+          "noisy": true,
+          "daemon": true,
+          "desc": "Lance Responder en écoute passive sur l'interface réseau pour capturer les authentifications NTLM/NTLMv2 broadcast (LLMNR, NBT-NS, mDNS). Hashes crackables hors-ligne.",
+          "label_en": "<b>Responder</b> passive listener",
+          "desc_en": "Starts Responder in passive mode to capture broadcast NTLM/NTLMv2 authentication that can later be cracked offline."
+        },
+        {
+          "id": "ntlmrelayx_relay",
+          "label": "<b>ntlmrelayx</b> SMB relay",
+          "source": "legacy",
+          "noisy": true,
+          "daemon": true,
+          "desc": "Relay NTLM automatique vers les cibles sans signature SMB. Combine avec smb_relay_targets.txt généré par smb_signing. Peut dump SAM, ajouter des comptes ou exécuter des commandes.",
+          "label_en": "<b>ntlmrelayx</b> SMB relay",
+          "desc_en": "Starts automated NTLM relay against SMB-signing-disabled targets using the generated relay target list."
+        },
+        {
+          "id": "coercer_run",
+          "label": "<b>Coercer</b> force auth",
+          "source": "legacy",
+          "noisy": true,
+          "desc": "Force une authentification NTLM depuis la cible vers l'attaquant via MS-RPRN, MS-EFSR, MS-DFSNM, etc. Combiner avec Responder ou ntlmrelayx.",
+          "label_en": "<b>Coercer</b> force auth",
+          "desc_en": "Forces NTLM authentication from the target back to the attacker through coercion vectors such as MS-RPRN or MS-EFSR."
+        }
+      ],
+      "title_en": "NTLM Coercion"
     },
     {
-      "id": "tunnel", "icon": "🕳", "title": "Tunneling / Pivot", "enabled": false,
-      "target_types": ["windows", "linux", "hybrid"],
+      "id": "tunnel",
+      "icon": "🕳",
+      "title": "Tunneling / Pivot",
+      "enabled": false,
+      "target_types": [
+        "windows",
+        "linux",
+        "hybrid"
+      ],
       "tools": [
-        {"id":"chisel_server",         "label":"<b>chisel</b> server SOCKS5",                 "source":"legacy", "daemon":true,
-          "desc":"Lance un serveur chisel local en mode reverse pour recevoir les connexions pivotées depuis la cible. Expose un proxy SOCKS5 local pour router le trafic via la machine compromise."},
-        {"id":"chisel_client",         "label":"<b>chisel</b> client hint",                   "source":"legacy",
-          "desc":"Génère la commande chisel client à exécuter sur la machine cible pour établir le tunnel reverse SOCKS5 vers le serveur attaquant."},
-        {"id":"ligolo_server",         "label":"<b>ligolo-ng</b> proxy setup",                "source":"legacy", "daemon":true,
-          "desc":"Configure l'interface TUN ligolo et lance le proxy ligolo-ng sur le port 11601. L'agent.exe déployé sur la cible se connecte en reverse — tunnel transparent, pas besoin de proxychains."},
-        {"id":"socat_fwd",             "label":"<b>socat</b> port forward",                   "source":"legacy", "daemon":true,
-          "desc":"Crée un relais de port local via socat : expose un service interne (RDP 3389, SMB 445, WinRM 5985) accessible uniquement depuis la machine pivot vers l'attaquant."}
-      ]
+        {
+          "id": "chisel_server",
+          "label": "<b>chisel</b> server SOCKS5",
+          "source": "legacy",
+          "daemon": true,
+          "desc": "Lance un serveur chisel local en mode reverse pour recevoir les connexions pivotées depuis la cible. Expose un proxy SOCKS5 local pour router le trafic via la machine compromise.",
+          "label_en": "<b>chisel</b> server SOCKS5",
+          "desc_en": "Starts a local reverse chisel server and exposes a SOCKS5 pivot for routing traffic through a compromised host."
+        },
+        {
+          "id": "chisel_client",
+          "label": "<b>chisel</b> client hint",
+          "source": "legacy",
+          "desc": "Génère la commande chisel client à exécuter sur la machine cible pour établir le tunnel reverse SOCKS5 vers le serveur attaquant.",
+          "label_en": "<b>chisel</b> client hint",
+          "desc_en": "Builds the chisel client command to run on the target so the reverse SOCKS5 tunnel comes back to the attacker."
+        },
+        {
+          "id": "ligolo_server",
+          "label": "<b>ligolo-ng</b> proxy setup",
+          "source": "legacy",
+          "daemon": true,
+          "desc": "Configure l'interface TUN ligolo et lance le proxy ligolo-ng sur le port 11601. L'agent.exe déployé sur la cible se connecte en reverse — tunnel transparent, pas besoin de proxychains.",
+          "label_en": "<b>ligolo-ng</b> proxy setup",
+          "desc_en": "Prepares the ligolo-ng TUN interface and proxy for transparent pivoting from the compromised host."
+        },
+        {
+          "id": "socat_fwd",
+          "label": "<b>socat</b> port forward",
+          "source": "legacy",
+          "daemon": true,
+          "desc": "Crée un relais de port local via socat : expose un service interne (RDP 3389, SMB 445, WinRM 5985) accessible uniquement depuis la machine pivot vers l'attaquant.",
+          "label_en": "<b>socat</b> port forward",
+          "desc_en": "Creates a local socat forward to expose an internal service from the pivoted network back to the attacker."
+        }
+      ],
+      "title_en": "Tunneling / Pivot"
     }
   ]
 }

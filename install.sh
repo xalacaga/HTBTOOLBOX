@@ -82,6 +82,53 @@ ensure_local_bin_dir() {
   fi
 }
 
+ensure_impacket_launchers() {
+  local examples_dir="/usr/share/doc/python3-impacket/examples"
+  local system_python="/usr/bin/python3"
+  local wrappers=(
+    "impacket-GetNPUsers:GetNPUsers.py"
+    "impacket-GetUserSPNs:GetUserSPNs.py"
+    "impacket-getTGT:getTGT.py"
+    "impacket-secretsdump:secretsdump.py"
+    "impacket-psexec:psexec.py"
+    "impacket-wmiexec:wmiexec.py"
+    "impacket-ntlmrelayx:ntlmrelayx.py"
+    "impacket-mssqlclient:mssqlclient.py"
+    "impacket-rbcd:rbcd.py"
+    "impacket-dacledit:dacledit.py"
+    "impacket-owneredit:owneredit.py"
+    "impacket-addcomputer:addcomputer.py"
+    "impacket-getST:getST.py"
+    "GetNPUsers.py:GetNPUsers.py"
+    "GetUserSPNs.py:GetUserSPNs.py"
+    "addcomputer.py:addcomputer.py"
+    "dacledit.py:dacledit.py"
+    "owneredit.py:owneredit.py"
+    "rbcd.py:rbcd.py"
+    "getST.py:getST.py"
+    "ntlmrelayx.py:ntlmrelayx.py"
+  )
+
+  if [[ ! -d "$VENV_DIR/bin" ]]; then
+    return 0
+  fi
+
+  for entry in "${wrappers[@]}"; do
+    local name="${entry%%:*}"
+    local example="${entry##*:}"
+    local target="$VENV_DIR/bin/$name"
+    if [[ -f "$examples_dir/$example" && -x "$system_python" ]]; then
+      cat >"$target" <<EOF
+#!/usr/bin/env bash
+exec "$system_python" "$examples_dir/$example" "\$@"
+EOF
+    else
+      continue
+    fi
+    chmod +x "$target"
+  done
+}
+
 ensure_venv() {
   if [[ ! -d "$VENV_DIR" ]]; then
     log "Création du virtualenv Python"
@@ -94,6 +141,7 @@ ensure_venv() {
   if [[ "$INSTALL_AI" == "1" ]]; then
     python -m pip install anthropic
   fi
+  ensure_impacket_launchers
 }
 
 install_release_binary() {
@@ -189,7 +237,7 @@ main() {
   run_priv apt-get update
 
   log "Installation des prérequis système"
-  apt_install python3 python3-venv python3-pip pipx git curl unzip psmisc jq
+  apt_install python3 python3-venv python3-pip cargo pipx git curl unzip psmisc jq
 
   ensure_local_bin_dir
   ensure_venv
@@ -258,6 +306,9 @@ main() {
   ensure_pipx ldapdomaindump git+https://github.com/dirkjanm/ldapdomaindump.git || true
   ensure_pipx enum4linux-ng git+https://github.com/cddmp/enum4linux-ng.git || true
   ensure_pipx certipy-ad git+https://github.com/ly4k/Certipy.git || true
+
+  ensure_impacket_launchers
+  good "Wrappers Impacket créés dans $VENV_DIR/bin pour éviter les conflits avec le .venv"
   ensure_pipx bloodyAD git+https://github.com/CravateRouge/bloodyAD.git || true
 
   if ! have ligolo-proxy; then

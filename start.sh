@@ -38,6 +38,51 @@ echo
 
 command -v python3 >/dev/null || { echo "[!] Python3 requis."; exit 1; }
 
+ensure_impacket_launchers() {
+  local examples_dir="/usr/share/doc/python3-impacket/examples"
+  local system_python="/usr/bin/python3"
+  local wrappers=(
+    "impacket-GetNPUsers:GetNPUsers.py"
+    "impacket-GetUserSPNs:GetUserSPNs.py"
+    "impacket-getTGT:getTGT.py"
+    "impacket-secretsdump:secretsdump.py"
+    "impacket-psexec:psexec.py"
+    "impacket-wmiexec:wmiexec.py"
+    "impacket-ntlmrelayx:ntlmrelayx.py"
+    "impacket-mssqlclient:mssqlclient.py"
+    "impacket-rbcd:rbcd.py"
+    "impacket-dacledit:dacledit.py"
+    "impacket-owneredit:owneredit.py"
+    "impacket-addcomputer:addcomputer.py"
+    "impacket-getST:getST.py"
+    "GetNPUsers.py:GetNPUsers.py"
+    "GetUserSPNs.py:GetUserSPNs.py"
+    "addcomputer.py:addcomputer.py"
+    "dacledit.py:dacledit.py"
+    "owneredit.py:owneredit.py"
+    "rbcd.py:rbcd.py"
+    "getST.py:getST.py"
+    "ntlmrelayx.py:ntlmrelayx.py"
+  )
+
+  [[ -d "$VENV_DIR/bin" ]] || return 0
+
+  for entry in "${wrappers[@]}"; do
+    local name="${entry%%:*}"
+    local example="${entry##*:}"
+    local target="$VENV_DIR/bin/$name"
+    if [[ -f "$examples_dir/$example" && -x "$system_python" ]]; then
+      cat >"$target" <<EOF
+#!/usr/bin/env bash
+exec "$system_python" "$examples_dir/$example" "\$@"
+EOF
+    else
+      continue
+    fi
+    chmod +x "$target"
+  done
+}
+
 ensure_venv() {
   if [[ ! -d "$VENV_DIR" ]]; then
     echo "[*] Création du virtualenv Python..."
@@ -52,6 +97,8 @@ ensure_venv() {
     python -m pip install --upgrade pip >/dev/null
     python -m pip install -r "$SCRIPT_DIR/requirements.txt"
   fi
+
+  ensure_impacket_launchers
 }
 
 if [[ "$SKIP_BOOTSTRAP" != "1" ]]; then

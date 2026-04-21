@@ -3,63 +3,236 @@
   "profiles": {
     "full": {
       "title": "Full AD",
-      "on":  ["recon", "smb", "ldap", "kerberos", "bh"],
-      "off": ["adcs", "postauth", "linux", "web", "sql", "coercion", "tunnel"],
-      "target_types": ["windows"]
+      "on": [
+        "recon",
+        "smb",
+        "ldap",
+        "kerberos",
+        "bh"
+      ],
+      "off": [
+        "adcs",
+        "postauth",
+        "linux",
+        "web",
+        "sql",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "windows"
+      ],
+      "title_en": "Full AD"
     },
     "htb": {
       "title": "HTB quick win",
-      "on":  ["recon", "smb", "ldap", "kerberos", "bh", "adcs"],
-      "off": ["postauth", "linux", "web", "sql", "coercion", "tunnel"],
-      "target_types": ["windows"]
+      "on": [
+        "recon",
+        "smb",
+        "ldap",
+        "kerberos",
+        "bh",
+        "adcs"
+      ],
+      "off": [
+        "postauth",
+        "linux",
+        "web",
+        "sql",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "windows"
+      ],
+      "title_en": "HTB quick win"
     },
     "ldap": {
       "title": "LDAP / Kerb",
-      "on":  ["ldap", "kerberos", "adcs", "bh"],
-      "off": ["recon", "smb", "postauth", "linux", "web", "sql", "coercion", "tunnel"],
-      "target_types": ["windows"]
+      "on": [
+        "ldap",
+        "kerberos",
+        "adcs",
+        "bh"
+      ],
+      "off": [
+        "recon",
+        "smb",
+        "postauth",
+        "linux",
+        "web",
+        "sql",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "windows"
+      ],
+      "title_en": "LDAP / Kerb"
     },
     "smb": {
       "title": "SMB focus",
-      "on":  ["recon", "smb", "bh"],
-      "off": ["ldap", "kerberos", "adcs", "postauth", "linux", "web", "sql", "coercion", "tunnel"],
-      "target_types": ["windows"]
+      "on": [
+        "recon",
+        "smb",
+        "bh"
+      ],
+      "off": [
+        "ldap",
+        "kerberos",
+        "adcs",
+        "postauth",
+        "linux",
+        "web",
+        "sql",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "windows"
+      ],
+      "title_en": "SMB focus"
     },
     "adcs": {
       "title": "ADCS focus",
-      "on":  ["ldap", "kerberos", "adcs"],
-      "off": ["recon", "smb", "bh", "postauth", "linux", "web", "sql", "coercion", "tunnel"],
-      "target_types": ["windows"]
+      "on": [
+        "ldap",
+        "kerberos",
+        "adcs"
+      ],
+      "off": [
+        "recon",
+        "smb",
+        "bh",
+        "postauth",
+        "linux",
+        "web",
+        "sql",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "windows"
+      ],
+      "title_en": "ADCS focus"
     },
     "windows": {
       "title": "Windows Host",
-      "on":  ["recon", "smb", "ldap", "kerberos", "bh", "adcs", "sql"],
-      "off": ["postauth", "linux", "web", "coercion", "tunnel"],
-      "target_types": ["windows"]
+      "on": [
+        "recon",
+        "smb",
+        "ldap",
+        "kerberos",
+        "bh",
+        "adcs",
+        "sql"
+      ],
+      "off": [
+        "postauth",
+        "linux",
+        "web",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "windows"
+      ],
+      "title_en": "Windows host"
     },
     "linux": {
       "title": "Linux Host",
-      "on":  ["recon", "linux", "web", "sql"],
-      "off": ["smb", "ldap", "kerberos", "adcs", "bh", "postauth", "coercion", "tunnel"],
-      "target_types": ["linux"]
+      "on": [
+        "recon",
+        "linux",
+        "web",
+        "sql"
+      ],
+      "off": [
+        "smb",
+        "ldap",
+        "kerberos",
+        "adcs",
+        "bh",
+        "postauth",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "linux"
+      ],
+      "title_en": "Linux host"
     },
     "web": {
       "title": "Web App",
-      "on":  ["recon", "web", "sql"],
-      "off": ["smb", "ldap", "kerberos", "adcs", "bh", "postauth", "linux", "coercion", "tunnel"],
-      "target_types": ["web"]
+      "on": [
+        "recon",
+        "web",
+        "sql"
+      ],
+      "off": [
+        "smb",
+        "ldap",
+        "kerberos",
+        "adcs",
+        "bh",
+        "postauth",
+        "linux",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "web"
+      ],
+      "title_en": "Web app"
     },
     "hybrid": {
       "title": "Hybrid",
-      "on":  ["recon", "smb", "ldap", "kerberos", "bh", "linux", "web", "sql"],
-      "off": ["postauth", "coercion", "tunnel"],
-      "target_types": ["hybrid", "windows", "linux", "web"]
+      "on": [
+        "recon",
+        "smb",
+        "ldap",
+        "kerberos",
+        "bh",
+        "linux",
+        "web",
+        "sql"
+      ],
+      "off": [
+        "postauth",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "hybrid",
+        "windows",
+        "linux",
+        "web"
+      ],
+      "title_en": "Hybrid"
     },
     "challenge": {
       "title": "HTB Challenge",
-      "on":  ["challenge", "web"],
-      "off": ["recon", "smb", "ldap", "kerberos", "adcs", "bh", "postauth", "linux", "sql", "coercion", "tunnel"],
-      "target_types": ["challenge"]
+      "on": [
+        "challenge",
+        "web"
+      ],
+      "off": [
+        "recon",
+        "smb",
+        "ldap",
+        "kerberos",
+        "adcs",
+        "bh",
+        "postauth",
+        "linux",
+        "sql",
+        "coercion",
+        "tunnel"
+      ],
+      "target_types": [
+        "challenge"
+      ],
+      "title_en": "HTB challenge"
     }
   }
 }

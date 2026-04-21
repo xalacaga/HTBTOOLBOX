@@ -78,6 +78,7 @@ MAX_CAPTURE_CHARS = 200000
 
 
 CONFIG_PERSIST_KEYS = (
+    "ui_language",
     "target_type",
     "op_mode",
     "challenge_kind",
@@ -95,6 +96,7 @@ CONFIG_PERSIST_KEYS = (
 
 def default_config() -> dict:
     return {
+        "ui_language": "fr",
         "target_type": "windows",
         "op_mode": "safe",
         "challenge_kind": "web",
@@ -2929,7 +2931,7 @@ def shell_assign(name: str, value: str) -> str:
 
 def normalize_cfg(cfg: dict) -> dict:
     cleaned = {}
-    for key in ("target", "user", "password", "sudo_password", "domain", "dc", "nt_hash", "ccache", "target_type", "op_mode", "challenge_kind", "challenge_path"):
+    for key in ("ui_language", "target", "user", "password", "sudo_password", "domain", "dc", "nt_hash", "ccache", "target_type", "op_mode", "challenge_kind", "challenge_path"):
         val = cfg.get(key, "")
         if val is None:
             val = ""
@@ -2938,6 +2940,7 @@ def normalize_cfg(cfg: dict) -> dict:
         else:
             val = str(val)
         cleaned[key] = val
+    cleaned["ui_language"] = cleaned["ui_language"] if cleaned["ui_language"] in {"fr", "en"} else "fr"
     cleaned["target_type"] = cleaned["target_type"] if cleaned["target_type"] in {"windows", "linux", "web", "hybrid", "challenge"} else "windows"
     cleaned["op_mode"] = cleaned["op_mode"] if cleaned["op_mode"] in {"safe", "htb", "enterprise"} else "safe"
     cleaned["challenge_kind"] = cleaned["challenge_kind"] if cleaned["challenge_kind"] in {"web", "pwn", "reverse", "crypto", "forensics", "osint", "misc"} else "web"

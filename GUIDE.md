@@ -13,18 +13,19 @@ Ce guide t'accompagne **pas à pas** pour tirer le maximum de HTB Toolbox sur un
 
 1. [Démarrage en 5 minutes](#1-démarrage-en-5-minutes)
 2. [Comprendre l'interface](#2-comprendre-linterface)
-3. [Les 3 modes opératoires](#3-les-3-modes-opératoires)
-4. [Les 5 types de cible](#4-les-5-types-de-cible)
-5. [Workflow recommandé sur HTB](#5-workflow-recommandé-sur-htb)
-6. [Le Wizard : 3 clics pour démarrer](#6-le-wizard--3-clics-pour-démarrer)
-7. [Les Presets d'attaque](#7-les-presets-dattaque)
-8. [Le Playbook opérateur](#8-le-playbook-opérateur)
-9. [Chaînage auto et auto-détection](#9-chaînage-auto-et-auto-détection)
-10. [Gérer les credentials découverts](#10-gérer-les-credentials-découverts)
-11. [Les daemons (Responder, chisel, ligolo…)](#11-les-daemons)
-12. [Mode Challenge CTF](#12-mode-challenge-ctf)
-13. [Analyse IA du loot avec Claude](#13-analyse-ia-du-loot-avec-claude)
-14. [FAQ et pièges à éviter](#14-faq-et-pièges-à-éviter)
+3. [Choisir la langue de l'interface](#3-choisir-la-langue-de-linterface)
+4. [Les 3 modes opératoires](#4-les-3-modes-opératoires)
+5. [Les 4 types de cible](#5-les-4-types-de-cible)
+6. [Workflow recommandé sur HTB](#6-workflow-recommandé-sur-htb)
+7. [Le Wizard : 3 clics pour démarrer](#7-le-wizard--3-clics-pour-démarrer)
+8. [Les Presets d'attaque](#8-les-presets-dattaque)
+9. [Comprendre les outils et leurs résultats utiles](#9-comprendre-les-outils-et-leurs-résultats-utiles)
+10. [Le Playbook opérateur](#10-le-playbook-opérateur)
+11. [Chaînage auto et auto-détection](#11-chaînage-auto-et-auto-détection)
+12. [Gérer les credentials découverts](#12-gérer-les-credentials-découverts)
+13. [Les daemons (Responder, chisel, ligolo…)](#13-les-daemons)
+14. [Analyse IA du loot avec Claude](#14-analyse-ia-du-loot-avec-claude)
+15. [FAQ et pièges à éviter](#15-faq-et-pièges-à-éviter)
 
 ---
 
@@ -83,7 +84,17 @@ Historique horodaté de tous les runs de la session.
 
 ---
 
-### 3. Les 3 modes opératoires
+### 3. Choisir la langue de l'interface
+
+Le sélecteur `Français / English` est en haut de l'interface.
+
+- La langue choisie est **sauvegardée** dans `config.local.json`.
+- Les libellés UI, les vues, les toasts et le catalogue des outils suivent ce choix.
+- Le backend ne change pas de comportement selon la langue, seule la présentation change.
+
+---
+
+### 4. Les 3 modes opératoires
 
 Change le mode via le bouton dans la barre du haut ou `MODE=…` dans le terminal.
 
@@ -97,7 +108,7 @@ Change le mode via le bouton dans la barre du haut ou `MODE=…` dans le termina
 
 ---
 
-### 4. Les 5 types de cible
+### 5. Les 4 types de cible
 
 | Type | Quand l'utiliser | Modules principaux |
 |------|------------------|--------------------|
@@ -105,13 +116,12 @@ Change le mode via le bouton dans la barre du haut ou `MODE=…` dans le termina
 | `linux` | Serveur Linux seul | SSH, NFS, HTTP fingerprint, privesc |
 | `web` | Application web pure | TLS, dirs, vhosts, nuclei, sqlmap |
 | `hybrid` | Box mixte (ex: AD + app web) | Tous les groupes pertinents |
-| `challenge` | Challenges HTB Academy (pas une box) | Triage CTF (web/pwn/forensics) |
 
 Le Wizard choisit automatiquement les bons groupes selon le type — pas besoin de tout sélectionner à la main.
 
 ---
 
-### 5. Workflow recommandé sur HTB
+### 6. Workflow recommandé sur HTB
 
 Le flow optimal, chronométré sur une box HTB type :
 
@@ -130,11 +140,11 @@ Le flow optimal, chronométré sur une box HTB type :
 
 ---
 
-### 6. Le Wizard : 3 clics pour démarrer
+### 7. Le Wizard : 3 clics pour démarrer
 
 Bouton `🪄 Wizard` en haut.
 
-**Étape 1** — Choisis le type de cible (windows / linux / web / hybrid / challenge).
+**Étape 1** — Choisis le type de cible (windows / linux / web / hybrid).
 **Étape 2** — Choisis un preset (voir section 7).
 **Étape 3** — Options :
 
@@ -145,7 +155,7 @@ Le Wizard **analyse le contexte** (ports déjà détectés, credentials présent
 
 ---
 
-### 7. Les Presets d'attaque
+### 8. Les Presets d'attaque
 
 | Preset | Pour quoi | Outils enchaînés |
 |--------|-----------|------------------|
@@ -153,16 +163,45 @@ Le Wizard **analyse le contexte** (ports déjà détectés, credentials présent
 | **Foothold** | Box hybride, tu cherches l'entrée | rustscan → nmap → web + SMB + LDAP + SSH + WinRM |
 | **Web focus** | Box 100% web | rustscan → web enum → TLS → robots → techno → ffuf dirs + vhost |
 | **Linux focus** | Box Linux pure | rustscan → SSH → NFS → HTTP fingerprint → services |
-| **Challenge triage** | CTF inconnu | file → archive → strings → exiftool → binwalk |
-| **Challenge pwn** | ELF à reverse | file → checksec → readelf → strings |
-| **Challenge forensics** | Fichier disque/image | file → exiftool → binwalk → foremost |
-| **Challenge web** | URL CTF web | HTTP probe → whatweb → robots → dirs → params |
 
 Tu peux **combiner plusieurs presets** : applique « HTB AD quick win » puis « Web focus » si le port 80 répond aussi.
 
 ---
 
-### 8. Le Playbook opérateur
+### 9. Comprendre les outils et leurs résultats utiles
+
+Le but n'est pas seulement de lancer des commandes, mais de savoir **ce que chaque outil peut t'apporter**. Voici la lecture opérateur des plus importants.
+
+| Outil | À quoi il sert | Ce qui est réellement utile |
+|------|-----------------|-----------------------------|
+| `rustscan_fast` | Trouver vite les ports ouverts | Les ports ouverts eux-mêmes. Ils te disent **quoi lancer ensuite** : 88 = Kerberos, 389 = LDAP, 445 = SMB, 5985 = WinRM, 80/443 = Web. |
+| `nmap_targeted` | Identifier précisément les services sur les ports ouverts | Le **nom du service**, la **version**, le **hostname/FQDN**, les scripts NSE intéressants. C'est souvent lui qui te révèle `DC01.corp.htb`, ADCS, WinRM, MSSQL ou un virtual host. |
+| `hosts_autoconf` | Corriger la résolution DNS locale | Le renseignement utile est le **FQDN du DC ou du serveur**. Sans lui, Kerberos et parfois LDAP cassent. |
+| `nxc smb` / `smbclient` | Lire l'exposition SMB | Ce qui compte : **nom de machine**, **domaine**, **OS**, **partages accessibles**, et surtout présence de `SYSVOL`, `NETLOGON` ou d'un share en lecture/écriture. |
+| `ldap_anon_base` / `ldap_users_auth` | Lire l'annuaire AD | Les infos qui aident vraiment : **noms d'utilisateurs**, **groupes**, **description**, **OU**, **noms de machines**, et parfois des champs oubliés avec des passwords ou indices. |
+| `GetNPUsers` / `ldap_asrep_candidates` | Trouver des users sans pré-auth Kerberos | Le vrai gain est la **liste des comptes AS-REP roastables** puis les **hashes** récupérables hors authentification. Très forte valeur sur HTB. |
+| `GetUserSPNs` / `ldap_kerberoastable` | Sortir des hashes TGS crackables | Le résultat utile est le **hash Kerberoast** et le **service account** associé. Priorité aux comptes `sql`, `svc`, `backup`, `web` et similaires. |
+| `kerbrute_userenum` | Valider l'existence d'utilisateurs AD | Ce qui t'intéresse est la **liste des usernames valides**. C'est utile pour AS-REP, password spray, Kerberoast et BloodHound. |
+| `bloodhound-python` | Cartographier les chemins d'attaque AD | Les renseignements vraiment utiles sont les **edges exploitables** : `GenericAll`, `WriteDacl`, `ForceChangePassword`, `AddMember`, `CanPSRemote`, `AdminTo`, `AllowedToAct`, chemins vers `Domain Admins`. |
+| `enum4linux-ng` | Faire un résumé SMB/RPC lisible | Très utile pour récupérer vite **users**, **shares**, **policy**, **RID enum**, **machine/domain names** sans tout relire à la main. |
+| `certipy find` | Identifier des faiblesses ADCS | Les résultats à guetter : **ESC1/ESC2/ESC3/ESC4...**, templates enrollables, SAN contrôlable, EKU client auth, droits d'inscription. |
+| `winrm_checks` | Vérifier un accès shell Windows | Le point clé est : **WinRM accessible + credentials valides**. Si oui, tu tiens souvent un foothold immédiat via `evil-winrm`. |
+| `whatweb` / `web_tech_detect` | Comprendre la stack web | Cherche le **framework**, le **CMS**, les **versions**, un **WAF**, des **headers** révélateurs, et les technos qui orientent tes wordlists et exploits. |
+| `ffuf_dir_fast` / `ffuf_vhost` | Trouver des endpoints ou vhosts cachés | Les vrais gains sont les **hits anormaux** : `/admin`, `/backup`, `.git`, `.env`, API internes, `.bak`, `.old`, ou un **nouveau hostname**. |
+| `nikto` / `nuclei` | Attraper rapidement des expositions connues | Garde surtout les **résultats actionnables** : fichiers sensibles, endpoints d'admin, CVE crédibles, méthodes HTTP dangereuses, mauvaises configs. |
+| `linpeas` / checks privesc Linux | Chercher une escalade locale | Les résultats les plus précieux : **sudo sans mot de passe**, **SUID inhabituel**, **capabilities dangereuses**, **cron writable**, **credentials**, **docker group**. |
+
+**Règle simple** : pour chaque outil, pose-toi toujours 3 questions.
+
+1. Est-ce qu'il me donne un **nouvel accès** ?
+2. Est-ce qu'il me donne un **nouvel identifiant** ou un **hash crackable** ?
+3. Est-ce qu'il me donne un **nouveau chemin d'attaque** crédible ?
+
+Si la réponse est non aux trois, la sortie est souvent secondaire.
+
+---
+
+### 10. Le Playbook opérateur
 
 Vue `Playbook`. L'outil **te dit quoi faire** selon le contexte.
 
@@ -172,11 +211,11 @@ Exemple type sur une box Windows en mode `htb` :
 - **Focus** : Preset « HTB AD quick win » / enum4linux-ng + LDAP + Kerberos / ADCS + BloodHound dès que des creds existent
 - **Éviter** : Lancer tout le post-auth trop tôt
 
-Le Playbook s'adapte à **chaque combinaison** (5 types × 3 modes = 15 configurations).
+Le Playbook s'adapte à **chaque combinaison** (4 types × 3 modes = 12 configurations principales dans l'UI).
 
 ---
 
-### 9. Chaînage auto et auto-détection
+### 11. Chaînage auto et auto-détection
 
 #### Auto-check des modules post-scan
 
@@ -199,7 +238,7 @@ Dès qu'un **hash NT** ou un **mot de passe** est détecté dans une sortie, une
 
 ---
 
-### 10. Gérer les credentials découverts
+### 12. Gérer les credentials découverts
 
 1. Vue `Credentials` → tu vois tous les comptes trouvés depuis le début de la session.
 2. Chaque ligne affiche : `user`, `password/hash`, `source` (outil qui l'a trouvé), `note`.
@@ -208,9 +247,31 @@ Dès qu'un **hash NT** ou un **mot de passe** est détecté dans une sortie, une
 
 **Astuce** : sur HTB, dès qu'un user est trouvé, lance `getnpusers_asrep` et `getuserspns_kerberoast` — ce sont des gains gratuits.
 
+**Dépannage Impacket** : si un script d'exemple Impacket renvoie `ModuleNotFoundError: No module named 'pyasn1'` ou `No module named 'impacket'`, tu es probablement dans le `.venv` du projet, alors que les scripts `/usr/share/doc/python3-impacket/examples/*.py` utilisent les dépendances du Python système. La bonne habitude est d'utiliser d'abord les wrappers Kali `impacket-*`, par exemple :
+
+```bash
+impacket-GetNPUsers -h
+impacket-addcomputer -h
+```
+
+Si tu veux exécuter directement un exemple `.py`, force le Python système :
+
+```bash
+/usr/bin/python3 /usr/share/doc/python3-impacket/examples/GetNPUsers.py -h
+/usr/bin/python3 /usr/share/doc/python3-impacket/examples/addcomputer.py -h
+```
+
+`install.sh` et `start.sh` créent maintenant aussi des wrappers dans `.venv/bin` pour éviter ce conflit quand le venv est actif.
+
+**Conseil installation** : si `rustscan`, `mongosh`, `mongodump`, `foremost`, `checksec` ou `sshpass` manquent encore après l'installation principale, lance :
+
+```bash
+./install_missing.sh
+```
+
 ---
 
-### 11. Les daemons
+### 13. Les daemons
 
 Certains outils **tournent en continu** (Responder écoute, chisel maintient un tunnel). Dans l'UI ils sont marqués **[daemon]**.
 
@@ -221,21 +282,7 @@ Certains outils **tournent en continu** (Responder écoute, chisel maintient un 
 
 ---
 
-### 12. Mode Challenge CTF
-
-Pour les challenges HTB Academy (pas des boxes) :
-
-1. Type de cible = `challenge`
-2. Catégorie (`web`, `pwn`, `reverse`, `crypto`, `forensics`, `osint`, `misc`)
-3. `Fichier / dossier / URL` du challenge dans le champ dédié
-4. Lance un preset `Challenge triage` → enchaîne les outils de triage
-5. Selon le signal, bascule sur `Challenge pwn`, `Challenge forensics`, `Challenge web`…
-
-Le loot est rangé dans `loot/output/challenge/`.
-
----
-
-### 13. Analyse IA du loot avec Claude
+### 14. Analyse IA du loot avec Claude
 
 1. Installe le client : `./install.sh --with-ai`
 2. Vue `Analyse IA` → colle ta clé Anthropic (`sk-ant-api03-…`)
@@ -245,7 +292,7 @@ Le loot est rangé dans `loot/output/challenge/`.
 
 ---
 
-### 14. FAQ et pièges à éviter
+### 15. FAQ et pièges à éviter
 
 **Q. L'outil ne trouve pas mon scan nmap pour l'auto-check.**
 → Lance `rustscan_fast` (ou `nmap_baseline` / `nmap_targeted`), attend qu'il termine, puis l'auto-check se déclenche tout seul.
@@ -257,7 +304,7 @@ Le loot est rangé dans `loot/output/challenge/`.
 → `sudo apt install sshpass`. C'est requis pour les outils Linux privesc qui passent par SSH.
 
 **Q. `rustscan: command not found`.**
-→ `cargo install rustscan` ou `apt install rustscan`. Fallback auto : nmap -F (top 100 ports).
+→ Relance `./install.sh` ou `./install_missing.sh`. Le script tente `apt`, puis fallback release GitHub si nécessaire.
 
 **Q. Le wizard propose toujours le même preset.**
 → Le wizard suit le contexte détecté. Change manuellement le type de cible si nécessaire.
@@ -281,18 +328,19 @@ This guide walks you **step-by-step** through HTB Toolbox on a HackTheBox machin
 
 1. [5-minute start](#1-5-minute-start)
 2. [Understanding the UI](#2-understanding-the-ui)
-3. [The 3 operating modes](#3-the-3-operating-modes)
-4. [The 5 target types](#4-the-5-target-types)
-5. [Recommended HTB workflow](#5-recommended-htb-workflow)
-6. [The Wizard: 3 clicks to start](#6-the-wizard-3-clicks-to-start)
-7. [Attack presets](#7-attack-presets)
-8. [The operator Playbook](#8-the-operator-playbook)
-9. [Auto-chain and auto-detect](#9-auto-chain-and-auto-detect)
-10. [Managing discovered credentials](#10-managing-discovered-credentials)
-11. [Daemons (Responder, chisel, ligolo…)](#11-daemons)
-12. [Challenge CTF mode](#12-challenge-ctf-mode)
-13. [Claude AI loot analysis](#13-claude-ai-loot-analysis)
-14. [FAQ and common pitfalls](#14-faq-and-common-pitfalls)
+3. [Choosing the interface language](#3-choosing-the-interface-language)
+4. [The 3 operating modes](#4-the-3-operating-modes)
+5. [The 4 target types](#5-the-4-target-types)
+6. [Recommended HTB workflow](#6-recommended-htb-workflow)
+7. [The Wizard: 3 clicks to start](#7-the-wizard-3-clicks-to-start)
+8. [Attack presets](#8-attack-presets)
+9. [Understanding tools and useful results](#9-understanding-tools-and-useful-results)
+10. [The operator Playbook](#10-the-operator-playbook)
+11. [Auto-chain and auto-detect](#11-auto-chain-and-auto-detect)
+12. [Managing discovered credentials](#12-managing-discovered-credentials)
+13. [Daemons (Responder, chisel, ligolo…)](#13-daemons)
+14. [Claude AI loot analysis](#14-claude-ai-loot-analysis)
+15. [FAQ and common pitfalls](#15-faq-and-common-pitfalls)
 
 ---
 
@@ -351,7 +399,17 @@ Timestamped history of all session runs.
 
 ---
 
-### 3. The 3 operating modes
+### 3. Choosing the interface language
+
+The `Français / English` selector is available at the top of the interface.
+
+- The chosen language is **saved** in `config.local.json`.
+- UI labels, views, toasts, and the tool catalog follow this choice.
+- The backend behavior does not change with the language, only presentation does.
+
+---
+
+### 4. The 3 operating modes
 
 Change via the top-bar button or `MODE=…` in the terminal.
 
@@ -365,7 +423,7 @@ In `enterprise` mode, some tools are **blocked**: NTLM coercion, massive ffuf, s
 
 ---
 
-### 4. The 5 target types
+### 5. The 4 target types
 
 | Type | When to use | Main modules |
 |------|-------------|--------------|
@@ -373,13 +431,12 @@ In `enterprise` mode, some tools are **blocked**: NTLM coercion, massive ffuf, s
 | `linux` | Standalone Linux server | SSH, NFS, HTTP fingerprint, privesc |
 | `web` | Pure web app | TLS, dirs, vhosts, nuclei, sqlmap |
 | `hybrid` | Mixed box (e.g. AD + web app) | All relevant groups |
-| `challenge` | HTB Academy challenges (not a box) | CTF triage (web/pwn/forensics) |
 
 The Wizard auto-selects matching groups — no manual hunting.
 
 ---
 
-### 5. Recommended HTB workflow
+### 6. Recommended HTB workflow
 
 Optimal flow, clocked on a typical HTB box:
 
@@ -398,11 +455,11 @@ Optimal flow, clocked on a typical HTB box:
 
 ---
 
-### 6. The Wizard: 3 clicks to start
+### 7. The Wizard: 3 clicks to start
 
 `🪄 Wizard` button at the top.
 
-**Step 1** — Pick target type (windows / linux / web / hybrid / challenge).
+**Step 1** — Pick target type (windows / linux / web / hybrid).
 **Step 2** — Pick a preset (see section 7).
 **Step 3** — Options:
 
@@ -413,7 +470,7 @@ The Wizard **analyzes context** (already detected ports, existing credentials) a
 
 ---
 
-### 7. Attack presets
+### 8. Attack presets
 
 | Preset | For | Chained tools |
 |--------|-----|---------------|
@@ -421,16 +478,45 @@ The Wizard **analyzes context** (already detected ports, existing credentials) a
 | **Foothold** | Hybrid box, hunting entry | rustscan → nmap → web + SMB + LDAP + SSH + WinRM |
 | **Web focus** | Pure web box | rustscan → web enum → TLS → robots → tech → ffuf dirs + vhost |
 | **Linux focus** | Pure Linux box | rustscan → SSH → NFS → HTTP fingerprint → services |
-| **Challenge triage** | Unknown CTF | file → archive → strings → exiftool → binwalk |
-| **Challenge pwn** | ELF to reverse | file → checksec → readelf → strings |
-| **Challenge forensics** | Disk/image file | file → exiftool → binwalk → foremost |
-| **Challenge web** | CTF web URL | HTTP probe → whatweb → robots → dirs → params |
 
 You can **combine presets**: apply "HTB AD quick win" then "Web focus" if port 80 is also up.
 
 ---
 
-### 8. The operator Playbook
+### 9. Understanding tools and useful results
+
+The goal is not just to launch commands, but to understand **what each tool can actually give you**. Here's the operator view of the most useful ones.
+
+| Tool | What it does | What is genuinely useful in the output |
+|------|---------------|----------------------------------------|
+| `rustscan_fast` | Finds open ports quickly | The **open ports** themselves. They tell you **what to run next**: 88 = Kerberos, 389 = LDAP, 445 = SMB, 5985 = WinRM, 80/443 = Web. |
+| `nmap_targeted` | Precisely identifies services on open ports | The **service name**, **version**, **hostname/FQDN**, and useful NSE findings. This is often what reveals `DC01.corp.htb`, ADCS, WinRM, MSSQL, or a hidden virtual host. |
+| `hosts_autoconf` | Fixes local DNS resolution | The useful information is the **DC/server FQDN**. Without it, Kerberos and sometimes LDAP will fail. |
+| `nxc smb` / `smbclient` | Reads SMB exposure | What matters: **machine name**, **domain**, **OS**, **accessible shares**, and especially `SYSVOL`, `NETLOGON`, or any read/write share. |
+| `ldap_anon_base` / `ldap_users_auth` | Reads the AD directory | Truly useful data: **usernames**, **groups**, **descriptions**, **OUs**, **computer names**, and sometimes forgotten fields containing passwords or hints. |
+| `GetNPUsers` / `ldap_asrep_candidates` | Finds users with no Kerberos pre-auth | The real win is the **list of AS-REP roastable accounts** and then the **hashes** you can obtain without authentication. Very high value on HTB. |
+| `GetUserSPNs` / `ldap_kerberoastable` | Extracts crackable TGS hashes | The useful result is the **Kerberoast hash** and the related **service account**. Prioritize accounts named `sql`, `svc`, `backup`, `web`, and similar. |
+| `kerbrute_userenum` | Validates AD usernames | What matters is the **list of valid usernames**. Useful for AS-REP, password spray, Kerberoast, and BloodHound. |
+| `bloodhound-python` | Maps AD attack paths | The really useful findings are **actionable edges**: `GenericAll`, `WriteDacl`, `ForceChangePassword`, `AddMember`, `CanPSRemote`, `AdminTo`, `AllowedToAct`, and paths to `Domain Admins`. |
+| `enum4linux-ng` | Gives a readable SMB/RPC summary | Very useful for quickly collecting **users**, **shares**, **policy**, **RID enum**, and **machine/domain names** without manually reading everything. |
+| `certipy find` | Identifies ADCS weaknesses | Watch for **ESC1/ESC2/ESC3/ESC4...**, enrollable templates, controllable SAN, client auth EKU, and enrollment rights. |
+| `winrm_checks` | Verifies a Windows shell path | The key point is: **WinRM reachable + valid credentials**. If yes, you often have an immediate foothold through `evil-winrm`. |
+| `whatweb` / `web_tech_detect` | Understands the web stack | Look for the **framework**, **CMS**, **versions**, a **WAF**, revealing **headers**, and technologies that guide your wordlists and exploits. |
+| `ffuf_dir_fast` / `ffuf_vhost` | Finds hidden endpoints or virtual hosts | The real wins are **unusual hits**: `/admin`, `/backup`, `.git`, `.env`, internal APIs, `.bak`, `.old`, or a **new hostname**. |
+| `nikto` / `nuclei` | Quickly catches known exposures | Keep the **actionable results**: sensitive files, admin endpoints, credible CVEs, dangerous HTTP methods, bad configs. |
+| `linpeas` / Linux privesc checks | Searches for local escalation | The most valuable findings are **passwordless sudo**, **unusual SUID**, **dangerous capabilities**, **writable cron**, **credentials**, **docker group**. |
+
+**Simple rule**: for each tool, always ask yourself 3 questions.
+
+1. Does it give me **new access**?
+2. Does it give me a **new credential** or a **crackable hash**?
+3. Does it give me a **new credible attack path**?
+
+If the answer is no to all three, the output is often secondary.
+
+---
+
+### 10. The operator Playbook
 
 `Playbook` view. The tool **tells you what to do** based on context.
 
@@ -440,11 +526,11 @@ Sample output on a Windows box in `htb` mode:
 - **Focus**: Preset "HTB AD quick win" / enum4linux-ng + LDAP + Kerberos / ADCS + BloodHound as soon as creds exist
 - **Avoid**: Firing all post-auth too early
 
-The Playbook adapts to **each combination** (5 types × 3 modes = 15 configurations).
+The Playbook adapts to **each combination** (4 types × 3 modes = 12 main UI configurations).
 
 ---
 
-### 9. Auto-chain and auto-detect
+### 11. Auto-chain and auto-detect
 
 #### Auto-check post-scan
 
@@ -467,7 +553,7 @@ When a **NT hash** or **password** is detected in output, a toast suggests it. A
 
 ---
 
-### 10. Managing discovered credentials
+### 12. Managing discovered credentials
 
 1. `Credentials` view → all accounts found since session start.
 2. Each line: `user`, `password/hash`, `source` (discovering tool), `note`.
@@ -476,9 +562,31 @@ When a **NT hash** or **password** is detected in output, a toast suggests it. A
 
 **Tip**: on HTB, as soon as a user is found, run `getnpusers_asrep` and `getuserspns_kerberoast` — free wins.
 
+**Impacket troubleshooting**: if an Impacket example script throws `ModuleNotFoundError: No module named 'pyasn1'` or `No module named 'impacket'`, you are likely inside the project's `.venv` while `/usr/share/doc/python3-impacket/examples/*.py` expects system Python dependencies. The best habit is to use Kali's `impacket-*` wrappers first, for example:
+
+```bash
+impacket-GetNPUsers -h
+impacket-addcomputer -h
+```
+
+If you want to run an example `.py` directly, force system Python:
+
+```bash
+/usr/bin/python3 /usr/share/doc/python3-impacket/examples/GetNPUsers.py -h
+/usr/bin/python3 /usr/share/doc/python3-impacket/examples/addcomputer.py -h
+```
+
+`install.sh` and `start.sh` now also create wrappers in `.venv/bin` to avoid this conflict while the venv is active.
+
+**Install tip**: if `rustscan`, `mongosh`, `mongodump`, `foremost`, `checksec`, or `sshpass` are still missing after the main install, run:
+
+```bash
+./install_missing.sh
+```
+
 ---
 
-### 11. Daemons
+### 13. Daemons
 
 Some tools **run continuously** (Responder listens, chisel holds a tunnel). Marked **[daemon]** in the UI.
 
@@ -489,21 +597,7 @@ Some tools **run continuously** (Responder listens, chisel holds a tunnel). Mark
 
 ---
 
-### 12. Challenge CTF mode
-
-For HTB Academy challenges (not boxes):
-
-1. Target type = `challenge`
-2. Category (`web`, `pwn`, `reverse`, `crypto`, `forensics`, `osint`, `misc`)
-3. `File / folder / URL` of the challenge in the dedicated field
-4. Run a `Challenge triage` preset → chains triage tools
-5. Depending on signal, switch to `Challenge pwn`, `Challenge forensics`, `Challenge web`…
-
-Loot is stored in `loot/output/challenge/`.
-
----
-
-### 13. Claude AI loot analysis
+### 14. Claude AI loot analysis
 
 1. Install client: `./install.sh --with-ai`
 2. `AI Analysis` view → paste your Anthropic key (`sk-ant-api03-…`)
@@ -513,7 +607,7 @@ Loot is stored in `loot/output/challenge/`.
 
 ---
 
-### 14. FAQ and common pitfalls
+### 15. FAQ and common pitfalls
 
 **Q. The tool can't find my nmap scan for auto-check.**
 → Run `rustscan_fast` (or `nmap_baseline` / `nmap_targeted`), wait for it to finish, auto-check fires on its own.
@@ -525,7 +619,7 @@ Loot is stored in `loot/output/challenge/`.
 → `sudo apt install sshpass`. Required for Linux privesc tools that use SSH.
 
 **Q. `rustscan: command not found`.**
-→ `cargo install rustscan` or `apt install rustscan`. Auto fallback: nmap -F (top 100 ports).
+→ Re-run `./install.sh` or `./install_missing.sh`. The script tries `apt` first, then a GitHub release fallback if needed.
 
 **Q. The wizard always proposes the same preset.**
 → The wizard follows detected context. Change target type manually if needed.

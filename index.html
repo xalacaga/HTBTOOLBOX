@@ -141,7 +141,7 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 #inp-user{width:82px}#inp-pass{width:82px}#inp-dom{width:108px}
 #inp-dc{width:126px}#inp-nt{width:88px;color:var(--orange)}
 #inp-cc{width:110px;color:var(--purple)}
-#inp-type{width:104px}#inp-chkind{width:102px}#inp-chpath{width:168px}
+#inp-lang{width:60px}#inp-type{width:104px}#inp-chkind{width:102px}#inp-chpath{width:168px}
 .cred-sep{color:var(--text3);font-size:10px;padding:0 2px}
 .btn{padding:5px 11px;border:1px solid var(--border2);border-radius:5px;
   background:transparent;color:var(--text2);font-size:11px;cursor:pointer;
@@ -884,97 +884,97 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
   </div>
 
   <div class="sb-nav">
-    <div class="nav-sec">Vues</div>
+    <div class="nav-sec" id="nav-sec-views">Vues</div>
     <div class="nav-item active" id="nav-modules" onclick="switchView('modules',this)">
       <span class="ni">⊞</span> Modules
     </div>
-    <div class="nav-item" onclick="switchView('timeline',this);loadTimeline()">
+    <div class="nav-item" id="nav-timeline" onclick="switchView('timeline',this);loadTimeline()">
       <span class="ni">◷</span> Timeline
       <span class="nav-badge blue" id="tl-badge">0</span>
     </div>
-    <div class="nav-item" onclick="switchView('tools',this);checkTools()">
+    <div class="nav-item" id="nav-tools" onclick="switchView('tools',this);checkTools()">
       <span class="ni">⚙</span> Outils installés
     </div>
-    <div class="nav-item" onclick="switchView('results',this)">
+    <div class="nav-item" id="nav-results" onclick="switchView('results',this)">
       <span class="ni">◈</span> Résultats
     </div>
-    <div class="nav-item" onclick="switchView('playbook',this);renderPlaybook()">
+    <div class="nav-item" id="nav-playbook" onclick="switchView('playbook',this);renderPlaybook()">
       <span class="ni">🧭</span> Playbook
     </div>
-    <div class="nav-item" onclick="switchView('loot',this);loadLoot()">
+    <div class="nav-item" id="nav-loot" onclick="switchView('loot',this);loadLoot()">
       <span class="ni">◉</span> Fichiers loot
       <span class="nav-badge" id="loot-badge">0</span>
     </div>
-    <div class="nav-item" onclick="switchView('hashes',this);loadHashes()">
+    <div class="nav-item" id="nav-hashes" onclick="switchView('hashes',this);loadHashes()">
       <span class="ni" style="color:var(--red)">⊛</span> Hashes
       <span class="nav-badge" id="hash-badge" style="display:none">0</span>
     </div>
-    <div class="nav-item" onclick="switchView('creds',this);loadCreds()">
+    <div class="nav-item" id="nav-creds" onclick="switchView('creds',this);loadCreds()">
       <span class="ni" style="color:var(--cyan)">🔑</span> Creds tracker
       <span class="nav-badge blue" id="creds-badge" style="display:none">0</span>
     </div>
-    <div class="nav-item" onclick="switchView('ai',this);initAiKey()">
+    <div class="nav-item" id="nav-ai" onclick="switchView('ai',this);initAiKey()">
       <span class="ni" style="color:var(--purple)">✦</span> Analyse IA
     </div>
 
-    <div class="nav-sec">Profils</div>
-    <div class="nav-item" onclick="applyProfile('full')">
+    <div class="nav-sec" id="nav-sec-profiles">Profils</div>
+    <div class="nav-item" id="profile-full" onclick="applyProfile('full')">
       <span class="ni">▸</span> Pentest complet
     </div>
-    <div class="nav-item" onclick="applyProfile('htb')">
+    <div class="nav-item" id="profile-htb" onclick="applyProfile('htb')">
       <span class="ni">▸</span> HTB quick win
     </div>
-    <div class="nav-item" onclick="applyProfile('ldap')">
+    <div class="nav-item" id="profile-ldap" onclick="applyProfile('ldap')">
       <span class="ni">▸</span> LDAP / Kerb
     </div>
-    <div class="nav-item" onclick="applyProfile('smb')">
+    <div class="nav-item" id="profile-smb" onclick="applyProfile('smb')">
       <span class="ni">▸</span> Focus SMB
     </div>
-    <div class="nav-item" onclick="applyProfile('adcs')">
+    <div class="nav-item" id="profile-adcs" onclick="applyProfile('adcs')">
       <span class="ni">▸</span> Focus ADCS
     </div>
-    <div class="nav-item" onclick="applyProfile('windows')">
+    <div class="nav-item" id="profile-windows" onclick="applyProfile('windows')">
       <span class="ni">▸</span> Hôte Windows
     </div>
-    <div class="nav-item" onclick="applyProfile('linux')">
+    <div class="nav-item" id="profile-linux" onclick="applyProfile('linux')">
       <span class="ni">▸</span> Hôte Linux
     </div>
-    <div class="nav-item" onclick="applyProfile('web')">
+    <div class="nav-item" id="profile-web" onclick="applyProfile('web')">
       <span class="ni">▸</span> App web
     </div>
-    <div class="nav-item" onclick="applyProfile('hybrid')">
+    <div class="nav-item" id="profile-hybrid" onclick="applyProfile('hybrid')">
       <span class="ni">▸</span> Hybride
     </div>
-    <div class="nav-item" onclick="applyProfile('challenge')">
+    <div class="nav-item" id="profile-challenge" onclick="applyProfile('challenge')">
       <span class="ni">▸</span> HTB Challenge
     </div>
 
-    <div class="nav-sec">Actions</div>
-    <div class="nav-item" onclick="openModal()">
+    <div class="nav-sec" id="nav-sec-actions">Actions</div>
+    <div class="nav-item" id="nav-action-creds" onclick="openModal()">
       <span class="ni">◎</span> Identifiants
     </div>
-    <div class="nav-item" onclick="exportMarkdown()">
+    <div class="nav-item" id="nav-action-export" onclick="exportMarkdown()">
       <span class="ni">↓</span> Export rapport .md
     </div>
-    <div class="nav-item" onclick="saveConfig()">
+    <div class="nav-item" id="nav-action-save" onclick="saveConfig()">
       <span class="ni">◎</span> Sauver la config
     </div>
-    <div class="nav-item" onclick="clearTerminal()">
+    <div class="nav-item" id="nav-action-clear" onclick="clearTerminal()">
       <span class="ni">✕</span> Effacer le terminal
     </div>
-    <div class="nav-item" onclick="resetForNextBox()">
+    <div class="nav-item" id="nav-action-reset" onclick="resetForNextBox()">
       <span class="ni">↺</span> Reset box
     </div>
 
-    <div class="nav-sec">Historique</div>
+    <div class="nav-sec" id="nav-sec-history">Historique</div>
     <div class="hist-list" id="hist-list">
       <div class="hist-empty">Chargement…</div>
     </div>
   </div>
 
   <div class="sb-footer">
-    <button class="sb-btn" onclick="selectAll(true)">✓ Tout</button>
-    <button class="sb-btn" onclick="selectAll(false)">✕ Aucun</button>
+    <button class="sb-btn" id="btn-select-all" onclick="selectAll(true)">✓ Tout</button>
+    <button class="sb-btn" id="btn-select-none" onclick="selectAll(false)">✕ Aucun</button>
     <button class="sb-btn" id="stop-sb" onclick="stopRun()"
             style="color:var(--red);display:none">■ Stop</button>
   </div>
@@ -985,6 +985,10 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
   <div id="topbar">
     <h2><span id="tb-title">Modules</span> — <span id="tb-dom">non configuré</span></h2>
     <div class="cred-group">
+      <select class="cred-inp" id="inp-lang" title="Langue / Language" onchange="handleLanguageChange()">
+        <option value="fr">fr</option>
+        <option value="en">en</option>
+      </select>
       <select class="cred-inp" id="inp-type" title="Type de cible" onchange="handleTargetTypeChange()">
         <option value="windows">windows</option>
         <option value="linux">linux</option>
@@ -1022,10 +1026,10 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
       <input class="cred-inp" id="inp-cc"   placeholder="chemin ccache" spellcheck="false"
              title="KRB5CCNAME (Pass-the-Ticket)" oninput="autoSave()">
     </div>
-    <button class="btn btn-run" onclick="runSelected()">▶ Lancer la sélection</button>
-    <button class="btn btn-all" onclick="runAll()">⚡ Tout lancer</button>
-    <button class="btn btn-wizard" onclick="openWizard()">🪄 Wizard</button>
-    <button class="btn btn-green" onclick="saveConfig()">💾</button>
+    <button class="btn btn-run" id="btn-run-selected" onclick="runSelected()">▶ Lancer la sélection</button>
+    <button class="btn btn-all" id="btn-run-all" onclick="runAll()">⚡ Tout lancer</button>
+    <button class="btn btn-wizard" id="btn-open-wizard" onclick="openWizard()">🪄 Wizard</button>
+    <button class="btn btn-green" id="btn-save-config" onclick="saveConfig()">💾</button>
   </div>
 
   <div id="content">
@@ -1036,17 +1040,17 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
         <div class="quickbar">
           <div class="quickbar-head">
             <div>
-              <div class="quickbar-title">Chaînes rapides</div>
-              <div class="quickbar-sub">Presets guidés pour partir vite sur la bonne séquence.</div>
+              <div class="quickbar-title" id="quickbar-title">Chaînes rapides</div>
+              <div class="quickbar-sub" id="quickbar-sub">Presets guidés pour partir vite sur la bonne séquence.</div>
             </div>
-            <button class="quick-chip primary" onclick="openWizard()">Wizard</button>
+            <button class="quick-chip primary" id="quickbar-wizard" onclick="openWizard()">Wizard</button>
           </div>
           <div class="quickbar-context" id="context-hint">Contexte en attente de détection.</div>
           <div class="quickbar-row">
-            <button class="quick-chip accent" onclick="applyAttackPreset('htb_ad_quick_win')">HTB AD quick win</button>
-            <button class="quick-chip" onclick="applyAttackPreset('foothold')">Foothold</button>
-            <button class="quick-chip" onclick="applyAttackPreset('web_focus')">Web</button>
-            <button class="quick-chip" onclick="applyAttackPreset('linux_focus')">Linux</button>
+            <button class="quick-chip accent" id="chip-preset-ad" onclick="applyAttackPreset('htb_ad_quick_win')">HTB AD quick win</button>
+            <button class="quick-chip" id="chip-preset-foothold" onclick="applyAttackPreset('foothold')">Foothold</button>
+            <button class="quick-chip" id="chip-preset-web" onclick="applyAttackPreset('web_focus')">Web</button>
+            <button class="quick-chip" id="chip-preset-linux" onclick="applyAttackPreset('linux_focus')">Linux</button>
             <button class="quick-chip" id="par-btn-1" onclick="setParallelism(1)">P1</button>
             <button class="quick-chip primary" id="par-btn-2" onclick="setParallelism(2)">P2</button>
             <button class="quick-chip" id="par-btn-3" onclick="setParallelism(3)">P3</button>
@@ -1054,9 +1058,9 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
           </div>
         </div>
         <div class="mod-panel-bar">
-          <button class="mod-panel-btn" onclick="collapseAllMods(false)">▼ tout ouvrir</button>
-          <button class="mod-panel-btn" onclick="collapseAllMods(true)">▶ tout fermer</button>
-          <button class="mod-panel-btn" onclick="resetModuleStates()">↺ réinitialiser</button>
+          <button class="mod-panel-btn" id="btn-expand-all" onclick="collapseAllMods(false)">▼ tout ouvrir</button>
+          <button class="mod-panel-btn" id="btn-collapse-all" onclick="collapseAllMods(true)">▶ tout fermer</button>
+          <button class="mod-panel-btn" id="btn-reset-states" onclick="resetModuleStates()">↺ réinitialiser</button>
           <button class="mod-panel-btn" id="btn-unlock-postex"
                   onclick="togglePostExploit()"
                   style="color:var(--yellow);border-color:rgba(240,165,0,.35)">🔒 post-exploit</button>
@@ -1072,8 +1076,8 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
           </div>
           <span class="term-title" id="term-title">terminal — inactif</span>
           <div class="term-acts">
-            <button class="tbtn" onclick="copyTerm()">copier</button>
-            <button class="tbtn" onclick="clearTerminal()">effacer</button>
+            <button class="tbtn" id="btn-copy-term" onclick="copyTerm()">copier</button>
+            <button class="tbtn" id="btn-clear-term" onclick="clearTerminal()">effacer</button>
             <button class="tbtn" id="stop-btn" onclick="stopRun()"
                     style="color:var(--red);display:none">■ stop</button>
           </div>
@@ -1095,10 +1099,10 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
         </div>
         <div class="console-wrap inline">
           <div class="console-topbar">
-            <button class="btn" onclick="startConsoleShell()">▶ Démarrer</button>
-            <button class="btn" onclick="restartConsoleShell()">↺ Redémarrer</button>
+            <button class="btn" id="btn-console-start" onclick="startConsoleShell()">▶ Démarrer</button>
+            <button class="btn" id="btn-console-restart" onclick="restartConsoleShell()">↺ Redémarrer</button>
             <button class="btn" onclick="sendConsoleSigint()" style="color:var(--red)">Ctrl+C</button>
-            <button class="btn" onclick="clearConsole()">✕ Effacer</button>
+            <button class="btn" id="btn-console-clear" onclick="clearConsole()">✕ Effacer</button>
             <span style="font-size:10px;color:var(--text3)" id="console-status">shell arrêté</span>
           </div>
           <pre class="console-out" id="console-out"></pre>
@@ -1106,7 +1110,7 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
             <span class="console-prompt" id="console-prompt">></span>
             <input class="console-input" id="console-input" spellcheck="false"
                    placeholder="commande shell…" onkeydown="handleConsoleInput(event)">
-            <button class="tbtn" onclick="sendConsoleLine()">Entrée</button>
+            <button class="tbtn" id="btn-console-enter" onclick="sendConsoleLine()">Entrée</button>
           </div>
         </div>
       </div>
@@ -1850,10 +1854,720 @@ const AUTH_CHAIN_RULES = [
   { ports:[22], tools:["sudo_enum","linux_services_enum"] },
 ];
 const OP_MODE_LABELS = {
-  safe: "safe",
-  htb: "HTB",
-  enterprise: "realiste entreprise",
+  fr: { safe: "safe", htb: "HTB", enterprise: "realiste entreprise" },
+  en: { safe: "safe", htb: "HTB", enterprise: "enterprise realistic" },
 };
+const UI_I18N = {
+  fr: {
+    views: "Vues",
+    profiles: "Profils",
+    actions: "Actions",
+    history: "Historique",
+    timeline: "Timeline",
+    modules: "Modules",
+    playbook: "Playbook",
+    wizard: "Wizard",
+    tools_installed: "Outils installés",
+    results: "Résultats",
+    loot_files: "Fichiers loot",
+    ai_analysis: "Analyse IA",
+    hashes: "Hashes",
+    creds_tracker: "Creds tracker",
+    credentials: "Identifiants",
+    export_report: "Export rapport .md",
+    save_config: "Sauver la config",
+    clear_terminal: "Effacer le terminal",
+    reset_box: "Reset box",
+    history_loading: "Chargement…",
+    select_all: "✓ Tout",
+    select_none: "✕ Aucun",
+    stop: "■ Stop",
+    not_configured: "non configuré",
+    quick_chains: "Chaînes rapides",
+    quick_sub: "Presets guidés pour partir vite sur la bonne séquence.",
+    run_selected: "▶ Lancer la sélection",
+    run_all: "⚡ Tout lancer",
+    save_short: "Sauver",
+    expand_all: "▼ tout ouvrir",
+    collapse_all: "▶ tout fermer",
+    reset_states: "↺ réinitialiser",
+    post_exploit: "🔒 post-exploit",
+    copy: "copier",
+    clear: "effacer",
+    console_start: "▶ Démarrer",
+    console_restart: "↺ Redémarrer",
+    console_clear: "✕ Effacer",
+    console_stopped: "shell arrêté",
+    console_placeholder: "commande shell…",
+    enter: "Entrée",
+    idle: "inactif",
+    running: "en cours",
+    waiting: "attente…",
+    active_count: "actif(s)",
+    profile_full: "Pentest complet",
+    profile_htb: "HTB quick win",
+    profile_ldap: "LDAP / Kerb",
+    profile_smb: "Focus SMB",
+    profile_adcs: "Focus ADCS",
+    profile_windows: "Hôte Windows",
+    profile_linux: "Hôte Linux",
+    profile_web: "App web",
+    profile_hybrid: "Hybride",
+    profile_challenge: "HTB Challenge",
+    preset_web: "Web",
+    tool_badge_auth: "auth",
+    tool_badge_noisy: "bruyant",
+    tool_badge_safe: "safe",
+    tool_badge_skip: "skip mode",
+    tool_badge_port: "port",
+    tool_daemon: "[daemon]",
+    tool_noisy: "[bruyant]",
+    no_module: "Aucun module pour ce type de cible.",
+    timeline_cleared: "Timeline effacée",
+    no_history: "Aucune ancienne recherche",
+    old_loot: "ancien loot",
+    open_manifest: "Ouvrir le dernier manifeste",
+    open_results: "Voir les résultats",
+    delete: "Supprimer",
+    history_loaded: "Historique chargé : {domain}",
+    history_results_loaded: "Résultats historiques chargés : {domain}",
+    manifest_opened: "Manifeste ouvert",
+    loot_deleted: "Loot supprimé : {domain}",
+    confirm_delete_loot: "Supprimer le loot de \"{domain}\" ? Cette action est irréversible.",
+    unknown_profile: "Profil inconnu : {name}",
+    profile_applied: "Profil : {name}",
+    unknown_preset: "Preset inconnu : {name}",
+    preset_applied: "Preset appliqué : {name}",
+    reset_states_wait: "Attends la fin du run avant de réinitialiser les états",
+    reset_states_done: "États des modules réinitialisés",
+    backend_not_connected: "Backend non connecté",
+    session_reset_done: "Reset OK — nouvelle box",
+    session_reset_loot: "Reset OK — loot {domain} supprimé",
+    session_reset_loot_logs: "Reset OK — loot {domain} + logs Responder supprimés",
+    session_reset_term: "[+] Session réinitialisée — prêt pour une autre box",
+    config_saved_toast: "Config sauvegardée",
+    hosts_sync_ok: "Synchronisation /etc/hosts OK",
+    hosts_sync_err: "Synchronisation /etc/hosts échouée",
+    ai_done: "Analyse IA terminée",
+    ai_error: "Erreur IA : {msg}",
+    target_detected: "Contexte appliqué : {type}",
+    auto_context_on: "Auto-contexte activé",
+    auto_context_off: "Auto-contexte désactivé",
+    parallel_set: "Parallélisme réglé sur {n}",
+    run_busy: "Exécution en cours — stop d'abord",
+    save_target: "Type de cible",
+    save_mode: "Mode opératoire",
+    lang_title: "Langue / Language",
+    refresh: "↺ Rafraîchir",
+    open_results_btn: "◈ Ouvrir résultats",
+    no_runs: "Aucun run dans cette session",
+    errors: "Erreurs",
+    total_duration: "Durée totale",
+    tools_checking: "↺ Vérification des outils…",
+    loading: "Chargement…",
+    session_counters: "Compteurs de session",
+    categories_findings: "Findings par catégorie",
+    interesting_loot: "Éléments intéressants du loot",
+    probable_users: "Utilisateurs & rôles probables",
+    sensitive_groups: "Groupes AD sensibles",
+    operational_view: "Vue Opérationnelle",
+    discovered_machines: "Machines découvertes",
+    loot_details: "Détails du loot",
+    scans_to_fill: "Lance des scans pour voir les findings catégorisés.",
+    open_history_hint: "Ouvre un historique ou lance un scan pour alimenter cette vue.",
+    no_user_detail: "Aucun utilisateur détaillé pour le moment.",
+    no_group_detail: "Aucun groupe détaillé pour le moment.",
+    operational_appear: "La vue opérationnelle apparaîtra ici.",
+    no_more_machines: "Aucune machine supplémentaire détectée pour le moment.",
+    details_appear: "Le détail du loot apparaîtra ici.",
+    playbook_wait: "Le playbook apparaîtra ici dès que des résultats seront disponibles.",
+    export_md: "↓ Export .md",
+    loot_search_ph: "Rechercher un fichier loot, ex: bloodhound_collect.txt ou attack_checks/",
+    new_tab: "⧉ Nouvel onglet",
+    scans_generate_loot: "Lance des scans pour générer du loot.",
+    select_file: "← Sélectionne un fichier",
+    copy_all: "⎘ Tout copier",
+    hashes_collect_hint: "Lance des outils Kerberos / DCSync pour collecter des hashes.",
+    add: "+ Ajouter",
+    save: "✓ Sauver",
+    cancel: "Annuler",
+    no_saved_cred: "Aucun credential sauvegardé.",
+    claude_api_key: "Clé API Claude",
+    analyze_loot: "✦ Analyser le loot",
+    subfolder: "Sous-dossier :",
+    all_loot: "Tout le loot (analyse complète)",
+    parsed_results: "Résultats parsés (JSON)",
+    kerberos_hashes: "Kerberos / hachés",
+    ai_help: "Renseigne ta clé API Claude (console.anthropic.com → API Keys) et clique ✦ Analyser le loot pour obtenir une analyse intelligente de ton audit.\n\nL'IA lit tous les fichiers du dossier loot du domaine actif, identifie les vecteurs d'attaque (AS-REP, Kerberoast, ADCS ESC, SMB Relay, ACLs…) et propose un chemin d'exploitation concret.\n\nLa clé API est sauvegardée dans config.local.json (local, sur ta machine) via le bouton 💾 de la barre du haut.",
+    modal_creds_title: "🔑 Identifiants & cible",
+    base: "Base",
+    target_type: "Type de cible",
+    target_ip: "IP cible",
+    domain: "Domaine",
+    dc_fqdn: "DC (FQDN)",
+    username: "Nom d'utilisateur",
+    password: "Mot de passe",
+    sudo_password: "Mot de passe sudo",
+    web_port: "Port web",
+    ssh_port: "Port SSH",
+    notes: "Notes",
+    notes_placeholder: "Notes libres sur la box…",
+    sudo_hint: "Utilisé uniquement si une action demande une élévation de privilèges.",
+    pth_hint: "Utilisé pour : impacket -hashes, nxc -H, certipy -hashes, bloodhound-python -hashes",
+    ptk_hint: "Utilisé pour : getTGT, impacket -k, certipy -k, bloodhound-python -k",
+    wizard_sub: "Choisis un flux adapté à la box, applique la sélection automatiquement, puis lance la chaîne si tu veux enchaîner tout de suite.",
+    wizard_step1: "1. Type de cible",
+    wizard_step2: "2. Chaîne d'attaque",
+    wizard_step3: "3. Options",
+    replace_selection: "Remplacer la sélection actuelle",
+    autorun_chain: "Lancer la chaîne après application",
+    configure_target: "Configurer la cible",
+    launch_hashcat: "🔨 Lancer hashcat",
+    wordlist: "Wordlist :",
+    launch: "▶ Lancer",
+    no_file: "Aucun fichier.",
+    generating_report: "Génération du rapport .md…",
+    no_hash: "Aucun hash trouvé. Lance GetNPUsers, GetUserSPNs ou secretsdump.",
+    no_hash_copy: "Aucun hash à copier",
+    hashes_copied: "Hashes copiés",
+    copied: "Copié",
+    user_required: "Utilisateur requis",
+    use: "Utiliser",
+    ports_detected: "🗺 Ports détectés — modules auto-actives",
+    open_wizard: "Ouvrir le wizard",
+    ignore: "Ignorer",
+    sudo_required_title: "Mot de passe sudo requis",
+    sudo_placeholder: "mot de passe sudo",
+    remember_session: "mémoriser pour cette session (stocké en mémoire, pas sur disque)",
+    validate: "Valider",
+    auto_parallel_recommended: "Parallélisme recommandé: {n} ({reason})",
+    auto_parallel_off: "Auto-parallélisme désactivé",
+    daemon_stop: "Arrêter le daemon",
+    manual_selection: "sélection manuelle actuelle",
+    challenge_selected: "challenge {kind} sélectionné",
+    mode_active: "mode {mode} actif",
+    challenge_in_progress: "challenge {kind} en cours",
+    ad_web_detected: "surface AD + web détectée",
+    windows_ports_detected: "ports AD/Windows détectés",
+    linux_web_detected: "services Linux + web détectés",
+    linux_profile_detected: "profil SSH/NFS/Linux détecté",
+    web_surface_dominant: "surface HTTP/HTTPS dominante",
+    weak_context_signal: "signal insuffisant pour changer de contexte",
+    challenge_playbook: "playbook challenge {kind}",
+    ad_confirmed_loot: "contexte AD confirmé par le loot",
+    windows_web_loot: "loot Windows + web confirmé",
+    linux_web_loot: "loot Linux + web confirmé",
+    windows_confirmed: "contexte Windows confirmé",
+    linux_confirmed: "contexte Linux confirmé",
+    web_confirmed: "contexte web confirmé",
+    confidence_high: "élevée",
+    confidence_medium: "moyenne",
+    confidence_low: "faible",
+    detected_context: "Contexte détecté",
+    confidence: "Confiance",
+    recommended_preset: "preset recommandé",
+    recommended_parallelism: "parallelisme conseillé",
+    apply: "Appliquer",
+    preset: "Preset",
+    auto_context_on_btn: "auto-contexte ON",
+    auto_context_off_btn: "auto-contexte OFF",
+    challenge_target_required: "fichier, dossier ou URL challenge requis",
+    disabled_in_mode: "désactivé en mode {mode}",
+    daemon_blocked_in_mode: "daemon bloqué en mode {mode}",
+    noisy_blocked_in_mode: "action bruyante bloquée en mode {mode}",
+    required_ports_closed: "ports requis fermés ou absents ({ports})",
+    credentials_required: "credentials requis",
+    backend_connected: "[+] Backend connecté — HTB Toolbox v2",
+    backend_disconnected: "[!] Déconnecté — reconnexion dans 3s…",
+    ws_error: "[!] Erreur WS. Backend lancé ? (python3 server.py)",
+    reachable: "joignable",
+    unreachable: "injoignable",
+    daemon_active_title: "daemon actif : {id} — Ctrl+C ou ■ stop",
+    report_exported: "Rapport .md exporté → loot/{path}",
+    ai_running: "Analyse {target} en cours…",
+    ai_finished_badge: "✦ Analyse terminée",
+    error_label: "Erreur",
+    ntp_sync_ok: "Horloge synchronisée sur la cible — Kerberos opérationnel",
+    ntp_sync_fail: "Sync NTP échouée : {msg}",
+    state_run: "en cours",
+    state_ok: "✓ terminé",
+    state_err: "✗ erreur",
+    state_stop: "■ arrêté",
+    state_skip: "↷ skip",
+    state_daemon: "🔴 actif",
+    run_cancelled_sudo: "Exécution annulée — sudo requis",
+    no_tools_selected: "Aucun outil sélectionné",
+    run_header: "══ Run : {n} outil(s) ══",
+    target_auth_line: "Cible : {target} / {domain} — auth : {auth}",
+    run_finished: "[+] Run terminé — {ok} ok / {err} erreur(s)",
+    terminal_cleared: "# terminal effacé",
+    shell_started_status: "shell actif — {cwd}",
+    shell_started_line: "[console] shell démarré dans {cwd}",
+    shell_active: "shell actif",
+    shell_stopped: "shell arrêté (rc={rc})",
+    shell_stopped_line: "[console] shell arrêté (rc={rc})",
+    shell_closed: "shell fermé",
+    shell_closed_line: "[console] shell fermé",
+    script_present: "◈ htbtoolbox.sh présent ✓",
+    script_present_banner: "✓ htbtoolbox.sh détecté — les phases du script seront utilisées directement",
+    script_missing: "◈ script absent (repli)",
+    script_missing_banner: "⚠ htbtoolbox.sh absent — mode de repli (commandes directes)",
+    tools_present_summary: "{present}/{total} outils présents",
+    present: "présent",
+    missing: "absent",
+    no_matching_loot: "Aucun fichier loot correspondant",
+    manifest_context: "Contexte",
+    manifest_ports_selection: "Ports & sélection",
+    manifest_launches: "Lancements",
+    manifest_skips: "Skips",
+    manifest_results: "Résultats",
+    manifest_target: "cible",
+    manifest_type: "type",
+    manifest_domain: "domaine",
+    manifest_auth: "auth",
+    manifest_parallelism: "parallélisme",
+    manifest_ports: "ports",
+    manifest_selection: "sélection",
+    manifest_launched: "lancé",
+    manifest_no_tool: "aucun outil",
+    manifest_unknown: "inconnus",
+    manifest_none_launched: "aucun outil lancé",
+    manifest_none_skip: "aucun skip",
+    manifest_none_result: "aucun résultat enregistré",
+    manifest_started: "Début",
+    manifest_ended: "Fin",
+    manifest_interrupted: "run interrompu",
+    manifest_done: "run terminé",
+    asrep_hash_found: "Hash AS-REP détecté",
+    kerberoast_hash_found: "Hash Kerberoast détecté",
+    ntlm_hash_found: "Hash NTLM détecté",
+    no_item_found: "Aucun élément trouvé",
+    detail: "Détail",
+    operational_state: "État Opérationnel",
+    warnings: "Avertissements",
+    priorities: "Priorités",
+    target_accounts: "Comptes à Cibler",
+    likely_paths: "Chemins Probables",
+    next_commands: "Commandes Suivantes",
+    no_item: "Aucun élément",
+    invalid_hashcat_command: "Commande hashcat invalide",
+    manual: "manuel",
+    sensitive: "sensible",
+    noisy: "bruyant",
+    execute: "Exécuter",
+    choose_wordlist_launch: "Choisir wordlist et lancer",
+    adapt_command_manually: "Commande à adapter manuellement",
+    adapt_command_copy: "Commande à adapter manuellement — utilise Copier",
+    websocket_not_connected: "WebSocket non connecté",
+    command_started: "Commande lancée — voir terminal ci-dessus",
+    wordlist_required: "Chemin wordlist requis",
+    credential_detected: "Credential détecté",
+    auth_chain_ready: "Chaîne auth prête",
+    apply_and_chain: "Appliquer + chaîne",
+    credential_applied: "Credential appliqué : {user} ({mode})",
+    auth_chain_selected: "Chaîne auth sélectionnée : {n} outil(s)",
+    no_auth_chain: "Aucune chaîne auth exploitable avec les ports connus",
+    testing: "test…",
+    click_for_details: "Cliquer pour voir le détail",
+    no_extra_info: "Aucun renseignement complémentaire.",
+    no_matching_user: "Aucun utilisateur ne correspond à ce filtre.",
+    no_matching_group: "Aucun groupe ne correspond à ce filtre.",
+    domain_dc_auto: "Domaine + DC détectés automatiquement",
+    domain_detected: "Domaine détecté : {domain}",
+    dc_detected: "DC détecté : {dc}",
+    config_loaded_reason: "configuration chargée",
+    creds_applied_saved: "Identifiants appliqués et sauvegardés",
+    ai_already_running: "Analyse déjà en cours…",
+    configure_claude_key: "Renseigne ta clé API Claude",
+    configure_domain_first: "Configure d'abord le domaine cible",
+    reading_loot: "Lecture du loot…",
+    sending_model: "Envoi au modèle…",
+    visible_count: "{n} affiché(s)"
+  },
+  en: {
+    views: "Views",
+    profiles: "Profiles",
+    actions: "Actions",
+    history: "History",
+    timeline: "Timeline",
+    modules: "Modules",
+    playbook: "Playbook",
+    wizard: "Wizard",
+    tools_installed: "Installed tools",
+    results: "Results",
+    loot_files: "Loot files",
+    ai_analysis: "AI analysis",
+    hashes: "Hashes",
+    creds_tracker: "Creds tracker",
+    credentials: "Credentials",
+    export_report: "Export .md report",
+    save_config: "Save config",
+    clear_terminal: "Clear terminal",
+    reset_box: "Reset box",
+    history_loading: "Loading…",
+    select_all: "✓ All",
+    select_none: "✕ None",
+    stop: "■ Stop",
+    not_configured: "not configured",
+    quick_chains: "Quick chains",
+    quick_sub: "Guided presets to start fast with the right sequence.",
+    run_selected: "▶ Run selection",
+    run_all: "⚡ Run all",
+    save_short: "Save",
+    expand_all: "▼ expand all",
+    collapse_all: "▶ collapse all",
+    reset_states: "↺ reset states",
+    post_exploit: "🔒 post-exploit",
+    copy: "copy",
+    clear: "clear",
+    console_start: "▶ Start",
+    console_restart: "↺ Restart",
+    console_clear: "✕ Clear",
+    console_stopped: "shell stopped",
+    console_placeholder: "shell command…",
+    enter: "Enter",
+    idle: "idle",
+    running: "running",
+    waiting: "waiting…",
+    active_count: "active",
+    profile_full: "Full pentest",
+    profile_htb: "HTB quick win",
+    profile_ldap: "LDAP / Kerb",
+    profile_smb: "SMB focus",
+    profile_adcs: "ADCS focus",
+    profile_windows: "Windows host",
+    profile_linux: "Linux host",
+    profile_web: "Web app",
+    profile_hybrid: "Hybrid",
+    profile_challenge: "HTB challenge",
+    preset_web: "Web",
+    tool_badge_auth: "auth",
+    tool_badge_noisy: "noisy",
+    tool_badge_safe: "safe",
+    tool_badge_skip: "skip mode",
+    tool_badge_port: "port",
+    tool_daemon: "[daemon]",
+    tool_noisy: "[noisy]",
+    no_module: "No modules for this target type.",
+    timeline_cleared: "Timeline cleared",
+    no_history: "No previous runs",
+    old_loot: "old loot",
+    open_manifest: "Open latest manifest",
+    open_results: "Open results",
+    delete: "Delete",
+    history_loaded: "History loaded: {domain}",
+    history_results_loaded: "Historical results loaded: {domain}",
+    manifest_opened: "Manifest opened",
+    loot_deleted: "Loot deleted: {domain}",
+    confirm_delete_loot: "Delete loot for \"{domain}\"? This action cannot be undone.",
+    unknown_profile: "Unknown profile: {name}",
+    profile_applied: "Profile: {name}",
+    unknown_preset: "Unknown preset: {name}",
+    preset_applied: "Preset applied: {name}",
+    reset_states_wait: "Wait for the current run to finish before resetting states",
+    reset_states_done: "Module states reset",
+    backend_not_connected: "Backend not connected",
+    session_reset_done: "Reset OK — ready for a new box",
+    session_reset_loot: "Reset OK — deleted loot {domain}",
+    session_reset_loot_logs: "Reset OK — deleted loot {domain} + Responder logs",
+    session_reset_term: "[+] Session reset — ready for another box",
+    config_saved_toast: "Config saved",
+    hosts_sync_ok: "/etc/hosts sync OK",
+    hosts_sync_err: "/etc/hosts sync failed",
+    ai_done: "AI analysis finished",
+    ai_error: "AI error: {msg}",
+    target_detected: "Context applied: {type}",
+    auto_context_on: "Auto-context enabled",
+    auto_context_off: "Auto-context disabled",
+    parallel_set: "Parallelism set to {n}",
+    run_busy: "A run is already in progress — stop it first",
+    save_target: "Target type",
+    save_mode: "Operating mode",
+    lang_title: "Language / Langue",
+    refresh: "↺ Refresh",
+    open_results_btn: "◈ Open results",
+    no_runs: "No runs in this session",
+    errors: "Errors",
+    total_duration: "Total duration",
+    tools_checking: "↺ Checking tools…",
+    loading: "Loading…",
+    session_counters: "Session counters",
+    categories_findings: "Findings by category",
+    interesting_loot: "Interesting loot items",
+    probable_users: "Users & likely roles",
+    sensitive_groups: "Sensitive AD groups",
+    operational_view: "Operational view",
+    discovered_machines: "Discovered machines",
+    loot_details: "Loot details",
+    scans_to_fill: "Run scans to populate categorized findings.",
+    open_history_hint: "Open history or run a scan to populate this view.",
+    no_user_detail: "No detailed users yet.",
+    no_group_detail: "No detailed groups yet.",
+    operational_appear: "The operational view will appear here.",
+    no_more_machines: "No additional machines detected yet.",
+    details_appear: "Loot details will appear here.",
+    playbook_wait: "The playbook will appear here as soon as results are available.",
+    export_md: "↓ Export .md",
+    loot_search_ph: "Search a loot file, e.g. bloodhound_collect.txt or attack_checks/",
+    new_tab: "⧉ New tab",
+    scans_generate_loot: "Run scans to generate loot.",
+    select_file: "← Select a file",
+    copy_all: "⎘ Copy all",
+    hashes_collect_hint: "Run Kerberos / DCSync tools to collect hashes.",
+    add: "+ Add",
+    save: "✓ Save",
+    cancel: "Cancel",
+    no_saved_cred: "No saved credential.",
+    claude_api_key: "Claude API key",
+    analyze_loot: "✦ Analyze loot",
+    subfolder: "Subfolder:",
+    all_loot: "All loot (full analysis)",
+    parsed_results: "Parsed results (JSON)",
+    kerberos_hashes: "Kerberos / hashes",
+    ai_help: "Enter your Claude API key (console.anthropic.com → API Keys) and click ✦ Analyze loot to get an intelligent analysis of your audit.\n\nThe AI reads all files from the active domain loot folder, identifies attack vectors (AS-REP, Kerberoast, ADCS ESC, SMB Relay, ACLs…), and suggests a concrete exploitation path.\n\nThe API key is saved in config.local.json (local, on your machine) via the 💾 button in the top bar.",
+    modal_creds_title: "🔑 Credentials & target",
+    base: "Base",
+    target_type: "Target type",
+    target_ip: "Target IP",
+    domain: "Domain",
+    dc_fqdn: "DC (FQDN)",
+    username: "Username",
+    password: "Password",
+    sudo_password: "Sudo password",
+    web_port: "Web port",
+    ssh_port: "SSH port",
+    notes: "Notes",
+    notes_placeholder: "Free-form notes about the box…",
+    sudo_hint: "Used only if an action requires privilege escalation.",
+    pth_hint: "Used for: impacket -hashes, nxc -H, certipy -hashes, bloodhound-python -hashes",
+    ptk_hint: "Used for: getTGT, impacket -k, certipy -k, bloodhound-python -k",
+    wizard_sub: "Choose a flow adapted to the box, apply the selection automatically, then run the chain if you want to continue immediately.",
+    wizard_step1: "1. Target type",
+    wizard_step2: "2. Attack chain",
+    wizard_step3: "3. Options",
+    replace_selection: "Replace current selection",
+    autorun_chain: "Run the chain after applying",
+    configure_target: "Configure target",
+    launch_hashcat: "🔨 Launch hashcat",
+    wordlist: "Wordlist:",
+    launch: "▶ Launch",
+    no_file: "No file.",
+    generating_report: "Generating .md report…",
+    no_hash: "No hashes found. Run GetNPUsers, GetUserSPNs, or secretsdump.",
+    no_hash_copy: "No hash to copy",
+    hashes_copied: "Hashes copied",
+    copied: "Copied",
+    user_required: "User required",
+    use: "Use",
+    ports_detected: "🗺 Detected ports — auto-enabled modules",
+    open_wizard: "Open wizard",
+    ignore: "Ignore",
+    sudo_required_title: "Sudo password required",
+    sudo_placeholder: "sudo password",
+    remember_session: "remember for this session (stored in memory, not on disk)",
+    validate: "Validate",
+    auto_parallel_recommended: "Recommended parallelism: {n} ({reason})",
+    auto_parallel_off: "Auto-parallelism disabled",
+    daemon_stop: "Stop daemon",
+    manual_selection: "current manual selection",
+    challenge_selected: "challenge {kind} selected",
+    mode_active: "{mode} mode active",
+    challenge_in_progress: "challenge {kind} in progress",
+    ad_web_detected: "AD + web surface detected",
+    windows_ports_detected: "AD/Windows ports detected",
+    linux_web_detected: "Linux + web services detected",
+    linux_profile_detected: "SSH/NFS/Linux profile detected",
+    web_surface_dominant: "HTTP/HTTPS surface dominant",
+    weak_context_signal: "not enough signal to change context",
+    challenge_playbook: "challenge playbook {kind}",
+    ad_confirmed_loot: "AD context confirmed by loot",
+    windows_web_loot: "Windows + web loot confirmed",
+    linux_web_loot: "Linux + web loot confirmed",
+    windows_confirmed: "Windows context confirmed",
+    linux_confirmed: "Linux context confirmed",
+    web_confirmed: "Web context confirmed",
+    confidence_high: "high",
+    confidence_medium: "medium",
+    confidence_low: "low",
+    detected_context: "Detected context",
+    confidence: "Confidence",
+    recommended_preset: "recommended preset",
+    recommended_parallelism: "recommended parallelism",
+    apply: "Apply",
+    preset: "Preset",
+    auto_context_on_btn: "auto-context ON",
+    auto_context_off_btn: "auto-context OFF",
+    challenge_target_required: "challenge file, folder, or URL required",
+    disabled_in_mode: "disabled in {mode} mode",
+    daemon_blocked_in_mode: "daemon blocked in {mode} mode",
+    noisy_blocked_in_mode: "noisy action blocked in {mode} mode",
+    required_ports_closed: "required ports closed or missing ({ports})",
+    credentials_required: "credentials required",
+    backend_connected: "[+] Backend connected — HTB Toolbox v2",
+    backend_disconnected: "[!] Disconnected — reconnecting in 3s…",
+    ws_error: "[!] WS error. Is the backend running? (python3 server.py)",
+    reachable: "reachable",
+    unreachable: "unreachable",
+    daemon_active_title: "daemon active: {id} — Ctrl+C or ■ stop",
+    report_exported: ".md report exported → loot/{path}",
+    ai_running: "Analysis {target} in progress…",
+    ai_finished_badge: "✦ Analysis finished",
+    error_label: "Error",
+    ntp_sync_ok: "Clock synced with target — Kerberos operational",
+    ntp_sync_fail: "NTP sync failed: {msg}",
+    state_run: "running",
+    state_ok: "✓ done",
+    state_err: "✗ error",
+    state_stop: "■ stopped",
+    state_skip: "↷ skipped",
+    state_daemon: "🔴 active",
+    run_cancelled_sudo: "Execution cancelled — sudo required",
+    no_tools_selected: "No tools selected",
+    run_header: "══ Run: {n} tool(s) ══",
+    target_auth_line: "Target: {target} / {domain} — auth: {auth}",
+    run_finished: "[+] Run finished — {ok} ok / {err} error(s)",
+    terminal_cleared: "# terminal cleared",
+    shell_started_status: "shell active — {cwd}",
+    shell_started_line: "[console] shell started in {cwd}",
+    shell_active: "shell active",
+    shell_stopped: "shell stopped (rc={rc})",
+    shell_stopped_line: "[console] shell stopped (rc={rc})",
+    shell_closed: "shell closed",
+    shell_closed_line: "[console] shell closed",
+    script_present: "◈ htbtoolbox.sh present ✓",
+    script_present_banner: "✓ htbtoolbox.sh detected — script phases will be used directly",
+    script_missing: "◈ script missing (fallback)",
+    script_missing_banner: "⚠ htbtoolbox.sh missing — fallback mode (direct commands)",
+    tools_present_summary: "{present}/{total} tools present",
+    present: "present",
+    missing: "missing",
+    no_matching_loot: "No matching loot file",
+    manifest_context: "Context",
+    manifest_ports_selection: "Ports & selection",
+    manifest_launches: "Launches",
+    manifest_skips: "Skips",
+    manifest_results: "Results",
+    manifest_target: "target",
+    manifest_type: "type",
+    manifest_domain: "domain",
+    manifest_auth: "auth",
+    manifest_parallelism: "parallelism",
+    manifest_ports: "ports",
+    manifest_selection: "selection",
+    manifest_launched: "launched",
+    manifest_no_tool: "no tool",
+    manifest_unknown: "unknown",
+    manifest_none_launched: "no tool launched",
+    manifest_none_skip: "no skip",
+    manifest_none_result: "no recorded result",
+    manifest_started: "Start",
+    manifest_ended: "End",
+    manifest_interrupted: "run interrupted",
+    manifest_done: "run finished",
+    asrep_hash_found: "AS-REP hash detected",
+    kerberoast_hash_found: "Kerberoast hash detected",
+    ntlm_hash_found: "NTLM hash detected",
+    no_item_found: "No item found",
+    detail: "Detail",
+    operational_state: "Operational State",
+    warnings: "Warnings",
+    priorities: "Priorities",
+    target_accounts: "Target Accounts",
+    likely_paths: "Likely Paths",
+    next_commands: "Next Commands",
+    no_item: "No item",
+    invalid_hashcat_command: "Invalid hashcat command",
+    manual: "manual",
+    sensitive: "sensitive",
+    noisy: "noisy",
+    execute: "Execute",
+    choose_wordlist_launch: "Choose wordlist and launch",
+    adapt_command_manually: "Command must be adapted manually",
+    adapt_command_copy: "Command must be adapted manually — use Copy",
+    websocket_not_connected: "WebSocket not connected",
+    command_started: "Command started — see terminal above",
+    wordlist_required: "Wordlist path required",
+    credential_detected: "Credential detected",
+    auth_chain_ready: "Auth chain ready",
+    apply_and_chain: "Apply + chain",
+    credential_applied: "Credential applied: {user} ({mode})",
+    auth_chain_selected: "Auth chain selected: {n} tool(s)",
+    no_auth_chain: "No usable auth chain with known ports",
+    testing: "testing…",
+    click_for_details: "Click to view details",
+    no_extra_info: "No additional information.",
+    no_matching_user: "No user matches this filter.",
+    no_matching_group: "No group matches this filter.",
+    domain_dc_auto: "Domain + DC detected automatically",
+    domain_detected: "Domain detected: {domain}",
+    dc_detected: "DC detected: {dc}",
+    config_loaded_reason: "configuration loaded",
+    creds_applied_saved: "Credentials applied and saved",
+    ai_already_running: "Analysis already in progress…",
+    configure_claude_key: "Enter your Claude API key",
+    configure_domain_first: "Configure the target domain first",
+    reading_loot: "Reading loot…",
+    sending_model: "Sending to model…",
+    visible_count: "{n} shown"
+  }
+};
+function getUiLang() {
+  return document.getElementById("inp-lang")?.value || "fr";
+}
+function t(key, vars={}) {
+  const lang = getUiLang();
+  let text = UI_I18N[lang]?.[key] ?? UI_I18N.fr?.[key] ?? key;
+  Object.entries(vars).forEach(([k,v]) => {
+    text = text.replaceAll(`{${k}}`, String(v));
+  });
+  return text;
+}
+function getOpModeLabel(mode=getOpMode()) {
+  const lang = getUiLang();
+  return OP_MODE_LABELS[lang]?.[mode] || OP_MODE_LABELS.fr?.[mode] || mode;
+}
+function getModuleTitle(mod) {
+  return getUiLang()==="en" ? (mod.title_en || mod.title) : mod.title;
+}
+function getToolLabel(tool) {
+  return getUiLang()==="en" ? (tool.label_en || tool.label) : tool.label;
+}
+function getToolDesc(tool) {
+  return getUiLang()==="en" ? (tool.desc_en || tool.desc) : tool.desc;
+}
+function getProfileTitle(name, profile) {
+  return getUiLang()==="en" ? (profile?.title_en || profile?.title || name) : (profile?.title || name);
+}
+function getPresetLabel(name, preset=ATTACK_PRESETS[name] || {}) {
+  const map = {
+    en: {
+      htb_ad_quick_win: "HTB AD quick win",
+      foothold: "Foothold",
+      web_focus: "Web focus",
+      linux_focus: "Linux focus",
+      challenge_triage: "Challenge triage",
+      challenge_pwn: "Challenge pwn",
+      challenge_forensics: "Challenge forensics",
+      challenge_web: "Challenge web",
+    }
+  };
+  return map[getUiLang()]?.[name] || preset.label || name;
+}
+function getPresetDesc(name, preset=ATTACK_PRESETS[name] || {}) {
+  const map = {
+    en: {
+      htb_ad_quick_win: "Fast AD recon: ports, targeted nmap, /etc/hosts, anonymous SMB, base LDAP, and a first AS-REP check.",
+      foothold: "Initial overview to quickly identify the best entry point across web, SMB, LDAP, SSH, and WinRM.",
+      web_focus: "Short web chain for fingerprinting, robots, vhosts, and quick directory enumeration.",
+      linux_focus: "Targeted Linux recon on SSH, NFS, local HTTP, exposed services, and first pivot/privesc hints.",
+      challenge_triage: "Initial challenge triage: file type, inventory, strings, metadata, and embedded signatures.",
+      challenge_pwn: "Pwn/reverse starter set: ELF info, mitigations, sections, symbols, and useful strings.",
+      challenge_forensics: "Forensics/stego workflow: metadata, carving, embedded signatures, and content inventory.",
+      challenge_web: "Quick start for a web challenge: HTTP probe, tech stack, robots, dirs, and params.",
+    }
+  };
+  return map[getUiLang()]?.[name] || preset.desc || "";
+}
 const OP_MODE_RULES = {
   safe: {
     desc: "Recon prudente: pas de bruteforce ni d'actions clairement bruyantes.",
@@ -2009,6 +2723,200 @@ let LAST_RUN_MANIFEST = null;
 let _contextSuggestion = {target_type:"windows", preset:"htb_ad_quick_win", reason:"en attente", confidence:0.2, score:0};
 let _autoApplyContext = false;
 
+function applyI18n() {
+  const lang = getUiLang();
+  document.documentElement.lang = lang;
+  const setText = (id, key) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = t(key);
+  };
+  const setNavLabel = (id, key) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const icon = el.querySelector(".ni");
+    const badges = [...el.querySelectorAll(".nav-badge")];
+    el.innerHTML = "";
+    if(icon) el.appendChild(icon);
+    el.appendChild(document.createTextNode(" " + t(key)));
+    badges.forEach(b => el.appendChild(b));
+  };
+  const setPlaceholder = (id, value) => {
+    const el = document.getElementById(id);
+    if(el) el.placeholder = value;
+  };
+  setText("nav-sec-views", "views");
+  setText("nav-sec-profiles", "profiles");
+  setText("nav-sec-actions", "actions");
+  setText("nav-sec-history", "history");
+  setNavLabel("nav-modules", "modules");
+  setNavLabel("nav-timeline", "timeline");
+  setNavLabel("nav-tools", "tools_installed");
+  setNavLabel("nav-results", "results");
+  setNavLabel("nav-playbook", "playbook");
+  setNavLabel("nav-loot", "loot_files");
+  setNavLabel("nav-hashes", "hashes");
+  setNavLabel("nav-creds", "creds_tracker");
+  setNavLabel("nav-ai", "ai_analysis");
+  setNavLabel("nav-action-creds", "credentials");
+  setNavLabel("nav-action-export", "export_report");
+  setNavLabel("nav-action-save", "save_config");
+  setNavLabel("nav-action-clear", "clear_terminal");
+  setNavLabel("nav-action-reset", "reset_box");
+  setNavLabel("profile-full", "profile_full");
+  setNavLabel("profile-htb", "profile_htb");
+  setNavLabel("profile-ldap", "profile_ldap");
+  setNavLabel("profile-smb", "profile_smb");
+  setNavLabel("profile-adcs", "profile_adcs");
+  setNavLabel("profile-windows", "profile_windows");
+  setNavLabel("profile-linux", "profile_linux");
+  setNavLabel("profile-web", "profile_web");
+  setNavLabel("profile-hybrid", "profile_hybrid");
+  setNavLabel("profile-challenge", "profile_challenge");
+  setText("btn-select-all", "select_all");
+  setText("btn-select-none", "select_none");
+  setText("btn-run-selected", "run_selected");
+  setText("btn-run-all", "run_all");
+  setText("btn-save-config", "save_short");
+  setText("btn-open-wizard", "wizard");
+  setText("quickbar-title", "quick_chains");
+  setText("quickbar-sub", "quick_sub");
+  setText("btn-expand-all", "expand_all");
+  setText("btn-collapse-all", "collapse_all");
+  setText("btn-reset-states", "reset_states");
+  setText("btn-copy-term", "copy");
+  setText("btn-clear-term", "clear");
+  setText("btn-console-start", "console_start");
+  setText("btn-console-restart", "console_restart");
+  setText("btn-console-clear", "console_clear");
+  setText("btn-console-enter", "enter");
+  setText("console-status", "console_stopped");
+  document.querySelectorAll("#view-timeline .tl-topbar .btn")[0] && (document.querySelectorAll("#view-timeline .tl-topbar .btn")[0].textContent = t("refresh"));
+  document.querySelectorAll("#view-timeline .tl-topbar .btn")[1] && (document.querySelectorAll("#view-timeline .tl-topbar .btn")[1].textContent = `✕ ${t("clear")}`);
+  const tlHint = document.querySelector("#view-timeline .tl-topbar span");
+  if(tlHint) tlHint.textContent = getUiLang()==="fr" ? "Historique des outils lancés cette session" : "History of tools run in this session";
+  const tlEmpty = document.querySelector("#view-timeline .tl-empty");
+  if(tlEmpty) tlEmpty.textContent = t("no_runs");
+  const tlLabels = document.querySelectorAll("#view-timeline .tl-stat-lbl");
+  if(tlLabels[2]) tlLabels[2].textContent = t("errors");
+  if(tlLabels[3]) tlLabels[3].textContent = t("total_duration");
+  const scriptBanner = document.getElementById("script-banner");
+  if(scriptBanner && scriptBanner.textContent.includes("Vérification")) scriptBanner.textContent = t("tools_checking");
+  document.querySelector("#view-tools .tools-topbar .btn") && (document.querySelector("#view-tools .tools-topbar .btn").textContent = t("refresh"));
+  const toolsLoading = document.querySelector("#view-tools .tools-grid > div");
+  if(toolsLoading && toolsLoading.textContent.includes("Chargement")) toolsLoading.textContent = t("loading");
+  document.querySelector("#view-results .res-topbar .btn") && (document.querySelector("#view-results .res-topbar .btn").textContent = t("refresh"));
+  const secTitles = document.querySelectorAll(".res-sec-title");
+  if(secTitles[0]) secTitles[0].textContent = t("session_counters");
+  if(secTitles[1]) secTitles[1].textContent = t("categories_findings");
+  if(secTitles[2]) secTitles[2].textContent = t("interesting_loot");
+  if(secTitles[3]) secTitles[3].textContent = t("probable_users");
+  if(secTitles[4]) secTitles[4].textContent = t("sensitive_groups");
+  if(secTitles[5]) secTitles[5].textContent = t("operational_view");
+  if(secTitles[6]) secTitles[6].textContent = t("discovered_machines");
+  if(secTitles[7]) secTitles[7].textContent = t("loot_details");
+  const playTopBtns = document.querySelectorAll("#view-playbook .playbook-topbar .btn");
+  if(playTopBtns[0]) playTopBtns[0].textContent = t("refresh");
+  if(playTopBtns[1]) playTopBtns[1].textContent = t("open_results_btn");
+  const playEmpty = document.querySelector("#view-playbook .playbook-empty");
+  if(playEmpty) playEmpty.textContent = t("playbook_wait");
+  const lootBtns = document.querySelectorAll("#view-loot .loot-topbar .btn");
+  if(lootBtns[0]) lootBtns[0].textContent = t("refresh");
+  if(lootBtns[1]) lootBtns[1].textContent = t("export_md");
+  setPlaceholder("loot-global-search", t("loot_search_ph"));
+  setText("btn-open-tab", "new_tab");
+  const fileEmpty = document.getElementById("fv-empty");
+  if(fileEmpty) fileEmpty.textContent = t("select_file");
+  const hashBtns = document.querySelectorAll("#view-hashes .hash-topbar .btn");
+  if(hashBtns[0]) hashBtns[0].textContent = t("refresh");
+  if(hashBtns[1]) hashBtns[1].textContent = t("copy_all");
+  const credsBtns = document.querySelectorAll("#view-creds .creds-topbar .btn");
+  if(credsBtns[0]) credsBtns[0].textContent = t("add");
+  if(credsBtns[1]) credsBtns[1].textContent = t("refresh");
+  const credEmpty = document.getElementById("creds-empty");
+  if(credEmpty) credEmpty.textContent = t("no_saved_cred");
+  const aiLbl = document.querySelector(".ai-key-lbl");
+  if(aiLbl) aiLbl.textContent = t("claude_api_key");
+  const aiBtn = document.querySelector("#view-ai .ai-topbar .btn");
+  if(aiBtn) aiBtn.textContent = t("analyze_loot");
+  const aiSub = document.querySelector("#view-ai .ai-controls span");
+  if(aiSub) aiSub.textContent = t("subfolder");
+  const aiOpts = document.querySelectorAll("#ai-subfolder option");
+  if(aiOpts[0]) aiOpts[0].textContent = t("all_loot");
+  if(aiOpts[1]) aiOpts[1].textContent = t("parsed_results");
+  if(aiOpts[3]) aiOpts[3].textContent = t("kerberos_hashes");
+  const aiOut = document.getElementById("ai-output");
+  if(aiOut && aiOut.textContent.includes("console.anthropic.com")) aiOut.innerHTML = `<span style="color:var(--text3)">${escapeHtml(t("ai_help")).replace(/\n/g,"<br><br>")}</span>`;
+  const modalTitle = document.querySelector("#modal-overlay .modal h3");
+  if(modalTitle) modalTitle.textContent = t("modal_creds_title");
+  const modalTabs = document.querySelectorAll("#modal-overlay .modal-tab");
+  if(modalTabs[0]) modalTabs[0].textContent = t("base");
+  const modalLabels = document.querySelectorAll("#modal-overlay .modal-row label");
+  if(modalLabels[0]) modalLabels[0].textContent = t("target_type");
+  if(modalLabels[3]) modalLabels[3].textContent = t("target_ip");
+  if(modalLabels[4]) modalLabels[4].textContent = t("domain");
+  if(modalLabels[5]) modalLabels[5].textContent = t("dc_fqdn");
+  if(modalLabels[6]) modalLabels[6].textContent = t("username");
+  if(modalLabels[7]) modalLabels[7].textContent = t("password");
+  if(modalLabels[8]) modalLabels[8].textContent = t("sudo_password");
+  if(modalLabels[9]) modalLabels[9].textContent = t("web_port");
+  if(modalLabels[10]) modalLabels[10].textContent = t("ssh_port");
+  if(modalLabels[11]) modalLabels[11].textContent = t("notes");
+  setPlaceholder("m-notes", t("notes_placeholder"));
+  const hints = document.querySelectorAll("#modal-overlay .modal-hint");
+  if(hints[0]) hints[0].textContent = t("sudo_hint");
+  if(hints[1]) hints[1].textContent = t("pth_hint");
+  if(hints[2]) hints[2].textContent = t("ptk_hint");
+  const modalBtns = document.querySelectorAll("#modal-overlay .modal-acts .modal-btn");
+  if(modalBtns[0]) modalBtns[0].textContent = t("cancel");
+  if(modalBtns[1]) modalBtns[1].textContent = getUiLang()==="fr" ? "Appliquer" : "Apply";
+  const wizSub = document.querySelector("#wizard-overlay .wizard-sub");
+  if(wizSub) wizSub.textContent = t("wizard_sub");
+  const wizLabels = document.querySelectorAll("#wizard-overlay .wizard-label");
+  if(wizLabels[0]) wizLabels[0].textContent = t("wizard_step1");
+  if(wizLabels[1]) wizLabels[1].textContent = t("wizard_step2");
+  if(wizLabels[2]) wizLabels[2].textContent = t("wizard_step3");
+  const wizChecks = document.querySelectorAll("#wizard-overlay .wiz-check");
+  if(wizChecks[0]) wizChecks[0].lastChild.textContent = " " + t("replace_selection");
+  if(wizChecks[1]) wizChecks[1].lastChild.textContent = " " + t("autorun_chain");
+  const wizActionBtns = document.querySelectorAll("#wizard-overlay .wiz-actions .modal-btn");
+  if(wizActionBtns[0]) wizActionBtns[0].textContent = t("configure_target");
+  if(wizActionBtns[1]) wizActionBtns[1].textContent = t("cancel");
+  if(wizActionBtns[2]) wizActionBtns[2].textContent = getUiLang()==="fr" ? "Appliquer" : "Apply";
+  const wlTitle = document.querySelector("#wl-picker h3");
+  if(wlTitle) wlTitle.textContent = t("launch_hashcat");
+  const wlLabel = document.querySelector("#wl-picker > div");
+  if(wlLabel) wlLabel.textContent = t("wordlist");
+  const wlBtns = document.querySelectorAll("#wl-picker .wl-btns button");
+  if(wlBtns[0]) wlBtns[0].textContent = t("cancel");
+  if(wlBtns[1]) wlBtns[1].textContent = t("launch");
+  const sudoTitle = document.querySelector("#sudo-overlay > div > div");
+  if(sudoTitle) sudoTitle.textContent = t("sudo_required_title");
+  setPlaceholder("sudo-prompt-input", t("sudo_placeholder"));
+  const remember = document.querySelector("#sudo-overlay label");
+  if(remember) remember.lastChild.textContent = " " + t("remember_session");
+  const sudoBtns = document.querySelectorAll("#sudo-overlay .modal-btn");
+  if(sudoBtns[0]) sudoBtns[0].textContent = t("cancel");
+  if(sudoBtns[1]) sudoBtns[1].textContent = t("validate");
+  document.getElementById("inp-lang")?.setAttribute("title", t("lang_title"));
+  document.getElementById("inp-type")?.setAttribute("title", t("save_target"));
+  document.getElementById("inp-opmode")?.setAttribute("title", t("save_mode"));
+  setPlaceholder("console-input", t("console_placeholder"));
+  setPlaceholder("inp-user", lang === "fr" ? "utilisateur" : "user");
+  setPlaceholder("inp-pass", lang === "fr" ? "mot de passe" : "password");
+  setPlaceholder("inp-nt", lang === "fr" ? "hash NT" : "NT hash");
+  setPlaceholder("inp-cc", lang === "fr" ? "chemin ccache" : "ccache path");
+  setPlaceholder("inp-chpath", lang === "fr" ? "fichier / dossier / URL challenge" : "challenge file / folder / URL");
+  setPlaceholder("user-profiles-search", lang === "fr" ? "Rechercher un utilisateur, groupe, rôle, UPN..." : "Search a user, group, role, UPN...");
+  setPlaceholder("group-profiles-search", lang === "fr" ? "Rechercher un groupe, un membre, une description..." : "Search a group, member, description...");
+}
+function handleLanguageChange() {
+  applyI18n();
+  updateDom();
+  buildModules();
+  if(document.getElementById("view-playbook")?.classList.contains("active")) renderPlaybook();
+  autoSave();
+}
+
 function getDaemonIds() {
   const ids = new Set();
   MODULES.forEach(g => (g.tools||[]).forEach(t => { if(t.daemon) ids.add(t.id); }));
@@ -2064,15 +2972,15 @@ function applyRecommendedParallelism(reason="", force=false) {
   const changed = rec !== runParallel;
   runParallel = rec;
   refreshParallelButtons();
-  if(changed && reason) toast(`Parallélisme recommandé: ${rec} (${reason})`, "ok");
+  if(changed && reason) toast(t("auto_parallel_recommended",{n:rec, reason}), "ok");
 }
 function toggleAutoParallelism() {
   _autoParallelism = !_autoParallelism;
   refreshParallelButtons();
   if(_autoParallelism) {
-    applyRecommendedParallelism(`mode ${OP_MODE_LABELS[getOpMode()]} + contexte ${_contextSuggestion.target_type}`, true);
+    applyRecommendedParallelism(`mode ${getOpModeLabel(getOpMode())} + contexte ${_contextSuggestion.target_type}`, true);
   } else {
-    toast("Auto-parallélisme désactivé", "ok");
+    toast(t("auto_parallel_off"), "ok");
   }
 }
 function canRunInParallel(toolId) {
@@ -2088,21 +2996,21 @@ function updateRunProgress() {
   const total = runQueue.length || 1;
   const progressed = Math.min(total, runDoneCount + runInflight.size);
   document.getElementById("prog-fill").style.width = Math.round((progressed/total)*100) + "%";
-  document.getElementById("run-count").textContent = `${runDoneCount}/${runQueue.length} · ${runInflight.size} actif(s)`;
+  document.getElementById("run-count").textContent = `${runDoneCount}/${runQueue.length} · ${runInflight.size} ${t("active_count")}`;
   document.getElementById("run-label").textContent = runInflight.size
-    ? `en cours : ${[...runInflight].join(", ")}`
-    : "attente…";
+    ? `${t("running")} : ${[...runInflight].join(", ")}`
+    : t("waiting");
 }
 function setParallelism(n, opts={}) {
   runParallel = Math.max(1, Math.min(3, Number(n) || 2));
   if(opts.manual !== false) _autoParallelism = false;
   refreshParallelButtons();
-  if(!opts.silent) toast(`Parallélisme réglé sur ${runParallel}`, "ok");
+  if(!opts.silent) toast(t("parallel_set",{n:runParallel}), "ok");
 }
 function handleTargetTypeChange() {
   updateDom();
   buildModules();
-  updateContextSuggestion(getTargetType(), "sélection manuelle actuelle", "manual", 0.4, 0);
+  updateContextSuggestion(getTargetType(), t("manual_selection"), "manual", 0.4, 0);
   renderPlaybook();
   autoSave();
 }
@@ -2118,14 +3026,14 @@ function challengePresetForKind(kind=getChallengeKind()) {
 function handleChallengeKindChange() {
   updateDom();
   if(getTargetType() === "challenge") {
-    updateContextSuggestion("challenge", `challenge ${getChallengeKind()} sélectionné`, "challenge", 0.78, 6);
+    updateContextSuggestion("challenge", t("challenge_selected",{kind:getChallengeKind()}), "challenge", 0.78, 6);
     renderPlaybook();
   }
   autoSave();
 }
 function handleOpModeChange() {
   buildModules();
-  updateContextSuggestion(_contextSuggestion.target_type || getTargetType(), `mode ${OP_MODE_LABELS[getOpMode()]} actif`, "opmode", _contextSuggestion.confidence || 0.4, _contextSuggestion.score || 0);
+  updateContextSuggestion(_contextSuggestion.target_type || getTargetType(), t("mode_active",{mode:getOpModeLabel(getOpMode())}), "opmode", _contextSuggestion.confidence || 0.4, _contextSuggestion.score || 0);
   renderPlaybook();
   autoSave();
 }
@@ -2143,7 +3051,7 @@ function _updateDaemonBtn(tool_id, active) {
   if(active) {
     btn.textContent = "■";
     btn.classList.add("daemon-stop");
-    btn.title = "Arrêter le daemon";
+    btn.title = t("daemon_stop");
   } else {
     btn.textContent = "▶";
     btn.classList.remove("daemon-stop");
@@ -2162,10 +3070,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function boot() {
   await loadCatalog();
+  applyI18n();
   buildModules();
   connectWS();
   updateDom();
-  updateContextSuggestion(getTargetType(), "sélection manuelle actuelle", "manual");
+  updateContextSuggestion(getTargetType(), t("manual_selection"), "manual");
   applyRecommendedParallelism("", true);
 }
 
@@ -2191,7 +3100,7 @@ function getModeIcon(mode) {
 }
 function inferTargetTypeFromPorts(portSet) {
   if(getTargetType() === "challenge") {
-    return {type:"challenge", reason:`challenge ${getChallengeKind()} en cours`, confidence:0.82, score:6};
+    return {type:"challenge", reason:t("challenge_in_progress",{kind:getChallengeKind()}), confidence:0.82, score:6};
   }
   const has = p => portSet.has(p);
   const hasAny = arr => arr.some(has);
@@ -2209,24 +3118,24 @@ function inferTargetTypeFromPorts(portSet) {
   const best = Math.max(windowsScore, linuxScore, webScore);
   const second = [windowsScore, linuxScore, webScore].sort((a,b)=>b-a)[1] || 0;
   const confidence = best ? Math.min(0.98, 0.45 + ((best - second) * 0.12) + (best * 0.04)) : 0.2;
-  if(windowsScore >= 6 && webScore >= 2) return {type:"hybrid", reason:"surface AD + web détectée", confidence, score:best};
-  if(windowsScore >= linuxScore && windowsScore >= webScore && windowsScore >= 3) return {type:"windows", reason:"ports AD/Windows détectés", confidence, score:best};
-  if(linuxScore > windowsScore && linuxScore >= 3 && webScore >= 2) return {type:"hybrid", reason:"services Linux + web détectés", confidence, score:best};
-  if(linuxScore >= webScore && linuxScore >= 3) return {type:"linux", reason:"profil SSH/NFS/Linux détecté", confidence, score:best};
-  if(webScore >= 3) return {type:"web", reason:"surface HTTP/HTTPS dominante", confidence, score:best};
-  return {type:getTargetType(), reason:"signal insuffisant pour changer de contexte", confidence:0.2, score:best};
+  if(windowsScore >= 6 && webScore >= 2) return {type:"hybrid", reason:t("ad_web_detected"), confidence, score:best};
+  if(windowsScore >= linuxScore && windowsScore >= webScore && windowsScore >= 3) return {type:"windows", reason:t("windows_ports_detected"), confidence, score:best};
+  if(linuxScore > windowsScore && linuxScore >= 3 && webScore >= 2) return {type:"hybrid", reason:t("linux_web_detected"), confidence, score:best};
+  if(linuxScore >= webScore && linuxScore >= 3) return {type:"linux", reason:t("linux_profile_detected"), confidence, score:best};
+  if(webScore >= 3) return {type:"web", reason:t("web_surface_dominant"), confidence, score:best};
+  return {type:getTargetType(), reason:t("weak_context_signal"), confidence:0.2, score:best};
 }
 function inferTargetTypeFromSummary(data={}) {
   if(getTargetType() === "challenge") {
-    return {type:"challenge", reason:`playbook challenge ${getChallengeKind()}`, confidence:0.84, score:7};
+    return {type:"challenge", reason:t("challenge_playbook",{kind:getChallengeKind()}), confidence:0.84, score:7};
   }
   const ctx = Array.isArray(data.contexts) ? data.contexts : [];
-  if(ctx.includes("ad")) return {type:"windows", reason:"contexte AD confirmé par le loot", confidence:0.96, score:10};
-  if(ctx.includes("windows") && ctx.includes("web")) return {type:"hybrid", reason:"loot Windows + web confirmé", confidence:0.92, score:9};
-  if(ctx.includes("linux") && ctx.includes("web")) return {type:"hybrid", reason:"loot Linux + web confirmé", confidence:0.9, score:8};
-  if(ctx.includes("windows")) return {type:"windows", reason:"contexte Windows confirmé", confidence:0.9, score:8};
-  if(ctx.includes("linux")) return {type:"linux", reason:"contexte Linux confirmé", confidence:0.88, score:7};
-  if(ctx.includes("web")) return {type:"web", reason:"contexte web confirmé", confidence:0.84, score:6};
+  if(ctx.includes("ad")) return {type:"windows", reason:t("ad_confirmed_loot"), confidence:0.96, score:10};
+  if(ctx.includes("windows") && ctx.includes("web")) return {type:"hybrid", reason:t("windows_web_loot"), confidence:0.92, score:9};
+  if(ctx.includes("linux") && ctx.includes("web")) return {type:"hybrid", reason:t("linux_web_loot"), confidence:0.9, score:8};
+  if(ctx.includes("windows")) return {type:"windows", reason:t("windows_confirmed"), confidence:0.9, score:8};
+  if(ctx.includes("linux")) return {type:"linux", reason:t("linux_confirmed"), confidence:0.88, score:7};
+  if(ctx.includes("web")) return {type:"web", reason:t("web_confirmed"), confidence:0.84, score:6};
   return null;
 }
 function presetForType(type) {
@@ -2245,23 +3154,23 @@ function updateContextSuggestion(type, reason, source="ports") {
   if(!el) return;
   const current = getTargetType();
   const pct = Math.round(confidence * 100);
-  const confLbl = pct >= 80 ? "élevée" : pct >= 55 ? "moyenne" : "faible";
+  const confLbl = pct >= 80 ? t("confidence_high") : pct >= 55 ? t("confidence_medium") : t("confidence_low");
   const mode = getOpMode();
-  const modeLabel = OP_MODE_LABELS[mode] || mode;
+  const modeLabel = getOpModeLabel(mode);
   const recParallel = computeRecommendedParallelism(type, mode);
   const strategy = getStrategyPlan(type, mode);
   el.innerHTML = `
-    <strong>${getContextIcon(type)} Contexte détecté:</strong> ${escapeHtml(type)}<br>
+    <strong>${getContextIcon(type)} ${t("detected_context")}:</strong> ${escapeHtml(type)}<br>
     ${escapeHtml(reason)}<br>
-    <span style="color:var(--text3)">Confiance: ${pct}% (${confLbl}) · preset recommandé: ${escapeHtml(ATTACK_PRESETS[preset]?.label || preset)}</span>
+    <span style="color:var(--text3)">${t("confidence")}: ${pct}% (${confLbl}) · ${t("recommended_preset")}: ${escapeHtml(getPresetLabel(preset, ATTACK_PRESETS[preset]))}</span>
     <div class="ctx-inline">
       <span class="ctx-pill mode">${getModeIcon(mode)} mode ${escapeHtml(modeLabel)}</span>
-      <span class="ctx-pill parallel">parallelisme conseillé P${recParallel}</span>
+      <span class="ctx-pill parallel">${t("recommended_parallelism")} P${recParallel}</span>
       <span class="ctx-pill">🧭 ${escapeHtml(strategy.title)}</span>
     </div>
     <div class="ctx-actions">
-      ${current !== type ? `<button class="quick-chip primary" onclick="applySuggestedContext()">Appliquer</button>` : `<button class="quick-chip" onclick="applyAttackPreset('${preset}')">Preset</button>`}
-      <button class="ctx-toggle ${_autoApplyContext?"on":""}" onclick="toggleAutoApplyContext()">${_autoApplyContext?"auto-contexte ON":"auto-contexte OFF"}</button>
+      ${current !== type ? `<button class="quick-chip primary" onclick="applySuggestedContext()">${t("apply")}</button>` : `<button class="quick-chip" onclick="applyAttackPreset('${preset}')">${t("preset")}</button>`}
+      <button class="ctx-toggle ${_autoApplyContext?"on":""}" onclick="toggleAutoApplyContext()">${_autoApplyContext?t("auto_context_on_btn"):t("auto_context_off_btn")}</button>
     </div>
   `;
   applyRecommendedParallelism(`mode ${modeLabel} + contexte ${type}`);
@@ -2272,7 +3181,7 @@ function updateContextSuggestion(type, reason, source="ports") {
 function toggleAutoApplyContext() {
   _autoApplyContext = !_autoApplyContext;
   updateContextSuggestion(_contextSuggestion.target_type, _contextSuggestion.reason, _contextSuggestion.source, _contextSuggestion.confidence, _contextSuggestion.score);
-  toast(`Auto-contexte ${_autoApplyContext ? "activé" : "désactivé"}`, "ok");
+  toast(_autoApplyContext ? t("auto_context_on") : t("auto_context_off"), "ok");
 }
 function applySuggestedContext(silent=false) {
   const inp = document.getElementById("inp-type");
@@ -2280,7 +3189,7 @@ function applySuggestedContext(silent=false) {
   buildModules();
   autoSave();
   updateContextSuggestion(_contextSuggestion.target_type, _contextSuggestion.reason, _contextSuggestion.source, _contextSuggestion.confidence, _contextSuggestion.score);
-  if(!silent) toast(`Contexte appliqué : ${_contextSuggestion.target_type}`, "ok");
+  if(!silent) toast(t("target_detected",{type:_contextSuggestion.target_type}), "ok");
 }
 
 function isGroupVisible(mod, targetType=getTargetType()) {
@@ -2385,16 +3294,16 @@ function toolSkipReason(toolId, cfg=getCfg()) {
   const mode = getOpModeRule();
   const mod = getModuleByTool(toolId);
   if(toolId.startsWith("challenge_") && !(cfg.challenge_path || cfg.target))
-    return "fichier, dossier ou URL challenge requis";
-  if(mode.blockedModules?.includes(mod?.id)) return `désactivé en mode ${OP_MODE_LABELS[getOpMode()]}`;
-  if(mode.blockedTools?.includes(toolId)) return `désactivé en mode ${OP_MODE_LABELS[getOpMode()]}`;
-  if(mode.skipDaemons && tool?.daemon) return `daemon bloqué en mode ${OP_MODE_LABELS[getOpMode()]}`;
-  if(mode.skipNoisy && tool?.noisy) return `action bruyante bloquée en mode ${OP_MODE_LABELS[getOpMode()]}`;
+    return t("challenge_target_required");
+  if(mode.blockedModules?.includes(mod?.id)) return t("disabled_in_mode",{mode:getOpModeLabel(getOpMode())});
+  if(mode.blockedTools?.includes(toolId)) return t("disabled_in_mode",{mode:getOpModeLabel(getOpMode())});
+  if(mode.skipDaemons && tool?.daemon) return t("daemon_blocked_in_mode",{mode:getOpModeLabel(getOpMode())});
+  if(mode.skipNoisy && tool?.noisy) return t("noisy_blocked_in_mode",{mode:getOpModeLabel(getOpMode())});
   if(!req) return "";
   if(req.ports && req.ports.length && !portReqSatisfied(req.ports))
-    return `ports requis fermes ou absents (${req.ports.join("/")})`;
+    return t("required_ports_closed",{ports:req.ports.join("/")});
   if(req.auth && !hasUsableAuth(cfg))
-    return "credentials requis";
+    return t("credentials_required");
   return "";
 }
 function getAuthChainTools() {
@@ -2452,15 +3361,15 @@ function connectWS() {
     wsSend("list_history",{});
     ping();
     initAiKey();
-    tl('<span class="tc-ok">[+] Backend connecté — HTB Toolbox v2</span>');
+    tl(`<span class="tc-ok">${t("backend_connected")}</span>`);
   };
   ws.onclose = () => {
     wsReady = false;
-    tl('<span class="tc-err">[!] Déconnecté — reconnexion dans 3s…</span>');
+    tl(`<span class="tc-err">${t("backend_disconnected")}</span>`);
     setTimeout(connectWS, 3000);
   };
   ws.onerror = () => {
-    tl('<span class="tc-err">[!] Erreur WS. Backend lancé ? (python3 server.py)</span>');
+    tl(`<span class="tc-err">${t("ws_error")}</span>`);
   };
   ws.onmessage = e => handleMsg(JSON.parse(e.data));
 }
@@ -2485,7 +3394,7 @@ function handleMsg(msg) {
       const stxt=document.getElementById("stxt");
       const slat=document.getElementById("slat");
       dot.className="dot "+(msg.reachable?"ok":"fail");
-      stxt.textContent=msg.reachable?"joignable":"injoignable";
+      stxt.textContent=msg.reachable?t("reachable"):t("unreachable");
       slat.textContent=msg.reachable && msg.latency!=null ? `${msg.latency}ms` : "";
       if(msg.reachable && _clockOffsetSec === null) fetchTargetTime();
       break;
@@ -2503,7 +3412,7 @@ function handleMsg(msg) {
           _activeDaemonId = msg.tool_id;
           setTstat(msg.tool_id, "daemon");
           _updateDaemonBtn(msg.tool_id, true);
-          document.getElementById("term-title").textContent = "daemon actif : " + msg.tool_id + " — Ctrl+C ou ■ stop";
+          document.getElementById("term-title").textContent = t("daemon_active_title",{id:msg.tool_id});
         }
         if(activeViewNow === "view-loot") scheduleLootRefresh(900);
       }
@@ -2616,7 +3525,7 @@ function handleMsg(msg) {
       break;
 
     case "markdown_export":
-      toast(`Rapport .md exporté → loot/${msg.path}`,"ok");
+      toast(t("report_exported",{path:msg.path}),"ok");
       // Ouvrir dans la vue loot
       loadLoot();
       wsSend("list_history",{});
@@ -2627,11 +3536,11 @@ function handleMsg(msg) {
       break;
 
     case "config_saved":
-      toast("Config sauvegardée","ok");
+      toast(t("config_saved_toast"),"ok");
       break;
 
     case "hosts_sync":
-      toast(msg.message || (msg.ok ? "Synchronisation /etc/hosts OK" : "Synchronisation /etc/hosts échouée"), msg.ok ? "ok" : "err");
+      toast(msg.message || (msg.ok ? t("hosts_sync_ok") : t("hosts_sync_err")), msg.ok ? "ok" : "err");
       break;
 
     case "ai_start":
@@ -2639,7 +3548,7 @@ function handleMsg(msg) {
       aiBuffer = "";
       document.getElementById("ai-output").innerHTML = "";
       document.getElementById("ai-status").innerHTML =
-        `<span class="ai-spin">⟳</span> Analyse ${msg.domain}${msg.subfolder?' / '+msg.subfolder:''} en cours…`;
+        `<span class="ai-spin">⟳</span> ${escapeHtml(t("ai_running",{target:`${msg.domain}${msg.subfolder?' / '+msg.subfolder:''}`}))}`;
       break;
 
     case "ai_chunk":
@@ -2651,17 +3560,17 @@ function handleMsg(msg) {
     case "ai_done":
       aiAnalyzing = false;
       document.getElementById("ai-status").innerHTML =
-        '<span class="ai-badge">✦ Analyse terminée</span>';
-      toast("Analyse IA terminée","ok");
+        `<span class="ai-badge">${t("ai_finished_badge")}</span>`;
+      toast(t("ai_done"),"ok");
       break;
 
     case "ai_error":
       aiAnalyzing = false;
       document.getElementById("ai-output").innerHTML =
-        `<span style="color:var(--red)">[!] Erreur : ${escapeHtml(msg.message)}</span>`;
+        `<span style="color:var(--red)">[!] ${t("error_label")} : ${escapeHtml(msg.message)}</span>`;
       document.getElementById("ai-status").innerHTML =
         '<span style="color:var(--red)">✗ Erreur</span>';
-      toast("Erreur IA : "+msg.message.slice(0,60),"err");
+      toast(t("ai_error",{msg:msg.message.slice(0,60)}),"err");
       break;
 
     case "cred_detected":
@@ -2677,13 +3586,13 @@ function handleMsg(msg) {
       { const btn = document.getElementById("clk-ntpsync-btn");
         if(msg.ok) {
           btn.className = "clock-sync synced"; btn.textContent = "✓";
-          toast("Horloge synchronisée sur la cible — Kerberos opérationnel", "ok");
+          toast(t("ntp_sync_ok"), "ok");
           // re-fetch offset to update display
           fetchTargetTime();
           setTimeout(() => { btn.className = "clock-sync"; btn.textContent = "⏱"; }, 4000);
         } else {
           btn.className = "clock-sync fail"; btn.textContent = "✗";
-          toast("Sync NTP échouée : " + (msg.error||"").slice(0,60), "err");
+          toast(t("ntp_sync_fail",{msg:(msg.error||"").slice(0,60)}), "err");
           setTimeout(() => { btn.className = "clock-sync"; btn.textContent = "⏱"; }, 3000);
         }
       }
@@ -2704,44 +3613,47 @@ function buildModules() {
     const div = document.createElement("div");
     div.className = "mod-card";
     div.id = "modc-"+mod.id;
+    const modTitle = getModuleTitle(mod);
     div.innerHTML = `
       <div class="mod-head" onclick="toggleModBody('${mod.id}')">
         <span class="mod-icon">${mod.icon}</span>
-        <span class="mod-title" title="${mod.title}">${mod.title}</span>
+        <span class="mod-title" title="${modTitle}">${modTitle}</span>
         <div class="mod-toggle ${en?"on":""}" id="modtog-${mod.id}"
              onclick="event.stopPropagation();toggleModEnable('${mod.id}')">${en?"✓":""}</div>
         <span class="mod-arrow ${en?"":"col"}" id="modarr-${mod.id}">▼</span>
       </div>
       <div class="mod-body ${en?"":"col"}" id="modbody-${mod.id}">
-        ${mod.tools.map(t=>{
-          const toolOn = state.selectedTools[t.id] ?? en;
-          const plainLabel = t.label.replace(/<[^>]+>/g,"");
-          const req = TOOL_REQUIREMENTS[t.id] || {};
-          const skipReason = toolSkipReason(t.id);
+        ${mod.tools.map(tool=>{
+          const toolOn = state.selectedTools[tool.id] ?? en;
+          const labelHtml = getToolLabel(tool);
+          const toolDesc = getToolDesc(tool);
+          const plainLabel = labelHtml.replace(/<[^>]+>/g,"");
+          const req = TOOL_REQUIREMENTS[tool.id] || {};
+          const skipReason = toolSkipReason(tool.id);
           const badges = [];
-          if(req.ports?.length) badges.push(`<span class="tool-badge port">port ${req.ports.join("/")}</span>`);
-          if(req.auth) badges.push(`<span class="tool-badge auth">auth</span>`);
-          if(t.noisy) badges.push(`<span class="tool-badge noisy">bruyant</span>`);
-          if(!t.daemon && !t.noisy) badges.push(`<span class="tool-badge parallel">safe</span>`);
-          if(skipReason) badges.push(`<span class="tool-badge skip">skip mode</span>`);
+          if(req.ports?.length) badges.push(`<span class="tool-badge port">${t("tool_badge_port")} ${req.ports.join("/")}</span>`);
+          if(req.auth) badges.push(`<span class="tool-badge auth">${t("tool_badge_auth")}</span>`);
+          if(tool.noisy) badges.push(`<span class="tool-badge noisy">${t("tool_badge_noisy")}</span>`);
+          if(!tool.daemon && !tool.noisy) badges.push(`<span class="tool-badge parallel">${t("tool_badge_safe")}</span>`);
+          if(skipReason) badges.push(`<span class="tool-badge skip">${t("tool_badge_skip")}</span>`);
           return `
-          <div class="tool-row ${skipReason ? "blocked" : ""}" id="tr-${t.id}" onclick="toggleTool('${t.id}')" title="${escapeHtml(skipReason || plainLabel)}">
-            <div class="tool-chk ${toolOn?"on":""}" id="tc-${t.id}">${toolOn?"✓":""}</div>
+          <div class="tool-row ${skipReason ? "blocked" : ""}" id="tr-${tool.id}" onclick="toggleTool('${tool.id}')" title="${escapeHtml(skipReason || plainLabel)}">
+            <div class="tool-chk ${toolOn?"on":""}" id="tc-${tool.id}">${toolOn?"✓":""}</div>
             <div class="tool-info">
               <div class="tool-info-top">
-                <span class="tool-label">${t.label}${t.noisy?` <span class="noisy">[bruyant]</span>`:""}${t.daemon?` <span class="noisy" style="color:var(--yellow)">[daemon]</span>`:""}</span>
-                ${t.desc?`<button class="tool-info-btn" data-desc="${t.desc.replace(/"/g,'&quot;')}" onclick="event.stopPropagation();toggleToolTip(event,this,'${t.id}')">ⓘ</button>`:""}
+                <span class="tool-label">${labelHtml}${tool.noisy?` <span class="noisy">${t("tool_noisy")}</span>`:""}${tool.daemon?` <span class="noisy" style="color:var(--yellow)">${t("tool_daemon")}</span>`:""}</span>
+                ${toolDesc?`<button class="tool-info-btn" data-desc="${toolDesc.replace(/"/g,'&quot;')}" onclick="event.stopPropagation();toggleToolTip(event,this,'${tool.id}')">ⓘ</button>`:""}
               </div>
               ${badges.length ? `<span class="tool-meta">${badges.join("")}</span>` : ""}
             </div>
-            <button class="tool-run-btn" id="run-btn-${t.id}" onclick="event.stopPropagation();${t.daemon?`daemonToggle('${t.id}')`:`runOne('${t.id}')`}">▶</button>
-            <span class="tool-stat ts-idle" id="ts-${t.id}">—</span>
+            <button class="tool-run-btn" id="run-btn-${tool.id}" onclick="event.stopPropagation();${tool.daemon?`daemonToggle('${tool.id}')`:`runOne('${tool.id}')`}">▶</button>
+            <span class="tool-stat ts-idle" id="ts-${tool.id}">—</span>
           </div>`;}).join("")}
       </div>`;
     panel.appendChild(div);
   });
   if(!visibleModules.length){
-    panel.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:11px">Aucun module pour ce type de cible.</div>';
+    panel.innerHTML = `<div style="padding:16px;color:var(--text3);font-size:11px">${t("no_module")}</div>`;
   }
   restoreTstats();
 }
@@ -2789,7 +3701,7 @@ function setTstat(id, state) {
 }
 function _applyTstat(id, state) {
   const el=document.getElementById("ts-"+id); if(!el) return;
-  const map={idle:"— |ts-idle",run:"en cours|ts-run",ok:"✓ terminé|ts-ok",err:"✗ erreur|ts-err",stop:"■ arrêté|ts-stop",skip:"↷ skip|ts-skip",daemon:"🔴 actif|ts-daemon"};
+  const map={idle:"— |ts-idle",run:`${t("state_run")}|ts-run`,ok:`${t("state_ok")}|ts-ok`,err:`${t("state_err")}|ts-err`,stop:`${t("state_stop")}|ts-stop`,skip:`${t("state_skip")}|ts-skip`,daemon:`${t("state_daemon")}|ts-daemon`};
   const [txt,cls]=(map[state]||"—|ts-idle").split("|");
   el.textContent=txt; el.className="tool-stat "+cls;
 }
@@ -2798,21 +3710,21 @@ function restoreTstats() {
 }
 function resetModuleStates() {
   if(running){
-    toast("Attends la fin du run avant de réinitialiser les états","err");
+    toast(t("reset_states_wait"),"err");
     return;
   }
   Object.keys(toolStats).forEach(id=>delete toolStats[id]);
   getVisibleModules().forEach(mod=>{
     mod.tools.forEach(t=>_applyTstat(t.id,"idle"));
   });
-  document.getElementById("run-label").textContent="inactif";
+  document.getElementById("run-label").textContent=t("idle");
   document.getElementById("run-count").textContent="";
   document.getElementById("prog-fill").style.width="0%";
-  toast("États des modules réinitialisés","ok");
+  toast(t("reset_states_done"),"ok");
 }
 function resetForNextBox() {
   if(!wsReady){
-    toast("Backend non connecté","err");
+    toast(t("backend_not_connected"),"err");
     return;
   }
   wsSend("reset_session",{cfg:getCfg()});
@@ -2823,6 +3735,7 @@ function resetForNextBox() {
 ══════════════════════════════════════════════════════════════════ */
 function getCfg() {
   return {
+    ui_language: document.getElementById("inp-lang").value,
     target:      document.getElementById("inp-target").value.trim(),
     target_type: document.getElementById("inp-type").value,
     challenge_kind: document.getElementById("inp-chkind").value,
@@ -2850,7 +3763,7 @@ async function runOne(id) {
   _runOneDirect(id);
 }
 function _runOneDirect(id) {
-  if(running){toast("Exécution en cours — stop d'abord","err");return;}
+  if(running){toast(t("run_busy"),"err");return;}
   runQueue=[id]; startQueue();
 }
 /* ── Sudo prompt ─────────────────────────────────────────────────── */
@@ -2860,7 +3773,7 @@ function promptSudoPassword(reason) {
   const inp = document.getElementById("sudo-prompt-input");
   const msg = document.getElementById("sudo-prompt-reason");
   const rem = document.getElementById("sudo-prompt-remember");
-  msg.textContent = reason || "Un outil a besoin de sudo. Saisis ton mot de passe pour continuer.";
+  msg.textContent = reason || (getUiLang()==="fr" ? "Un outil a besoin de sudo. Saisis ton mot de passe pour continuer." : "A tool needs sudo. Enter your password to continue.");
   inp.value = ""; rem.checked = true;
   ov.style.display = "flex";
   setTimeout(()=>inp.focus(),30);
@@ -2885,28 +3798,28 @@ async function ensureSudoForTools(toolIds) {
   if(!needs) return true;
   if(document.getElementById("inp-sudo").value) return true;
   const which = toolIds.filter(id => SUDO_REQUIRED_TOOLS.has(id)).join(", ");
-  const pw = await promptSudoPassword(`Les outils suivants demandent sudo : ${which}. Saisis ton mot de passe pour continuer.`);
-  if(!pw) { toast("Exécution annulée — sudo requis","err"); return false; }
+  const pw = await promptSudoPassword(getUiLang()==="fr" ? `Les outils suivants demandent sudo : ${which}. Saisis ton mot de passe pour continuer.` : `The following tools require sudo: ${which}. Enter your password to continue.`);
+  if(!pw) { toast(t("run_cancelled_sudo"),"err"); return false; }
   return true;
 }
 async function ensureSudoForRaw(raw) {
   if(!/^\s*sudo\s+/.test(raw)) return true;
   if(document.getElementById("inp-sudo").value) return true;
-  const pw = await promptSudoPassword(`La commande commence par sudo : <code>${escapeHtml(raw.slice(0,80))}</code>`);
-  if(!pw) { toast("Exécution annulée — sudo requis","err"); return false; }
+  const pw = await promptSudoPassword(getUiLang()==="fr" ? `La commande commence par sudo : <code>${escapeHtml(raw.slice(0,80))}</code>` : `The command starts with sudo: <code>${escapeHtml(raw.slice(0,80))}</code>`);
+  if(!pw) { toast(t("run_cancelled_sudo"),"err"); return false; }
   return true;
 }
 
 async function runSelected() {
-  if(running){toast("Exécution en cours — stop d'abord","err");return;}
+  if(running){toast(t("run_busy"),"err");return;}
   runQueue=getSelected();
-  if(!runQueue.length){toast("Aucun outil sélectionné","err");return;}
+  if(!runQueue.length){toast(t("no_tools_selected"),"err");return;}
   if(!(await ensureSudoForTools(runQueue))) return;
   startQueue();
 }
 function runAll() { selectAll(true); setTimeout(runSelected,50); }
 function startQueue() {
-  if(!wsReady){toast("Backend non connecté","err");return;}
+  if(!wsReady){toast(t("backend_not_connected"),"err");return;}
   runIdx=0; runDoneCount=0; runInflight = new Set(); setRunning(true);
   runQueue.forEach(id=>setTstat(id,"idle"));
   LAST_RUN_MANIFEST = {
@@ -2925,10 +3838,10 @@ function startQueue() {
     recommended_parallelism: computeRecommendedParallelism(),
     stopped: false,
   };
-  tl(`\n<span class="tc-cyan">══ Run : ${runQueue.length} outil(s) ══</span>`);
+  tl(`\n<span class="tc-cyan">${t("run_header",{n:runQueue.length})}</span>`);
   const cfg=getCfg();
   const authMode = getAuthMode(cfg);
-  tl(`<span class="tc-dim">Cible : ${cfg.target||"?"} / ${cfg.domain||"?"} — auth : ${authMode}</span>\n`);
+  tl(`<span class="tc-dim">${t("target_auth_line",{target:cfg.target||"?",domain:cfg.domain||"?",auth:authMode})}</span>\n`);
   // Mettre à jour le badge auth (si l'élément existe)
   const authEl=document.getElementById("stat-auth");
   if(authEl) authEl.textContent=authMode;
@@ -2944,7 +3857,7 @@ function finishQueueIfDone() {
       LAST_RUN_MANIFEST = null;
     }
     setRunning(false);
-    tl(`\n<span class="tc-ok">[+] Run terminé — ${sessionStats.ok} ok / ${sessionStats.err} erreur(s)</span>`);
+    tl(`\n<span class="tc-ok">${t("run_finished",{ok:sessionStats.ok,err:sessionStats.err})}</span>`);
     loadTimeline();
     wsSend("list_history",{});
     return true;
@@ -2992,13 +3905,13 @@ function setRunning(on) {
   document.getElementById("stop-btn").style.display=on?"":"none";
   document.getElementById("stop-sb").style.display=on?"":"none";
   document.getElementById("term-title").textContent=
-    on?"terminal — en cours…":"terminal — inactif";
+    on?`terminal — ${t("running")}…`:`terminal — ${t("idle")}`;
   const fill=document.getElementById("prog-fill");
   if(on){
     fill.classList.add("running");
   } else {
     fill.classList.remove("running");
-    document.getElementById("run-label").textContent="inactif";
+    document.getElementById("run-label").textContent=t("idle");
     fill.style.width="0%";
     document.getElementById("run-count").textContent="";
   }
@@ -3013,11 +3926,11 @@ function tl(html) {
   out.scrollTop=out.scrollHeight;
 }
 function clearTerminal() {
-  document.getElementById("term-out").innerHTML='<span class="tc-dim"># terminal effacé</span>';
+  document.getElementById("term-out").innerHTML=`<span class="tc-dim">${t("terminal_cleared")}</span>`;
 }
 function copyTerm() {
   navigator.clipboard.writeText(document.getElementById("term-out").textContent)
-    .then(()=>toast("Terminal copié","ok"));
+    .then(()=>toast(getUiLang()==="fr"?"Terminal copié":"Terminal copied","ok"));
 }
 function appendConsole(text) {
   const out=document.getElementById("console-out");
@@ -3036,28 +3949,28 @@ function updateConsoleStatus(text) {
 function handleConsoleState(msg) {
   if(msg.status==="started"){
     consoleReady = true;
-    updateConsoleStatus(`shell actif — ${msg.cwd||""}`);
-    appendConsole(`\n[console] shell démarré dans ${msg.cwd||"."}\n`);
+    updateConsoleStatus(t("shell_started_status",{cwd:msg.cwd||""}));
+    appendConsole(`\n${t("shell_started_line",{cwd:msg.cwd||"."})}\n`);
     document.getElementById("console-input").focus();
   } else if(msg.status==="ready"){
     consoleReady = true;
-    updateConsoleStatus("shell actif");
+    updateConsoleStatus(t("shell_active"));
   } else if(msg.status==="stopped"){
     consoleReady = false;
-    updateConsoleStatus(`shell arrêté (rc=${msg.rc ?? 0})`);
-    appendConsole(`\n[console] shell arrêté (rc=${msg.rc ?? 0})\n`);
+    updateConsoleStatus(t("shell_stopped",{rc:msg.rc ?? 0}));
+    appendConsole(`\n${t("shell_stopped_line",{rc:msg.rc ?? 0})}\n`);
   } else if(msg.status==="closed"){
     consoleReady = false;
-    updateConsoleStatus("shell fermé");
-    appendConsole(`\n[console] shell fermé\n`);
+    updateConsoleStatus(t("shell_closed"));
+    appendConsole(`\n${t("shell_closed_line")}\n`);
   }
 }
 function startConsoleShell() {
-  if(!wsReady){toast("Backend non connecté","err");return;}
+  if(!wsReady){toast(t("backend_not_connected"),"err");return;}
   wsSend("shell_start",{cfg:getCfg()});
 }
 function restartConsoleShell() {
-  if(!wsReady){toast("Backend non connecté","err");return;}
+  if(!wsReady){toast(t("backend_not_connected"),"err");return;}
   wsSend("shell_close",{});
   setTimeout(()=>wsSend("shell_start",{cfg:getCfg()}),120);
 }
@@ -3073,7 +3986,7 @@ async function sendConsoleLine() {
   const inp=document.getElementById("console-input");
   let cmd=inp.value;
   if(!cmd.trim()) return;
-  if(!wsReady){toast("Backend non connecté","err");return;}
+  if(!wsReady){toast(t("backend_not_connected"),"err");return;}
   if(!(await ensureSudoForRaw(cmd))) return;
   // Si sudo + pwd connu, transforme en forme non-interactive pour éviter le prompt TTY
   const sp = document.getElementById("inp-sudo").value;
@@ -3207,9 +4120,9 @@ function switchView(id, navEl) {
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
   document.getElementById("view-"+id).classList.add("active");
   if(navEl) navEl.classList.add("active");
-  const titles={modules:"Modules",timeline:"Timeline",tools:"Outils",
-                results:"Résultats",playbook:"Playbook",loot:"Fichiers loot",ai:"Analyse IA",
-                hashes:"Hashes collectés",creds:"Credential tracker"};
+  const titles={modules:t("modules"),timeline:"Timeline",tools:t("tools_installed"),
+                results:t("results"),playbook:"Playbook",loot:t("loot_files"),ai:t("ai_analysis"),
+                hashes:"Hashes",creds:t("creds_tracker")};
   document.getElementById("tb-title").textContent=titles[id]||id;
   if(id==="results") loadResultsSummary();
   if(id==="playbook") renderPlaybook();
@@ -3219,7 +4132,7 @@ function renderHistory(entries) {
   const box=document.getElementById("hist-list");
   if(!box) return;
   if(!entries?.length){
-    box.innerHTML='<div class="hist-empty">Aucune ancienne recherche</div>';
+    box.innerHTML=`<div class="hist-empty">${t("no_history")}</div>`;
     return;
   }
   box.innerHTML=entries.slice(0,12).map(e=>{
@@ -3236,24 +4149,24 @@ function renderHistory(entries) {
     const safeDomain=domain.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const encoded=encodeURIComponent(domain);
     const manifestBtn = e.latest_manifest
-      ? `<button class="hist-res" title="Ouvrir le dernier manifeste" onclick="openHistoryManifest('${encodeURIComponent(e.latest_manifest)}')">🧭</button>`
+      ? `<button class="hist-res" title="${escapeHtml(t("open_manifest"))}" onclick="openHistoryManifest('${encodeURIComponent(e.latest_manifest)}')">🧭</button>`
       : "";
     return `<div class="hist-item">
       <div class="hist-item-body" onclick="openHistory(decodeURIComponent('${encoded}'))">
         <span class="hist-name">${safeDomain}</span>
-        <span class="hist-meta">${meta||"ancien loot"}</span>
+        <span class="hist-meta">${meta||t("old_loot")}</span>
       </div>
       ${manifestBtn}
-      <button class="hist-res" title="Voir les résultats" onclick="openHistoryResults(decodeURIComponent('${encoded}'))">◈</button>
-      <button class="hist-del" title="Supprimer" onclick="deleteHistory(decodeURIComponent('${encoded}'))">✕</button>
+      <button class="hist-res" title="${escapeHtml(t("open_results"))}" onclick="openHistoryResults(decodeURIComponent('${encoded}'))">◈</button>
+      <button class="hist-del" title="${escapeHtml(t("delete"))}" onclick="deleteHistory(decodeURIComponent('${encoded}'))">✕</button>
     </div>`;
   }).join("");
 }
 
 function deleteHistory(domain) {
-  if(!confirm(`Supprimer le loot de "${domain}" ? Cette action est irréversible.`)) return;
+  if(!confirm(t("confirm_delete_loot",{domain}))) return;
   wsSend("delete_history",{domain});
-  toast("Loot supprimé : "+domain,"ok");
+  toast(t("loot_deleted",{domain}),"ok");
 }
 function openHistory(domain) {
   document.getElementById("inp-dom").value=domain;
@@ -3261,28 +4174,28 @@ function openHistory(domain) {
   switchView("loot");
   loadLoot();
   loadResultsSummary();
-  toast("Historique chargé : "+domain,"ok");
+  toast(t("history_loaded",{domain}),"ok");
 }
 function openHistoryResults(domain) {
   document.getElementById("inp-dom").value=domain;
   updateDom();
   switchView("results");
   loadResultsSummary();
-  toast("Résultats historiques chargés : "+domain,"ok");
+  toast(t("history_results_loaded",{domain}),"ok");
 }
 function openHistoryManifest(encodedPath) {
   const path = decodeURIComponent(encodedPath);
   switchView("loot", document.getElementById("nav-loot"));
   wsSend("read_file",{path});
   document.getElementById("loot-path").textContent = "loot/" + path;
-  toast("Manifeste ouvert","ok");
+  toast(t("manifest_opened"),"ok");
 }
 
 /* ══════════════════════════════════════════════════════════════════
    PROFILES
 ══════════════════════════════════════════════════════════════════ */
 function applyProfile(name) {
-  const p=PROFILES[name]; if(!p){toast("Profil inconnu : "+name,"err");return;}
+  const p=PROFILES[name]; if(!p){toast(t("unknown_profile",{name}),"err");return;}
   if(Array.isArray(p.target_types) && p.target_types.length){
     const best = p.target_types.find(t=>["windows","linux","web","hybrid","challenge"].includes(t)) || p.target_types[0];
     const inpType=document.getElementById("inp-type");
@@ -3299,15 +4212,15 @@ function applyProfile(name) {
       const c=document.getElementById("tc-"+t.id);
       if(c){c.classList.toggle("on",active);c.textContent=active?"✓":"";} });
   });
-  tl(`<span class="tc-warn">[+] Profil : ${name}</span>`);
-  toast("Profil : "+name,"ok");
+  tl(`<span class="tc-warn">[+] ${t("profile_applied",{name:getProfileTitle(name, p)})}</span>`);
+  toast(t("profile_applied",{name:getProfileTitle(name, p)}),"ok");
   const _modNav = [...document.querySelectorAll(".nav-item")].find(n => n.textContent.includes("Modules"));
   switchView("modules", _modNav || null);
 }
 
 function applyAttackPreset(name, opts={}) {
   const preset = ATTACK_PRESETS[name];
-  if(!preset) { toast("Preset inconnu : "+name, "err"); return; }
+  if(!preset) { toast(t("unknown_preset",{name}), "err"); return; }
   _wizardPreset = name;
   const preserve = !!opts.preserve;
   const inpType = document.getElementById("inp-type");
@@ -3327,7 +4240,7 @@ function applyAttackPreset(name, opts={}) {
   });
   [...groups].forEach(syncGroupStateFromTools);
   autoSave();
-  toast("Preset applique : " + preset.label, "ok");
+  toast(t("preset_applied",{name:getPresetLabel(name, preset)}), "ok");
   switchView("modules", document.getElementById("nav-modules"));
   if(opts.fromWizard) closeWizard();
   if(opts.autorun) setTimeout(runSelected, 80);
@@ -3337,11 +4250,11 @@ function applyAttackPreset(name, opts={}) {
    TIMELINE
 ══════════════════════════════════════════════════════════════════ */
 function loadTimeline() { wsSend("get_timeline"); }
-function clearTimeline() { wsSend("clear_timeline"); toast("Timeline effacée"); }
+function clearTimeline() { wsSend("clear_timeline"); toast(t("timeline_cleared")); }
 function renderTimeline(entries) {
   const body=document.getElementById("tl-body");
   if(!entries.length){
-    body.innerHTML='<div class="tl-empty">Aucun run dans cette session</div>';
+    body.innerHTML=`<div class="tl-empty">${t("no_runs")}</div>`;
     document.getElementById("tl-total").textContent=0;
     document.getElementById("tl-ok").textContent=0;
     document.getElementById("tl-err").textContent=0;
@@ -3379,14 +4292,14 @@ function renderToolsStatus(tools) {
   const banner=document.getElementById("script-banner");
   if(tools.script_available){
     pill.className="script-pill on";
-    pill.textContent="◈ htbtoolbox.sh présent ✓";
+    pill.textContent=t("script_present");
     banner.className="script-banner";
-    banner.textContent="✓ htbtoolbox.sh détecté — les phases du script seront utilisées directement";
+    banner.textContent=t("script_present_banner");
   } else {
     pill.className="script-pill off";
-    pill.textContent="◈ script absent (repli)";
+    pill.textContent=t("script_missing");
     banner.className="script-banner off";
-    banner.textContent="⚠ htbtoolbox.sh absent — mode de repli (commandes directes)";
+    banner.textContent=t("script_missing_banner");
   }
 
   const grid=document.getElementById("tools-grid");
@@ -3394,13 +4307,13 @@ function renderToolsStatus(tools) {
   const present=entries.filter(([,v])=>v).length;
   const total=entries.length;
   document.getElementById("tools-summary").textContent=
-    `${present}/${total} outils présents`;
+    t("tools_present_summary",{present,total});
 
   grid.innerHTML=entries.map(([name,ok])=>`
     <div class="tool-pill ${ok?"present":"missing"}">
       <div class="tp-dot"></div>
       <span class="tp-name">${name}</span>
-      <span class="tp-tag">${ok?"présent":"absent"}</span>
+      <span class="tp-tag">${ok?t("present"):t("missing")}</span>
     </div>`).join("");
 }
 
@@ -3434,7 +4347,7 @@ function openLootFromSearch() {
   const exact = _lootFilesCache.find(f => f.path === q);
   const match = exact || _lootFilesCache.find(f => f.path.toLowerCase().includes(q.toLowerCase()));
   if(!match) {
-    toast("Aucun fichier loot correspondant","err");
+    toast(t("no_matching_loot"),"err");
     return;
   }
   switchView("loot", document.getElementById("nav-loot"));
@@ -3467,24 +4380,24 @@ function formatManifest(content) {
     const obj = JSON.parse(content);
     const m = obj.manifest || {};
     const cards = [
-      {title:"Contexte", items:[
-        `cible: ${obj.target || "?"}`,
-        `type: ${obj.target_type || "?"}`,
-        `domaine: ${obj.domain || "?"}`,
-        `auth: ${obj.auth_mode || "?"}`,
-        `parallélisme: ${m.parallelism ?? "?"}`,
+      {title:t("manifest_context"), items:[
+        `${t("manifest_target")}: ${obj.target || "?"}`,
+        `${t("manifest_type")}: ${obj.target_type || "?"}`,
+        `${t("manifest_domain")}: ${obj.domain || "?"}`,
+        `${t("manifest_auth")}: ${obj.auth_mode || "?"}`,
+        `${t("manifest_parallelism")}: ${m.parallelism ?? "?"}`,
       ]},
-      {title:"Ports & sélection", items:[
-        `ports: ${(m.open_ports || []).join(", ") || "inconnus"}`,
-        `sélection: ${(m.selected_tools || []).join(", ") || "aucun outil"}`,
+      {title:t("manifest_ports_selection"), items:[
+        `${t("manifest_ports")}: ${(m.open_ports || []).join(", ") || t("manifest_unknown")}`,
+        `${t("manifest_selection")}: ${(m.selected_tools || []).join(", ") || t("manifest_no_tool")}`,
       ]},
-      {title:"Lancements", items:(m.launched_tools || []).length ? m.launched_tools.map(t=>`lancé: ${t}`) : ["aucun outil lancé"]},
-      {title:"Skips", items:(m.skipped_tools || []).length ? m.skipped_tools.map(x=>`${x.tool_id}: ${x.reason}`) : ["aucun skip"]},
-      {title:"Résultats", items:(m.finished_tools || []).length ? m.finished_tools.map(x=>`${x.tool_id}: ${x.state}`) : ["aucun résultat enregistré"]},
+      {title:t("manifest_launches"), items:(m.launched_tools || []).length ? m.launched_tools.map(tool=>`${t("manifest_launched")}: ${tool}`) : [t("manifest_none_launched")]},
+      {title:t("manifest_skips"), items:(m.skipped_tools || []).length ? m.skipped_tools.map(x=>`${x.tool_id}: ${x.reason}`) : [t("manifest_none_skip")]},
+      {title:t("manifest_results"), items:(m.finished_tools || []).length ? m.finished_tools.map(x=>`${x.tool_id}: ${x.state}`) : [t("manifest_none_result")]},
     ];
     return [
       `<span class="manifest-title">Run Manifest</span>`,
-      `<span class="manifest-sub">Début: ${escapeHtml(m.started_at || "")} · Fin: ${escapeHtml(m.completed_at || "")} · ${m.stopped ? "run interrompu" : "run terminé"}</span>`,
+      `<span class="manifest-sub">${t("manifest_started")}: ${escapeHtml(m.started_at || "")} · ${t("manifest_ended")}: ${escapeHtml(m.completed_at || "")} · ${m.stopped ? t("manifest_interrupted") : t("manifest_done")}</span>`,
       "",
       ...cards.flatMap(card => [
         `<span class="line-head"># ${escapeHtml(card.title)}</span>`,
@@ -3528,9 +4441,9 @@ function extractFileInsights(path, content) {
   const lines = (content||"").split("\n");
   lines.forEach(line=>{
     if(insights.length >= 8) return;
-    if(/\$krb5asrep\$/.test(line)) insights.push("Hash AS-REP détecté");
-    else if(/\$krb5tgs\$/.test(line)) insights.push("Hash Kerberoast détecté");
-    else if(/:[0-9a-f]{32}:[0-9a-f]{32}/i.test(line)) insights.push("Hash NTLM détecté");
+    if(/\$krb5asrep\$/.test(line)) insights.push(t("asrep_hash_found"));
+    else if(/\$krb5tgs\$/.test(line)) insights.push(t("kerberoast_hash_found"));
+    else if(/:[0-9a-f]{32}:[0-9a-f]{32}/i.test(line)) insights.push(t("ntlm_hash_found"));
     else if(/Domain Admins|Enterprise Admins|AdminCount=1/i.test(line)) insights.push(line.trim());
     else if(/ESC[0-9]+/.test(line)) insights.push(line.trim());
     else if(/share|SYSVOL|NETLOGON/i.test(line) && /^\S/.test(line)) insights.push(line.trim());
@@ -3572,7 +4485,7 @@ function renderLoot(files) {
   const tree=document.getElementById("file-tree");
   _lootFilesCache = Array.isArray(files) ? files : [];
   if(!files.length){
-    tree.innerHTML='<div style="padding:16px;color:var(--text3);font-size:11px">Aucun fichier.</div>';
+    tree.innerHTML=`<div style="padding:16px;color:var(--text3);font-size:11px">${t("no_file")}</div>`;
     updateLootAutocomplete("");
     return;
   }
@@ -3606,7 +4519,7 @@ function renderLoot(files) {
   // Inject search bar then file list
   const prevSearch = document.getElementById("ftree-search")?.value || "";
   tree.innerHTML = `<input class="ftree-search" id="ftree-search"
-    placeholder="filtrer les fichiers…" oninput="filterFileTree(this.value)"
+    placeholder="${getUiLang()==="fr"?"filtrer les fichiers…":"filter files…"}" oninput="filterFileTree(this.value)"
     value="${escapeHtml(prevSearch)}">` + html;
   if(prevSearch) filterFileTree(prevSearch);
   updateLootAutocomplete(document.getElementById("loot-global-search")?.value || "");
@@ -3634,7 +4547,7 @@ function readFile(path,el) {
 }
 function exportMarkdown() {
   wsSend("export_markdown",{domain:document.getElementById("inp-dom").value});
-  toast("Génération du rapport .md…");
+  toast(t("generating_report"));
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -3711,7 +4624,7 @@ function renderResultsSummary(data) {
     const items = Array.isArray(data.interesting) ? data.interesting : [];
     findings.innerHTML = items.length
       ? items.map(item=>`<div class="res-find-item">${escapeHtml(item)}</div>`).join("")
-      : '<div class="res-find-empty">Aucun élément marquant détecté dans ce loot.</div>';
+      : `<div class="res-find-empty">${getUiLang()==="fr"?"Aucun élément marquant détecté dans ce loot.":"No notable item detected in this loot."}</div>`;
   }
   const usersBox = document.getElementById("user-profiles-list");
   if(usersBox){
@@ -3735,19 +4648,19 @@ function renderResultsSummary(data) {
         <div class="machine-item">
           <div class="machine-top">
             <div class="machine-main">
-              <div class="machine-host">${escapeHtml(m.host || "Hôte inconnu")}</div>
-              <div class="machine-ip">${escapeHtml(m.ip || "IP inconnue")}</div>
+              <div class="machine-host">${escapeHtml(m.host || (getUiLang()==="fr"?"Hôte inconnu":"Unknown host"))}</div>
+              <div class="machine-ip">${escapeHtml(m.ip || (getUiLang()==="fr"?"IP inconnue":"Unknown IP"))}</div>
             </div>
             <div class="machine-badges">
               ${machineBadges(m).map(b=>`<span class="machine-badge ${b.cls||""}">${escapeHtml(b.txt)}</span>`).join("")}
             </div>
           </div>
           <div class="machine-meta">
-            <div class="machine-line"><b>Source :</b> <span class="machine-src">${escapeHtml(m.source || "source inconnue")}</span></div>
-            ${m.info ? `<div class="machine-line"><b>Infos :</b> <span class="machine-info">${escapeHtml(m.info)}</span></div>` : ""}
+            <div class="machine-line"><b>${getUiLang()==="fr"?"Source":"Source"} :</b> <span class="machine-src">${escapeHtml(m.source || (getUiLang()==="fr"?"source inconnue":"unknown source"))}</span></div>
+            ${m.info ? `<div class="machine-line"><b>${getUiLang()==="fr"?"Infos":"Info"} :</b> <span class="machine-info">${escapeHtml(m.info)}</span></div>` : ""}
           </div>
         </div>`).join("")
-      : '<div class="res-find-empty">Aucune machine supplémentaire détectée pour le moment.</div>';
+      : `<div class="res-find-empty">${t("no_more_machines")}</div>`;
   }
   renderOperationalView(data.operational || {});
   if(data.categories) renderCategories(data.categories);
@@ -3767,60 +4680,60 @@ function renderPlaybook() {
   const commands = Array.isArray(ops.next_commands) ? ops.next_commands : [];
   const authChain = getAuthChainTools();
   const ports = getOpenPortArray().sort((a,b)=>a-b);
-  const domain = document.getElementById("inp-dom")?.value || data.domain || "non défini";
-  const target = document.getElementById("inp-target")?.value || "non définie";
+  const domain = document.getElementById("inp-dom")?.value || data.domain || (getUiLang()==="fr"?"non défini":"not set");
+  const target = document.getElementById("inp-target")?.value || (getUiLang()==="fr"?"non définie":"not set");
   const mode = getOpMode();
-  const modeLabel = OP_MODE_LABELS[mode] || mode;
+  const modeLabel = getOpModeLabel(mode);
   const strategy = getStrategyPlan(_contextSuggestion.target_type, mode);
   const recommendedParallel = computeRecommendedParallelism();
   const chPath = document.getElementById("inp-chpath")?.value || "";
   const confPct = Math.round((_contextSuggestion.confidence || 0) * 100);
   const confCls = confPct >= 80 ? "conf-high" : confPct >= 55 ? "conf-mid" : "conf-low";
   const summaryPills = [
-    `cible ${target || "?"}`,
-    `domaine ${domain || "?"}`,
+    `${getUiLang()==="fr"?"cible":"target"} ${target || "?"}`,
+    `${getUiLang()==="fr"?"domaine":"domain"} ${domain || "?"}`,
     `auth ${getAuthMode()}`,
-    `contexte ${_contextSuggestion.target_type}`,
-    `mode ${modeLabel}`,
+    `${getUiLang()==="fr"?"contexte":"context"} ${_contextSuggestion.target_type}`,
+    `${getUiLang()==="fr"?"mode":"mode"} ${modeLabel}`,
     getTargetType() === "challenge" ? `catégorie ${getChallengeKind()}` : "",
     getTargetType() === "challenge" && chPath ? `artefact ${chPath.split("/").pop()}` : "",
     `P${runParallel}${_autoParallelism ? " auto" : ""} / rec P${recommendedParallel}`,
-    ports.length ? `ports ${ports.slice(0,8).join(",")}${ports.length>8?"…":""}` : "ports inconnus",
+    ports.length ? `${getUiLang()==="fr"?"ports":"ports"} ${ports.slice(0,8).join(",")}${ports.length>8?"…":""}` : (getUiLang()==="fr"?"ports inconnus":"unknown ports"),
     data.winrm ? `winrm ${data.winrm}` : "",
     data.smb_signing ? `smb ${data.smb_signing}` : "",
     data.adcs_esc?.length ? `adcs ${data.adcs_esc.join(",")}` : "",
   ].filter(Boolean);
   const blocks = [
-    {icon:"◎", title:"État courant", items: current},
-    {icon:"⚠", title:"Avertissements", items: warnings},
-    {icon:"▶", title:"Priorités immédiates", items: priorities},
-    {icon:"→", title:"Chemins probables", items: paths},
-    {icon:"🔐", title:"Chaîne auth recommandée", items: authChain},
-    {icon:"$", title:"Commandes suivantes", items: commands.map(cmd => typeof cmd === "string" ? cmd : (cmd.cmd || ""))},
+    {icon:"◎", title:getUiLang()==="fr"?"État courant":"Current state", items: current},
+    {icon:"⚠", title:getUiLang()==="fr"?"Avertissements":"Warnings", items: warnings},
+    {icon:"▶", title:getUiLang()==="fr"?"Priorités immédiates":"Immediate priorities", items: priorities},
+    {icon:"→", title:getUiLang()==="fr"?"Chemins probables":"Likely paths", items: paths},
+    {icon:"🔐", title:getUiLang()==="fr"?"Chaîne auth recommandée":"Recommended auth chain", items: authChain},
+    {icon:"$", title:getUiLang()==="fr"?"Commandes suivantes":"Next commands", items: commands.map(cmd => typeof cmd === "string" ? cmd : (cmd.cmd || ""))},
   ];
   const hasData = blocks.some(b => b.items && b.items.length);
   if(!hasData) {
-    box.innerHTML = '<div class="playbook-empty">Le playbook apparaîtra ici dès que des résultats seront disponibles.</div>';
+    box.innerHTML = `<div class="playbook-empty">${t("playbook_wait")}</div>`;
     return;
   }
   box.innerHTML = `
     <div class="playbook-hero">
-      <div class="playbook-title">Playbook opérateur</div>
-      <div class="playbook-sub">${getTargetType()==="challenge" ? `Synthèse challenge HTB/CTF pour ${escapeHtml(getChallengeKind())}: triage, stratégie et prochaines actions utiles sur l'artefact ou l'URL fournie.` : `Synthèse exploitable de la box en cours: état, priorités, chemins d’attaque plausibles, adaptation au contexte ${escapeHtml(_contextSuggestion.target_type)} et prochaines actions prêtes à jouer.`}</div>
+      <div class="playbook-title">${getUiLang()==="fr"?"Playbook opérateur":"Operator playbook"}</div>
+      <div class="playbook-sub">${getUiLang()==="fr"?`Synthèse exploitable de la box en cours: état, priorités, chemins d’attaque plausibles, adaptation au contexte ${escapeHtml(_contextSuggestion.target_type)} et prochaines actions prêtes à jouer.`:`Actionable summary of the current box: state, priorities, plausible attack paths, adaptation to the ${escapeHtml(_contextSuggestion.target_type)} context, and ready-to-run next steps.`}</div>
       <div class="playbook-pills">
         ${summaryPills.map(p=>`<span class="playbook-pill">${escapeHtml(p)}</span>`).join("")}
-        <span class="playbook-pill ${confCls}">confiance ${confPct}%</span>
+        <span class="playbook-pill ${confCls}">${getUiLang()==="fr"?"confiance":"confidence"} ${confPct}%</span>
       </div>
       <div class="playbook-actions">
-        <button class="btn btn-wizard" onclick="applySuggestedContext()">Appliquer le contexte</button>
-        <button class="btn btn-green" onclick="applyAttackPreset('${_contextSuggestion.preset}')">Préparer ${escapeHtml(ATTACK_PRESETS[_contextSuggestion.preset]?.label || _contextSuggestion.preset)}</button>
-        <button class="btn btn-run" onclick="applyAttackPreset('${_contextSuggestion.preset}', {autorun:true})">Lancer le preset recommandé</button>
-        <button class="btn" onclick="applyRecommendedParallelism('playbook', true)">Appliquer P${recommendedParallel}</button>
+        <button class="btn btn-wizard" onclick="applySuggestedContext()">${getUiLang()==="fr"?"Appliquer le contexte":"Apply context"}</button>
+        <button class="btn btn-green" onclick="applyAttackPreset('${_contextSuggestion.preset}')">${getUiLang()==="fr"?"Préparer":"Prepare"} ${escapeHtml(getPresetLabel(_contextSuggestion.preset, ATTACK_PRESETS[_contextSuggestion.preset]))}</button>
+        <button class="btn btn-run" onclick="applyAttackPreset('${_contextSuggestion.preset}', {autorun:true})">${getUiLang()==="fr"?"Lancer le preset recommandé":"Run recommended preset"}</button>
+        <button class="btn" onclick="applyRecommendedParallelism('playbook', true)">${getUiLang()==="fr"?"Appliquer":"Apply"} P${recommendedParallel}</button>
       </div>
     </div>
     <div class="playbook-grid">
       <div class="playbook-card">
-        <div class="playbook-head"><span>🧭</span><strong>Stratégie ${escapeHtml(strategy.title)}</strong><span>${escapeHtml(modeLabel)}</span></div>
+        <div class="playbook-head"><span>🧭</span><strong>${getUiLang()==="fr"?"Stratégie":"Strategy"} ${escapeHtml(strategy.title)}</strong><span>${escapeHtml(modeLabel)}</span></div>
         <div class="playbook-body">
           ${strategy.objectives.map(item => `<div class="playbook-item">🎯 ${escapeHtml(String(item))}</div>`).join("")}
           ${strategy.focus.map(item => `<div class="playbook-item">🛠 ${escapeHtml(String(item))}</div>`).join("")}
@@ -3833,7 +4746,7 @@ function renderPlaybook() {
           <div class="playbook-body">
             ${block.items.length
               ? block.items.slice(0,8).map(item => `<div class="playbook-item">${escapeHtml(String(item))}</div>`).join("")
-              : '<div class="playbook-empty">Aucun élément.</div>'}
+              : `<div class="playbook-empty">${getUiLang()==="fr"?"Aucun élément.":"No item."}</div>`}
           </div>
         </div>
       `).join("")}
@@ -3905,7 +4818,7 @@ function renderCategories(cats) {
       </div>
       <div class="cat-body ${autoOpen?"open":""}" id="${bodyId}">
         ${count===0
-          ? '<div style="padding:8px 0;font-size:10px;color:var(--text3)">Aucun élément trouvé</div>'
+          ? `<div style="padding:8px 0;font-size:10px;color:var(--text3)">${t("no_item_found")}</div>`
           : itemsHtml + more}
       </div>
     </div>`;
@@ -3928,7 +4841,7 @@ function renderDetailSections(sections) {
       <div class="cat-card sev-info">
         <div class="cat-head">
           <span class="cat-icon">◈</span>
-          <span class="cat-name">${escapeHtml(sec.title || sec.key || "Détail")}</span>
+          <span class="cat-name">${escapeHtml(sec.title || sec.key || t("detail"))}</span>
           <span class="cat-count">${(sec.items || []).length}</span>
         </div>
         <div class="cat-body open">
@@ -3942,12 +4855,12 @@ function renderOperationalView(ops) {
   const grid = document.getElementById("ops-grid");
   if(!grid) return;
   const blocks = [
-    {key:"current_state",   title:"État Opérationnel",  sev:"sev-info",     icon:"◎"},
-    {key:"warnings",       title:"Avertissements",    sev:"sev-critical", icon:"⚠"},
-    {key:"priorities",     title:"Priorités",          sev:"sev-high",     icon:"▶"},
-    {key:"target_accounts",title:"Comptes à Cibler",   sev:"sev-medium",   icon:"◉"},
-    {key:"attack_paths",   title:"Chemins Probables",  sev:"sev-high",     icon:"→"},
-    {key:"next_commands",  title:"Commandes Suivantes",sev:"sev-info",     icon:"$"},
+    {key:"current_state",   title:t("operational_state"), sev:"sev-info",     icon:"◎"},
+    {key:"warnings",       title:t("warnings"),         sev:"sev-critical", icon:"⚠"},
+    {key:"priorities",     title:t("priorities"),       sev:"sev-high",     icon:"▶"},
+    {key:"target_accounts",title:t("target_accounts"),  sev:"sev-medium",   icon:"◉"},
+    {key:"attack_paths",   title:t("likely_paths"),     sev:"sev-high",     icon:"→"},
+    {key:"next_commands",  title:t("next_commands"),    sev:"sev-info",     icon:"$"},
   ];
   const hasData = blocks.some(b => Array.isArray(ops[b.key]) && ops[b.key].length);
   if(!hasData){
@@ -3970,7 +4883,7 @@ function renderOperationalView(ops) {
               ? buildCmdRow(line)
               : `<div class="cat-item"><span class="ci-icon">·</span><span class="ci-label" style="grid-column:span 2">${escapeHtml(line)}</span></div>`
             ).join("")
-          : '<div style="padding:8px 0;font-size:10px;color:var(--text3)">Aucun élément</div>'}
+          : `<div style="padding:8px 0;font-size:10px;color:var(--text3)">${t("no_item")}</div>`}
       </div>
     </div>`;
   }).join("");
@@ -3985,7 +4898,7 @@ function openWlPickerFromPayload(payload) {
     const entry = JSON.parse(decodeURIComponent(payload));
     openWlPicker(entry.cmd || "");
   } catch(e) {
-    toast("Commande hashcat invalide","err");
+    toast(t("invalid_hashcat_command"),"err");
   }
 }
 
@@ -4000,17 +4913,17 @@ function buildCmdRow(item) {
   const payload = encodeOpsPayload(entry);
   const badges = [];
   if(entry.requires_sudo) badges.push('<span class="ops-badge sudo">sudo</span>');
-  if(entry.manual) badges.push('<span class="ops-badge manual">manuel</span>');
-  if(entry.sensitive) badges.push('<span class="ops-badge sensitive">sensible</span>');
-  if(entry.opsec === "bruyant") badges.push('<span class="ops-badge noisy">bruyant</span>');
+  if(entry.manual) badges.push(`<span class="ops-badge manual">${t("manual")}</span>`);
+  if(entry.sensitive) badges.push(`<span class="ops-badge sensitive">${t("sensitive")}</span>`);
+  if(entry.opsec === "bruyant") badges.push(`<span class="ops-badge noisy">${t("noisy")}</span>`);
   else badges.push('<span class="ops-badge safe">safe</span>');
   let btns = "";
   if(entry.run_allowed && !isComment) {
-    btns += `<button class="ops-btn run-btn" title="Exécuter" onclick="runAdhocCmdFromPayload('${payload}')">▶</button>`;
+    btns += `<button class="ops-btn run-btn" title="${t("execute")}" onclick="runAdhocCmdFromPayload('${payload}')">▶</button>`;
     if(isHashcat)
-      btns += `<button class="ops-btn crack-btn" title="Choisir wordlist et lancer" onclick="openWlPickerFromPayload('${payload}')">🔨</button>`;
+      btns += `<button class="ops-btn crack-btn" title="${t("choose_wordlist_launch")}" onclick="openWlPickerFromPayload('${payload}')">🔨</button>`;
   } else if(!isComment) {
-    btns += `<button class="ops-btn run-btn disabled" title="${escapeHtml((entry.reasons||[]).join(' · ') || 'Commande à adapter manuellement')}" onclick="toast('Commande à adapter manuellement — utilise Copier','err')">▶</button>`;
+    btns += `<button class="ops-btn run-btn disabled" title="${escapeHtml((entry.reasons||[]).join(' · ') || t("adapt_command_manually"))}" onclick="toast('${t("adapt_command_copy")}','err')">▶</button>`;
   }
   if(!isComment) btns += `<button class="ops-btn" title="Copier" onclick="copyOpsPayload('${payload}',this)">⎘</button>`;
   return `<div class="cat-item ops-cmd">
@@ -4029,22 +4942,22 @@ function runAdhocCmdFromPayload(payload) {
   try {
     runAdhocCmd(JSON.parse(decodeURIComponent(payload)));
   } catch(e) {
-    toast("Commande invalide","err");
+    toast(getUiLang()==="fr" ? "Commande invalide" : "Invalid command","err");
   }
 }
 
 async function runAdhocCmd(entryOrCmd) {
-  if(!wsReady) { toast("WebSocket non connecté","err"); return; }
+  if(!wsReady) { toast(t("websocket_not_connected"),"err"); return; }
   const entry = typeof entryOrCmd === "string" ? {cmd: entryOrCmd} : (entryOrCmd || {});
   if(entry.manual || entry.run_allowed === false) {
-    toast("Commande à adapter manuellement — utilise Copier","err");
+    toast(t("adapt_command_copy"),"err");
     return;
   }
   if(!(await ensureSudoForRaw(entry.cmd || ""))) return;
   wsSend("run_adhoc", {cmd: entry.cmd || "", cfg:getCfg(), meta:entry});
   document.querySelectorAll(".view").forEach(v=>v.style.display="");
   switchView("modules", document.getElementById("nav-modules"));
-  toast("Commande lancée — voir terminal ci-dessus");
+  toast(t("command_started"));
 }
 
 function copyOpsPayload(payload, btn) {
@@ -4085,7 +4998,7 @@ function updateWlPreview() {
 }
 function launchCrack() {
   const wl = document.getElementById("wl-input").value.trim();
-  if(!wl) { toast("Chemin wordlist requis","err"); return; }
+  if(!wl) { toast(t("wordlist_required"),"err"); return; }
   // replace wordlist in command or append it
   let cmd = _wlCmd;
   if(!/\/usr\/share\/wordlists|\/usr\/share\/seclists|\.txt/.test(cmd))
@@ -4130,13 +5043,13 @@ function showCredDetected(msg) {
     : `${msg.user} : <span class="tc-val">${escapeHtml(msg.pass)}</span>`;
   const authChain = getAuthChainTools();
   el.innerHTML = `
-    <div class="tc-title">🔑 Credential détecté [${escapeHtml(msg.source||'')}]</div>
+    <div class="tc-title">🔑 ${t("credential_detected")} [${escapeHtml(msg.source||'')}]</div>
     <div>${val}</div>
-    ${authChain.length ? `<div style="font-size:10px;color:var(--text3)">Chaîne auth prête: ${escapeHtml(authChain.slice(0,5).join(" • "))}${authChain.length>5?" …":""}</div>` : ""}
+    ${authChain.length ? `<div style="font-size:10px;color:var(--text3)">${t("auth_chain_ready")}: ${escapeHtml(authChain.slice(0,5).join(" • "))}${authChain.length>5?" …":""}</div>` : ""}
     <div class="tc-actions">
-      <button class="btn-apply" onclick="applyDetectedCred(this,'${escapeHtml(msg.user)}','${escapeHtml(msg.pass||'')}','${escapeHtml(msg.hash||'')}','${escapeHtml(msg.ccache||'')}')">Appliquer</button>
-      ${authChain.length ? `<button class="btn-apply" onclick="applyDetectedCred(this,'${escapeHtml(msg.user)}','${escapeHtml(msg.pass||'')}','${escapeHtml(msg.hash||'')}','${escapeHtml(msg.ccache||'')}',true)">Appliquer + chaîne</button>` : ""}
-      <button onclick="this.closest('.toast-cred').remove()">Ignorer</button>
+      <button class="btn-apply" onclick="applyDetectedCred(this,'${escapeHtml(msg.user)}','${escapeHtml(msg.pass||'')}','${escapeHtml(msg.hash||'')}','${escapeHtml(msg.ccache||'')}')">${t("apply")}</button>
+      ${authChain.length ? `<button class="btn-apply" onclick="applyDetectedCred(this,'${escapeHtml(msg.user)}','${escapeHtml(msg.pass||'')}','${escapeHtml(msg.hash||'')}','${escapeHtml(msg.ccache||'')}',true)">${t("apply_and_chain")}</button>` : ""}
+      <button onclick="this.closest('.toast-cred').remove()">${t("ignore")}</button>
     </div>`;
   container.appendChild(el);
   // auto-remove after 30s
@@ -4154,16 +5067,16 @@ function applyDetectedCred(btn, user, pass, hash, ccache="", chain=false) {
   if(hEl) hEl.value = hash || "";
   if(cEl) cEl.value = ccache || "";
   saveConfig();
-  toast(`Credential appliqué : ${user} (${ccache ? "ccache" : hash ? "hash" : "mot de passe"})`, "ok");
+  toast(t("credential_applied",{user, mode:(ccache ? "ccache" : hash ? "hash" : getUiLang()==="fr" ? "mot de passe" : "password")}), "ok");
   btn.closest(".toast-cred").remove();
   if(chain) {
     const authTools = getAuthChainTools();
     if(authTools.length) {
       selectToolSet(authTools, {preserve:false});
-      toast(`Chaîne auth sélectionnée : ${authTools.length} outil(s)`, "ok");
+      toast(t("auth_chain_selected",{n:authTools.length}), "ok");
       setTimeout(runSelected, 90);
     } else {
-      toast("Aucune chaîne auth exploitable avec les ports connus", "err");
+      toast(t("no_auth_chain"), "err");
     }
   }
 }
@@ -4175,7 +5088,7 @@ function ping() {
   const t=document.getElementById("inp-target").value.trim();
   if(!t||!wsReady) return;
   document.getElementById("sdot").className="dot pinging";
-  document.getElementById("stxt").textContent="test…";
+  document.getElementById("stxt").textContent=t("testing");
   wsSend("ping",{target:t});
 }
 function schedPing(){clearTimeout(pingTimer);pingTimer=setTimeout(ping,1200);}
@@ -4317,7 +5230,7 @@ function userBadges(u){
   if(roles.some(v=>/AS-REP/i.test(v))) out.push({txt:"asrep", cls:"info"});
   if(roles.some(v=>/Kerberoastable|service \/ spn|Compte de service \/ SPN/i.test(v))) out.push({txt:"spn", cls:"info"});
   if(roles.some(v=>/Unconstrained Delegation/i.test(v))) out.push({txt:"delegation", cls:"high"});
-  if(groups.length) out.push({txt:`${groups.length} groupe(s)`, cls:""});
+  if(groups.length) out.push({txt:getUiLang()==="fr"?`${groups.length} groupe(s)`:`${groups.length} group(s)`, cls:""});
   if(notes.some(v=>/^Description:/i.test(v))) out.push({txt:"description", cls:""});
   return out.slice(0,5);
 }
@@ -4362,7 +5275,7 @@ function renderUserProfilesList(){
     sumBox.innerHTML = [
       `<span class="user-chip clickable ${LAST_USER_FILTER==='all'?'active':''}" onclick="setUserProfilesFilter('all')">${total} utilisateur(s)</span>`,
       admins ? `<span class="user-chip clickable ${LAST_USER_FILTER==='admins'?'active':''}" onclick="setUserProfilesFilter('admins')">${admins} admin(s)</span>` : "",
-      sensitive ? `<span class="user-chip clickable ${LAST_USER_FILTER==='sensitive'?'active':''}" onclick="setUserProfilesFilter('sensitive')">${sensitive} sensible(s)</span>` : "",
+      sensitive ? `<span class="user-chip clickable ${LAST_USER_FILTER==='sensitive'?'active':''}" onclick="setUserProfilesFilter('sensitive')">${getUiLang()==="fr"?`${sensitive} sensible(s)`:`${sensitive} sensitive`}</span>` : "",
       asrep ? `<span class="user-chip clickable ${LAST_USER_FILTER==='asrep'?'active':''}" onclick="setUserProfilesFilter('asrep')">${asrep} AS-REP</span>` : "",
       spn ? `<span class="user-chip clickable ${LAST_USER_FILTER==='spn'?'active':''}" onclick="setUserProfilesFilter('spn')">${spn} SPN</span>` : "",
       q ? `<span class="user-chip">${filtered.length} affiché(s)</span>` : "",
@@ -4387,14 +5300,14 @@ function renderUserProfilesList(){
           <summary>
             <div class="user-head">
               <div class="user-name">${escapeHtml(u.name||"?")}</div>
-              <div class="user-sub">${escapeHtml(sub.join(" • ") || "Cliquer pour voir le détail")}</div>
+              <div class="user-sub">${escapeHtml(sub.join(" • ") || t("click_for_details"))}</div>
             </div>
             <div class="user-badges">${badges}</div>
           </summary>
-          <div class="user-meta">${lines.join("") || '<div class="user-line">Aucun renseignement complémentaire.</div>'}</div>
+          <div class="user-meta">${lines.join("") || `<div class="user-line">${t("no_extra_info")}</div>`}</div>
         </details>`;
       }).join("") + `</div>`
-    : '<div class="res-find-empty">Aucun utilisateur ne correspond à ce filtre.</div>';
+    : `<div class="res-find-empty">${t("no_matching_user")}</div>`;
 }
 
 function groupSeverity(g){
@@ -4446,10 +5359,10 @@ function renderGroupProfilesList(){
     const sensitive = groups.filter(g=>(g.roles||[]).some(v=>/Groupe sensible|HighValue|AdminCount=1/i.test(v))).length;
     const withMembers = groups.filter(g=>(g.member_count ?? (g.members||[]).length) > 0).length;
     sumBox.innerHTML = [
-      `<span class="user-chip clickable ${LAST_GROUP_FILTER==='all'?'active':''}" onclick="setGroupProfilesFilter('all')">${total} groupe(s)</span>`,
-      sensitive ? `<span class="user-chip clickable ${LAST_GROUP_FILTER==='sensitive'?'active':''}" onclick="setGroupProfilesFilter('sensitive')">${sensitive} sensible(s)</span>` : "",
-      withMembers ? `<span class="user-chip clickable ${LAST_GROUP_FILTER==='members'?'active':''}" onclick="setGroupProfilesFilter('members')">${withMembers} avec membres</span>` : "",
-      q ? `<span class="user-chip">${filtered.length} affiché(s)</span>` : "",
+      `<span class="user-chip clickable ${LAST_GROUP_FILTER==='all'?'active':''}" onclick="setGroupProfilesFilter('all')">${getUiLang()==="fr"?`${total} groupe(s)`:`${total} group(s)`}</span>`,
+      sensitive ? `<span class="user-chip clickable ${LAST_GROUP_FILTER==='sensitive'?'active':''}" onclick="setGroupProfilesFilter('sensitive')">${getUiLang()==="fr"?`${sensitive} sensible(s)`:`${sensitive} sensitive`}</span>` : "",
+      withMembers ? `<span class="user-chip clickable ${LAST_GROUP_FILTER==='members'?'active':''}" onclick="setGroupProfilesFilter('members')">${getUiLang()==="fr"?`${withMembers} avec membres`:`${withMembers} with members`}</span>` : "",
+      q ? `<span class="user-chip">${t("visible_count",{n:filtered.length})}</span>` : "",
     ].filter(Boolean).join("");
   }
 
@@ -4471,14 +5384,14 @@ function renderGroupProfilesList(){
           <summary>
             <div class="group-head">
               <div class="group-name">${escapeHtml(g.name||"?")}</div>
-              <div class="group-sub">${escapeHtml(sub.join(" • ") || "Cliquer pour voir le détail")}</div>
+              <div class="group-sub">${escapeHtml(sub.join(" • ") || t("click_for_details"))}</div>
             </div>
             <div class="group-badges">${badges}</div>
           </summary>
-          <div class="group-meta">${lines.join("") || '<div class="group-line">Aucun renseignement complémentaire.</div>'}</div>
+          <div class="group-meta">${lines.join("") || `<div class="group-line">${t("no_extra_info")}</div>`}</div>
         </details>`;
       }).join("") + `</div>`
-    : '<div class="res-find-empty">Aucun groupe ne correspond à ce filtre.</div>';
+    : `<div class="res-find-empty">${t("no_matching_group")}</div>`;
 }
 
 function machineBadges(m){
@@ -4603,13 +5516,13 @@ function tryAutoFillConfig(line) {
 
   // Notification si un champ a été rempli
   if(domSet && dcSet) {
-    toast(`Domaine + DC détectés automatiquement`, "ok");
+    toast(t("domain_dc_auto"), "ok");
     buildModules(); loadResultsSummary();
   } else if(domSet) {
-    toast(`Domaine détecté : ${domEl.value}`, "ok");
+    toast(t("domain_detected",{domain:domEl.value}), "ok");
     buildModules(); loadResultsSummary();
   } else if(dcSet) {
-    toast(`DC détecté : ${dcEl.value}`, "ok");
+    toast(t("dc_detected",{dc:dcEl.value}), "ok");
   }
 
   if(domSet || dcSet) {
@@ -4654,7 +5567,7 @@ function applySessionReset(payload){
   sessionStats = {total:0, ok:0, err:0, dur:0};
   updateResultStats();
   clearConsole();
-  document.getElementById("console-status").textContent = "shell arrêté";
+  document.getElementById("console-status").textContent = t("console_stopped");
   const viewer = document.getElementById("file-viewer");
   if(viewer){ viewer.textContent = ""; viewer.style.display = "none"; }
   const htmlView = document.getElementById("file-html");
@@ -4664,7 +5577,7 @@ function applySessionReset(payload){
   const insights = document.getElementById("file-insights-list");
   if(insights) insights.innerHTML = "";
   const fileTree = document.getElementById("file-tree");
-  if(fileTree) fileTree.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:11px">Lance des scans pour générer du loot.</div>';
+  if(fileTree) fileTree.innerHTML = `<div style="padding:16px;color:var(--text3);font-size:11px">${t("scans_generate_loot")}</div>`;
   const lootSearch = document.getElementById("loot-global-search");
   if(lootSearch) lootSearch.value = "";
   document.getElementById("loot-path").textContent = "loot/";
@@ -4681,17 +5594,18 @@ function applySessionReset(payload){
   loadTimeline();
   wsSend("list_history",{});
   switchView("modules", document.getElementById("nav-modules"));
-  tl('<span class="tc-ok">[+] Session réinitialisée — prêt pour une autre box</span>');
+  tl(`<span class="tc-ok">${t("session_reset_term")}</span>`);
   if(deletedLoot && deletedDomain && deletedResponderLogs){
-    toast(`Reset OK — loot ${deletedDomain} + logs Responder supprimés`,"ok");
+    toast(t("session_reset_loot_logs",{domain:deletedDomain}),"ok");
   } else if(deletedLoot && deletedDomain) {
-    toast(`Reset OK — loot ${deletedDomain} supprimé`,"ok");
+    toast(t("session_reset_loot",{domain:deletedDomain}),"ok");
   } else {
-    toast("Reset OK — nouvelle box","ok");
+    toast(t("session_reset_done"),"ok");
   }
 }
 function applyConfig(cfg){
   if(!cfg) return;
+  if(cfg.ui_language != null) document.getElementById("inp-lang").value=cfg.ui_language;
   if(cfg.target_type != null) document.getElementById("inp-type").value=cfg.target_type;
   if(cfg.challenge_kind != null) document.getElementById("inp-chkind").value=cfg.challenge_kind;
   if(cfg.challenge_path != null) document.getElementById("inp-chpath").value=cfg.challenge_path;
@@ -4708,15 +5622,16 @@ function applyConfig(cfg){
   if(cfg.web_port != null) document.getElementById("inp-web-port").value=cfg.web_port||"80";
   if(cfg.ssh_port != null) document.getElementById("inp-ssh-port").value=cfg.ssh_port||"22";
   if(cfg.notes != null) document.getElementById("inp-notes").value=cfg.notes;
+  applyI18n();
   updateDom();
   buildModules();
-  updateContextSuggestion(getTargetType(), "configuration chargée", "config", 0.45, 0);
+  updateContextSuggestion(getTargetType(), t("config_loaded_reason"), "config", 0.45, 0);
   loadResultsSummary();
   ping();
   if(wsReady && !consoleReady) startConsoleShell();
 }
 function updateDom(){
-  const d=document.getElementById("inp-dom").value||"non configuré";
+  const d=document.getElementById("inp-dom").value||t("not_configured");
   const type = getTargetType();
   const chKind = getChallengeKind();
   const chPath = document.getElementById("inp-chpath").value.trim();
@@ -4724,7 +5639,7 @@ function updateDom(){
     ? `challenge/${chKind}${chPath ? " · " + chPath.split("/").pop() : ""}`
     : d;
   const dc=document.getElementById("inp-dc");
-  if(!dc.value&&d!=="non configuré") dc.value="DC01."+d;
+  if(!dc.value && d !== t("not_configured")) dc.value="DC01."+d;
 }
 
 function defaultPresetForType(type) {
@@ -4736,10 +5651,10 @@ function renderWizardCards() {
   grid.innerHTML = Object.entries(ATTACK_PRESETS).map(([key, preset]) => `
     <div class="wiz-card ${_wizardPreset===key?"active":""}" onclick="pickWizardPreset('${key}')">
       <div class="wiz-card-top">
-        <div class="wiz-card-title">${escapeHtml(preset.label)}</div>
+        <div class="wiz-card-title">${escapeHtml(getPresetLabel(key, preset))}</div>
         <span class="wiz-card-type">${escapeHtml(preset.target_type)}</span>
       </div>
-      <div class="wiz-card-desc">${escapeHtml(preset.desc)}</div>
+      <div class="wiz-card-desc">${escapeHtml(getPresetDesc(key, preset))}</div>
       <div class="wiz-card-tools">${preset.tools.length} outils · ${escapeHtml(preset.tools.join(" • "))}</div>
     </div>
   `).join("");
@@ -4749,9 +5664,9 @@ function updateWizardSummary() {
   const summary = document.getElementById("wizard-summary");
   if(!summary) return;
   summary.innerHTML = [
-    `<span class="wiz-pill"><b>cible</b> ${escapeHtml(cfg.target || "non definie")}</span>`,
-    `<span class="wiz-pill"><b>domaine</b> ${escapeHtml(cfg.domain || "non defini")}</span>`,
-    `<span class="wiz-pill"><b>type</b> ${escapeHtml(cfg.target_type || "windows")}</span>`,
+    `<span class="wiz-pill"><b>${getUiLang()==="fr"?"cible":"target"}</b> ${escapeHtml(cfg.target || (getUiLang()==="fr"?"non definie":"not set"))}</span>`,
+    `<span class="wiz-pill"><b>${getUiLang()==="fr"?"domaine":"domain"}</b> ${escapeHtml(cfg.domain || (getUiLang()==="fr"?"non defini":"not set"))}</span>`,
+    `<span class="wiz-pill"><b>${getUiLang()==="fr"?"type":"type"}</b> ${escapeHtml(cfg.target_type || "windows")}</span>`,
     `<span class="wiz-pill"><b>challenge</b> ${escapeHtml(cfg.challenge_kind || "web")}</span>`,
     `<span class="wiz-pill"><b>auth</b> ${escapeHtml(getAuthMode(cfg))}</span>`,
   ].join("");
@@ -4844,7 +5759,7 @@ function applyModal(){
   document.getElementById("inp-notes").value=document.getElementById("m-notes").value;
   updateDom(); buildModules(); closeModal();
   saveConfig();
-  toast("Identifiants appliqués et sauvegardés","ok"); ping();
+  toast(t("creds_applied_saved"),"ok"); ping();
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -4856,27 +5771,27 @@ let aiBuffer = "";
 function initAiKey() { /* clé chargée via applyConfig → load_config au démarrage */ }
 
 function startAiAnalysis() {
-  if(!wsReady){toast("Backend non connecté","err");return;}
-  if(aiAnalyzing){toast("Analyse déjà en cours…","err");return;}
+  if(!wsReady){toast(t("backend_not_connected"),"err");return;}
+  if(aiAnalyzing){toast(t("ai_already_running"),"err");return;}
 
   const apiKey = document.getElementById("ai-api-key").value.trim();
   if(!apiKey){
-    toast("Renseigne ta clé API Claude","err");
+    toast(t("configure_claude_key"),"err");
     document.getElementById("ai-api-key").focus();
     return;
   }
 
   const domain = document.getElementById("inp-dom").value.trim();
   if(!domain){
-    toast("Configure d'abord le domaine cible","err");
+    toast(t("configure_domain_first"),"err");
     return;
   }
 
   const subfolder = document.getElementById("ai-subfolder").value;
   document.getElementById("ai-output").innerHTML =
-    '<span style="color:var(--text3)">Lecture du loot…</span>';
+    `<span style="color:var(--text3)">${t("reading_loot")}</span>`;
   document.getElementById("ai-status").innerHTML =
-    '<span class="ai-spin">⟳</span> Envoi au modèle…';
+    `<span class="ai-spin">⟳</span> ${t("sending_model")}`;
 
   wsSend("ai_analyze", {api_key: apiKey, domain: domain, subfolder: subfolder});
 }
@@ -4979,7 +5894,7 @@ function renderHashes(data) {
   });
   _hashesAllText = allRaw;
   if(!html) {
-    main.innerHTML = '<div class="hash-empty">Aucun hash trouvé. Lance GetNPUsers, GetUserSPNs ou secretsdump.</div>';
+    main.innerHTML = `<div class="hash-empty">${t("no_hash")}</div>`;
     badge.style.display = "none";
   } else {
     main.innerHTML = html;
@@ -4988,15 +5903,15 @@ function renderHashes(data) {
   }
 }
 function copyAllHashes() {
-  if(!_hashesAllText) { toast("Aucun hash à copier","err"); return; }
+  if(!_hashesAllText) { toast(t("no_hash_copy"),"err"); return; }
   copyText(_hashesAllText);
-  toast("Hashes copiés","ok");
+  toast(t("hashes_copied"),"ok");
 }
 function copyText(text) {
-  navigator.clipboard?.writeText(text).then(()=>toast("Copié","ok"))
+  navigator.clipboard?.writeText(text).then(()=>toast(t("copied"),"ok"))
     .catch(()=>{ const ta=document.createElement("textarea");
       ta.value=text; document.body.appendChild(ta);
-      ta.select(); document.execCommand("copy"); ta.remove(); toast("Copié","ok"); });
+      ta.select(); document.execCommand("copy"); ta.remove(); toast(t("copied"),"ok"); });
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -5020,7 +5935,7 @@ function submitCred() {
   const pass  = document.getElementById("cred-inp-pass").value;
   const hash  = document.getElementById("cred-inp-hash").value.trim();
   const note  = document.getElementById("cred-inp-note").value.trim();
-  if(!user) { toast("Utilisateur requis","err"); return; }
+  if(!user) { toast(t("user_required"),"err"); return; }
   wsSend("save_cred", {
     domain: document.getElementById("inp-dom").value,
     cred: {user, pass, hash, note}
@@ -5035,7 +5950,7 @@ function useCredRow(user, pass, hash) {
   if(pass) document.getElementById("inp-pass").value = pass;
   if(hash) document.getElementById("inp-nt").value   = hash;
   saveConfig();
-  toast(`Credential appliqué : ${user}`,"ok");
+  toast(`${getUiLang()==="fr"?"Credential appliqué":"Credential applied"} : ${user}`,"ok");
 }
 function renderCreds(creds) {
   const list  = document.getElementById("creds-list");
@@ -5065,7 +5980,7 @@ function renderCreds(creds) {
       <div class="cred-btns">
         <button class="cred-btn use"
           onclick="useCredRow('${escapeHtml(c.user||'')}','${escapeHtml(c.pass||'')}','${escapeHtml(c.hash||'')}')">
-          Utiliser</button>
+          ${t("use")}</button>
         <button class="cred-btn del"
           onclick="deleteCred('${escapeHtml(c.id||'')}')">✕</button>
       </div>
@@ -5113,14 +6028,14 @@ function handleNmapPorts(ports) {
   const el = document.createElement("div");
   el.className = "toast-cred";
   el.innerHTML = `
-    <div class="tc-title">🗺 Ports détectés — modules auto-actives</div>
+    <div class="tc-title">${t("ports_detected")}</div>
     <div style="font-size:10px;color:var(--text2);margin:4px 0">
       ${[...recommendations.labels].map(label=>`<span style="color:var(--cyan)">${escapeHtml(label)}</span>`).join(" · ")}
     </div>
     <div class="tc-actions">
       <button class="btn-apply" onclick="openWizard();this.closest('.toast-cred').remove()">
-        Ouvrir le wizard</button>
-      <button onclick="this.closest('.toast-cred').remove()">Ignorer</button>
+        ${t("open_wizard")}</button>
+      <button onclick="this.closest('.toast-cred').remove()">${t("ignore")}</button>
     </div>`;
   container.appendChild(el);
   setTimeout(()=>el.remove(), 30000);

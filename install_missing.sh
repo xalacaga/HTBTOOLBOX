@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installe les 6 modules souvent absents : mongosh, mongodump, sshpass, rustscan, foremost, checksec
+# Installe les modules souvent absents : mongosh, mongodump, sshpass, rustscan, foremost, checksec, cargo
 # Utilise les helpers de install.sh (ensure_rustscan, ensure_mongosh, ensure_mongodb_tools, install_deb_from_url)
 set -euo pipefail
 
@@ -44,7 +44,7 @@ install_deb_from_url() {
 run_priv apt-get update
 
 # APT-available
-for pair in "sshpass sshpass" "foremost foremost" "checksec checksec"; do
+for pair in "sshpass sshpass" "foremost foremost" "checksec checksec" "cargo cargo"; do
   bin="${pair% *}"; pkg="${pair#* }"
   if have "$bin"; then good "$bin déjà présent"; continue; fi
   log "apt install $pkg"
@@ -83,6 +83,6 @@ fi
 
 echo
 good "Résumé :"
-for b in sshpass foremost checksec rustscan mongosh mongodump; do
+for b in sshpass foremost checksec cargo rustscan mongosh mongodump; do
   if have "$b"; then printf '  ok    %s\n' "$b"; else printf '  MANQUE %s\n' "$b"; fi
 done
