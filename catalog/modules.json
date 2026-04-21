@@ -28,13 +28,6 @@
       "description": "Combine host, service and web surface auditing",
       "title_en": "Hybrid",
       "description_en": "Combined host, service, and web surface auditing"
-    },
-    {
-      "id": "challenge",
-      "title": "Challenge",
-      "description": "HTB Academy / CTF challenge workflow: web, pwn, reverse, crypto, forensics",
-      "title_en": "Challenge",
-      "description_en": "HTB Academy / CTF challenge workflow: web, pwn, reverse, crypto, forensics"
     }
   ],
   "groups": [
@@ -820,89 +813,6 @@
         }
       ],
       "title_en": "Web Surface"
-    },
-    {
-      "id": "challenge",
-      "icon": "🧩",
-      "title": "HTB Challenges",
-      "target_types": [
-        "challenge"
-      ],
-      "tools": [
-        {
-          "id": "challenge_file_info",
-          "label": "<b>file</b> + hash + stat",
-          "source": "native",
-          "desc": "Triage initial local d'un challenge: type de fichier, taille, permissions, hash et inventaire rapide du contenu.",
-          "label_en": "<b>file</b> + hash + stat",
-          "desc_en": "Performs quick local triage on a challenge artifact: file type, size, permissions, hash, and content inventory."
-        },
-        {
-          "id": "challenge_archive_inventory",
-          "label": "<b>archive</b> inventory",
-          "source": "native",
-          "desc": "Liste le contenu d'une archive ou d'un dossier de challenge pour voir immédiatement ce qui mérite d'être ouvert ou décompressé.",
-          "label_en": "<b>archive</b> inventory",
-          "desc_en": "Lists the contents of a challenge archive or folder to see what deserves immediate attention."
-        },
-        {
-          "id": "challenge_strings",
-          "label": "<b>strings</b> quick triage",
-          "source": "native",
-          "desc": "Extrait rapidement les chaînes utiles d'un binaire, d'un dump ou d'un fichier obfusqué pour identifier flags, URLs, fonctions ou constantes.",
-          "label_en": "<b>strings</b> quick triage",
-          "desc_en": "Extracts useful strings from a binary, dump, or obfuscated file to surface flags, URLs, symbols, and constants."
-        },
-        {
-          "id": "challenge_exif",
-          "label": "<b>exiftool</b> metadata",
-          "source": "native",
-          "desc": "Affiche les métadonnées riches d'un artefact: image, document, audio, PDF. Très utile pour forensics, stego et osint.",
-          "label_en": "<b>exiftool</b> metadata",
-          "desc_en": "Shows rich metadata from images, documents, audio, and PDFs. Useful for forensics, stego, and OSINT."
-        },
-        {
-          "id": "challenge_binwalk",
-          "label": "<b>binwalk</b> embedded data",
-          "source": "native",
-          "desc": "Recherche des signatures embarquées et segments compressés dans un fichier: firmware, image, archive cachée, payload concaténé.",
-          "label_en": "<b>binwalk</b> embedded data",
-          "desc_en": "Searches for embedded signatures and compressed segments inside a file such as firmware images or hidden archives."
-        },
-        {
-          "id": "challenge_checksec",
-          "label": "<b>checksec</b> hardening quick look",
-          "source": "native",
-          "desc": "Donne immédiatement les protections ELF d'un binaire pwn/reverse: PIE, NX, RELRO, canary. Permet d'orienter la stratégie d'exploitation.",
-          "label_en": "<b>checksec</b> hardening quick look",
-          "desc_en": "Quickly reports ELF mitigations such as PIE, NX, RELRO, and stack canary for pwn and reverse tasks."
-        },
-        {
-          "id": "challenge_readelf",
-          "label": "<b>readelf</b> headers + symbols",
-          "source": "native",
-          "desc": "Affiche les en-têtes ELF, sections et symboles pour un premier travail pwn/reverse sans ouvrir tout de suite Ghidra ou Cutter.",
-          "label_en": "<b>readelf</b> headers + symbols",
-          "desc_en": "Shows ELF headers, sections, and symbols for first-pass binary analysis without opening a heavy GUI tool."
-        },
-        {
-          "id": "challenge_foremost",
-          "label": "<b>foremost</b> carving",
-          "source": "native",
-          "desc": "Découpe les artefacts connus depuis un dump ou un fichier brut: images, documents, archives. Très utile en forensics.",
-          "label_en": "<b>foremost</b> carving",
-          "desc_en": "Carves common artifact types from a dump or raw file, which is especially useful in forensics challenges."
-        },
-        {
-          "id": "challenge_http_probe",
-          "label": "<b>HTTP probe</b> curl + whatweb",
-          "source": "native",
-          "desc": "Probe rapide d'une URL ou d'un host de challenge web: headers, body, redirections et techno via whatweb.",
-          "label_en": "<b>HTTP probe</b> curl + whatweb",
-          "desc_en": "Performs a fast HTTP probe on a challenge URL or host with curl and whatweb."
-        }
-      ],
-      "title_en": "HTB Challenges"
     },
     {
       "id": "sql",

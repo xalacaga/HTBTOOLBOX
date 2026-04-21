@@ -51,16 +51,24 @@ for pair in "sshpass sshpass" "foremost foremost" "checksec checksec" "cargo car
   apt_install "$pkg" || warn "$pkg : échec"
 done
 
-# rustscan : GitHub release
+# rustscan : cargo
 if have rustscan; then
   good "rustscan déjà présent"
 else
-  log "rustscan via GitHub release (bee-san/RustScan)"
-  TAG="$(curl -fsSL https://api.github.com/repos/bee-san/RustScan/releases/latest 2>/dev/null | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -1 | cut -d'"' -f4)"
-  [[ -z "$TAG" ]] && TAG="2.3.0"
-  VER="${TAG#v}"
-  install_deb_from_url rustscan "https://github.com/bee-san/RustScan/releases/download/${TAG}/rustscan_${VER}_amd64.deb" || \
-    warn "rustscan : fallback cargo recommandé (cargo install rustscan)"
+  if ! have cargo; then
+    log "apt install cargo"
+    apt_install cargo || warn "cargo : échec"
+  fi
+  if have cargo; then
+    log "rustscan via cargo install rustscan"
+    cargo install rustscan || warn "rustscan via cargo : échec"
+    hash -r 2>/dev/null || true
+  fi
+  if ! have rustscan && [[ -x "$HOME/.cargo/bin/rustscan" ]]; then
+    good "rustscan installé dans $HOME/.cargo/bin/rustscan"
+  elif ! have rustscan; then
+    warn "rustscan toujours absent"
+  fi
 fi
 
 # mongosh : MongoDB CDN

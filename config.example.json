@@ -1,8 +1,6 @@
 {
   "target_type": "windows",
   "op_mode": "safe",
-  "challenge_kind": "web",
-  "challenge_path": "",
   "target": "",
   "domain": "",
   "dc": "",

@@ -200,15 +200,24 @@ install_deb_from_url() {
 
 ensure_rustscan() {
   if have rustscan; then good "rustscan déjà présent"; return 0; fi
-  if apt_install rustscan 2>/dev/null; then return 0; fi
-  warn "rustscan absent d'apt — fallback GitHub release"
-  local tag url
-  tag="$(curl -fsSL https://api.github.com/repos/bee-san/RustScan/releases/latest 2>/dev/null | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -1 | cut -d'"' -f4)"
-  [[ -z "$tag" ]] && tag="2.3.0"
-  local ver="${tag#v}"
-  url="https://github.com/bee-san/RustScan/releases/download/${tag}/rustscan_${ver}_amd64.deb"
-  install_deb_from_url rustscan "$url" || {
-    warn "Essaie via cargo : cargo install rustscan (nécessite rust)"
+  if ! have cargo; then
+    warn "cargo manquant — tentative d'installation via apt"
+    apt_install cargo || true
+    hash -r 2>/dev/null || true
+  fi
+  if have cargo; then
+    log "Installation de rustscan via cargo"
+    if cargo install rustscan; then
+      hash -r 2>/dev/null || true
+      if have rustscan || have "$HOME/.cargo/bin/rustscan"; then
+        good "rustscan installé via cargo"
+        return 0
+      fi
+    fi
+  fi
+  warn "Installation cargo de rustscan échouée — tentative via apt"
+  apt_install rustscan 2>/dev/null || {
+    warn "Impossible d'installer rustscan automatiquement"
     return 1
   }
 }

@@ -75,14 +75,24 @@ TOOLS_TO_CHECK = {
 SAFE_OUTPUT_RE = re.compile(r"[^A-Za-z0-9._-]+")
 ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 MAX_CAPTURE_CHARS = 200000
+AUTO_ANALYZE_MAX_FILES = 80
+AUTO_ANALYZE_FILE_READ = 12000
+AUTO_ANALYZE_PREVIEW = 5000
+AUTO_ANALYZE_TEXT_SUFFIXES = {
+    ".txt", ".log", ".json", ".csv", ".tsv", ".xml", ".html", ".md",
+    ".ini", ".conf", ".cfg", ".yaml", ".yml", ".lst",
+}
+AUTO_ANALYZE_SKIP_SUFFIXES = {
+    ".zip", ".7z", ".rar", ".gz", ".xz", ".tar", ".tgz", ".bz2",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf",
+    ".exe", ".dll", ".so", ".bin", ".pyc",
+}
 
 
 CONFIG_PERSIST_KEYS = (
     "ui_language",
     "target_type",
     "op_mode",
-    "challenge_kind",
-    "challenge_path",
     "target",
     "domain",
     "dc",
@@ -99,8 +109,6 @@ def default_config() -> dict:
         "ui_language": "fr",
         "target_type": "windows",
         "op_mode": "safe",
-        "challenge_kind": "web",
-        "challenge_path": "",
         "target": "",
         "domain": "",
         "dc": "",
@@ -2518,6 +2526,23 @@ def _parse_ntp_offset(text: str) -> float | None:
         return float(m.group(1))
     return None
 
+
+async def query_ntp_offset(target: str, timeout: float = 8) -> tuple[float | None, str]:
+    ntpbin = shutil.which("ntpdate") or shutil.which("ntpdate-debian")
+    if not ntpbin or not target:
+        return None, ""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            ntpbin, "-q", target,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        text = out.decode("utf-8", errors="replace")
+        return _parse_ntp_offset(text), text
+    except Exception:
+        return None, ""
+
 def summarize_domain_results(domain: str) -> dict:
     out_dir = get_output_dir(domain)
     summary = {
@@ -2541,6 +2566,7 @@ def summarize_domain_results(domain: str) -> dict:
         "operational": {},
         "contexts": [],
         "layout": {"contexts": [], "sections": {}, "stats": {}},
+        "loot_analysis": {},
     }
     if not out_dir.exists():
         return summary
@@ -2548,6 +2574,18 @@ def summarize_domain_results(domain: str) -> dict:
     parsed_dir = out_dir / "parsed"
     parsed_files = sorted(parsed_dir.glob("*.json")) if parsed_dir.exists() else []
     summary["parsed_count"] = len(parsed_files)
+    loot_analysis_fp = parsed_dir / "loot_auto_analysis.json"
+    if loot_analysis_fp.exists():
+        try:
+            loot_analysis = json.loads(loot_analysis_fp.read_text())
+            summary["loot_analysis"] = {
+                "updated_at": loot_analysis.get("updated_at"),
+                "source_files": int(loot_analysis.get("source_files", 0) or 0),
+                "interesting_files": int(loot_analysis.get("interesting_files", 0) or 0),
+                "artifacts": len(loot_analysis.get("artifacts", []) or []),
+            }
+        except Exception:
+            pass
 
     interesting: list[str] = []
     auth_modes: list[str] = []
@@ -2767,6 +2805,144 @@ def extract_findings(output: str) -> dict:
         "errors": errors,
     }
 
+
+def _should_auto_analyze_file(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    if "parsed" in path.parts:
+        return False
+    suffix = path.suffix.lower()
+    if suffix in AUTO_ANALYZE_SKIP_SUFFIXES:
+        return False
+    if suffix in AUTO_ANALYZE_TEXT_SUFFIXES:
+        return True
+    return suffix == "" and path.parent.name != "downloads"
+
+
+def analyze_loot_artifacts(domain: str) -> dict:
+    out_dir = get_output_dir(domain)
+    analysis = {
+        "domain": domain,
+        "updated_at": time.time(),
+        "source_files": 0,
+        "interesting_files": 0,
+        "path": "",
+    }
+    if not out_dir.exists():
+        return analysis
+
+    sync_external_loot_artifacts(out_dir)
+    parsed_dir = out_dir / "parsed"
+    history_dir = parsed_dir / "runs"
+    parsed_dir.mkdir(parents=True, exist_ok=True)
+    history_dir.mkdir(exist_ok=True)
+
+    aggregate = {
+        "asrep_hashes": 0,
+        "kerberoast_hashes": 0,
+        "ntlm_hashes": 0,
+        "smb_signing_disabled": False,
+        "smb_signing_required": False,
+        "winrm_open": False,
+        "adcs_esc": set(),
+        "errors": [],
+    }
+    preview_chunks: list[str] = []
+    artifacts: list[str] = []
+
+    candidates = sorted(
+        (f for f in out_dir.rglob("*") if _should_auto_analyze_file(f) and f.stat().st_size > 0),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    for fp in candidates[:AUTO_ANALYZE_MAX_FILES]:
+        rel = str(fp.relative_to(LOOT_DIR))
+        text = safe_read_text(fp, AUTO_ANALYZE_FILE_READ).strip()
+        if not text:
+            continue
+        findings = extract_findings(text)
+        aggregate["asrep_hashes"] += int(findings.get("asrep_hashes", 0) or 0)
+        aggregate["kerberoast_hashes"] += int(findings.get("kerberoast_hashes", 0) or 0)
+        aggregate["ntlm_hashes"] += int(findings.get("ntlm_hashes", 0) or 0)
+        aggregate["smb_signing_disabled"] = aggregate["smb_signing_disabled"] or bool(findings.get("smb_signing_disabled"))
+        aggregate["smb_signing_required"] = aggregate["smb_signing_required"] or bool(findings.get("smb_signing_required"))
+        aggregate["winrm_open"] = aggregate["winrm_open"] or bool(findings.get("winrm_open"))
+        aggregate["adcs_esc"].update(str(v) for v in (findings.get("adcs_esc") or []))
+        for err in findings.get("errors", []) or []:
+            if err not in aggregate["errors"]:
+                aggregate["errors"].append(err)
+
+        noteworthy = (
+            findings.get("asrep_hashes")
+            or findings.get("kerberoast_hashes")
+            or findings.get("ntlm_hashes")
+            or findings.get("smb_signing_disabled")
+            or findings.get("winrm_open")
+            or (findings.get("adcs_esc") or [])
+            or (findings.get("errors") or [])
+        )
+        if noteworthy:
+            analysis["interesting_files"] += 1
+            if len(preview_chunks) < 8:
+                preview_chunks.append(f"[{rel}]\n{text[:AUTO_ANALYZE_PREVIEW]}")
+
+        artifacts.append(rel)
+
+    analysis["source_files"] = len(artifacts)
+    result = {
+        "tool_id": "loot_auto_analysis",
+        "target": "",
+        "target_type": "",
+        "domain": domain,
+        "dc": "",
+        "user": "",
+        "auth_mode": "auto",
+        "start": analysis["updated_at"],
+        "duration": 0,
+        "rc": 0,
+        "status": "ok",
+        "source_files": analysis["source_files"],
+        "interesting_files": analysis["interesting_files"],
+        "findings": {
+            "asrep_hashes": aggregate["asrep_hashes"],
+            "kerberoast_hashes": aggregate["kerberoast_hashes"],
+            "ntlm_hashes": aggregate["ntlm_hashes"],
+            "smb_signing_disabled": aggregate["smb_signing_disabled"],
+            "smb_signing_required": aggregate["smb_signing_required"],
+            "winrm_open": aggregate["winrm_open"],
+            "adcs_esc": sorted(aggregate["adcs_esc"]),
+            "errors": aggregate["errors"][:20],
+        },
+        "artifacts": artifacts[:200],
+        "output_preview": "\n\n".join(preview_chunks)[:MAX_CAPTURE_CHARS],
+        "updated_at": analysis["updated_at"],
+    }
+
+    latest_path = parsed_dir / "loot_auto_analysis.json"
+    ts = datetime.fromtimestamp(analysis["updated_at"]).strftime("%Y%m%d_%H%M%S")
+    history_path = history_dir / f"{ts}_loot_auto_analysis.json"
+    latest_path.write_text(json.dumps(result, indent=2))
+    history_path.write_text(json.dumps(result, indent=2))
+    analysis["path"] = str(latest_path.relative_to(LOOT_DIR))
+    return analysis
+
+
+def list_loot_files(domain: str) -> list[dict]:
+    files = []
+    if not domain:
+        return files
+    base = get_output_dir(domain)
+    sync_external_loot_artifacts(base)
+    if base.exists():
+        for f in sorted(base.rglob("*")):
+            if f.is_file() and f.stat().st_size > 0:
+                files.append({
+                    "path": str(f.relative_to(LOOT_DIR)),
+                    "size": f.stat().st_size,
+                    "mtime": f.stat().st_mtime,
+                })
+    return files
+
 def collect_recent_artifacts(out_dir: Path, start_time: float) -> list[str]:
     artifacts = []
     for f in sorted(out_dir.rglob("*")):
@@ -2881,8 +3057,6 @@ def persist_run_manifest(cfg: dict, manifest: dict) -> Path:
     payload = {
         "target": cfg.get("target", ""),
         "target_type": cfg.get("target_type", ""),
-        "challenge_kind": cfg.get("challenge_kind", ""),
-        "challenge_path": cfg.get("challenge_path", ""),
         "domain": cfg.get("domain", ""),
         "dc": cfg.get("dc", ""),
         "auth_mode": "ccache" if cfg.get("ccache") else "nt_hash" if cfg.get("nt_hash") else "password" if cfg.get("password") else "anonymous",
@@ -2931,7 +3105,7 @@ def shell_assign(name: str, value: str) -> str:
 
 def normalize_cfg(cfg: dict) -> dict:
     cleaned = {}
-    for key in ("ui_language", "target", "user", "password", "sudo_password", "domain", "dc", "nt_hash", "ccache", "target_type", "op_mode", "challenge_kind", "challenge_path"):
+    for key in ("ui_language", "target", "user", "password", "sudo_password", "domain", "dc", "nt_hash", "ccache", "target_type", "op_mode"):
         val = cfg.get(key, "")
         if val is None:
             val = ""
@@ -2941,10 +3115,8 @@ def normalize_cfg(cfg: dict) -> dict:
             val = str(val)
         cleaned[key] = val
     cleaned["ui_language"] = cleaned["ui_language"] if cleaned["ui_language"] in {"fr", "en"} else "fr"
-    cleaned["target_type"] = cleaned["target_type"] if cleaned["target_type"] in {"windows", "linux", "web", "hybrid", "challenge"} else "windows"
+    cleaned["target_type"] = cleaned["target_type"] if cleaned["target_type"] in {"windows", "linux", "web", "hybrid"} else "windows"
     cleaned["op_mode"] = cleaned["op_mode"] if cleaned["op_mode"] in {"safe", "htb", "enterprise"} else "safe"
-    cleaned["challenge_kind"] = cleaned["challenge_kind"] if cleaned["challenge_kind"] in {"web", "pwn", "reverse", "crypto", "forensics", "osint", "misc"} else "web"
-    cleaned["challenge_path"] = cleaned["challenge_path"][:400]
     # Ports
     wp = str(cfg.get("web_port", "") or "").strip()
     cleaned["web_port"] = wp if (wp.isdigit() and 1 <= int(wp) <= 65535) else "80"
@@ -3012,8 +3184,6 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
     dc = cfg.get("dc", f"DC01.{d}" if d else "")
     nt = cfg.get("nt_hash","")
     cc = cfg.get("ccache","")
-    challenge_kind = cfg.get("challenge_kind", "web")
-    challenge_path = cfg.get("challenge_path", "")
     out = str(get_output_dir(d))
     dn  = ",".join(f"DC={x}" for x in d.split(".")) if d else ""
     nxc = get_nxc()
@@ -3022,7 +3192,6 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
     qt, qu, qp = shell_quote(t), shell_quote(u), shell_quote(p)
     qd, qdc, qnt = shell_quote(d), shell_quote(dc), shell_quote(nt)
     qcc, qout, qdn = shell_quote(cc), shell_quote(out), shell_quote(dn)
-    qcp = shell_quote(challenge_path)
     qscript = shell_quote(str(SCRIPT_PATH))
     # Web URL with configurable port
     if wp in ("443","8443"):
@@ -3032,8 +3201,6 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
     else:
         web_url = f"http://{t}:{wp}"
     qweb_url = shell_quote(web_url)
-    challenge_ref = challenge_path or t
-    qchallenge_ref = shell_quote(challenge_ref)
     # SSH helper — runs cmd on target via SSH (sshpass if password available)
     def ssh_run(cmd: str, out_file: str = "") -> str:
         redir = f" 2>&1 | tee {shell_quote(out_file)}" if out_file else " 2>&1"
@@ -3127,7 +3294,7 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
 
         "rustscan_fast": ["bash","-c",
             f"mkdir -p {qout}; "
-            f"command -v rustscan >/dev/null || {{ echo '[!] rustscan manquant. Installe : cargo install rustscan OR apt install rustscan'; echo '[*] Fallback sur nmap -F (top 100 ports)...'; nmap -F -Pn {qt} -oN {qout}/rustscan_fallback.txt 2>&1; exit 0; }}; "
+            f"command -v rustscan >/dev/null || {{ echo '[!] rustscan manquant. Installe : cargo install rustscan'; echo '[*] Ou relance ./install.sh ou ./install_missing.sh'; echo '[*] Fallback sur nmap -F (top 100 ports)...'; nmap -F -Pn {qt} -oN {qout}/rustscan_fallback.txt 2>&1; exit 0; }}; "
             f"echo '[*] rustscan full sweep 65535 ports → target ' {qt}; "
             f"rustscan -a {qt} --ulimit 5000 --range 1-65535 --accessible --greppable 2>&1 | tee {qout}/rustscan.txt | head -60; "
             f"echo ''; echo '[+] Ports ouverts sauvegardés dans {out}/rustscan.txt'"
@@ -3902,94 +4069,6 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"| tee {qout}/attack_checks/sqlmap_crawl.txt | head -200"
         ] if t else None,
 
-        # ── HTB Challenge / CTF local workflow ───────────────────────────
-        "challenge_file_info": ["bash","-c",
-            f"mkdir -p {qout}/challenge; "
-            f"if [ -z {qcp} ]; then echo '[!] challenge_path requis'; exit 1; fi; "
-            f"echo '=== kind: {challenge_kind} ===' | tee {qout}/challenge/file_info.txt; "
-            f"if [ -e {qcp} ]; then "
-            f"  file {qcp} 2>&1 | tee -a {qout}/challenge/file_info.txt; "
-            f"  echo '' | tee -a {qout}/challenge/file_info.txt; "
-            f"  stat {qcp} 2>&1 | tee -a {qout}/challenge/file_info.txt; "
-            f"  if [ -f {qcp} ]; then echo '' | tee -a {qout}/challenge/file_info.txt; sha256sum {qcp} 2>&1 | tee -a {qout}/challenge/file_info.txt; fi; "
-            f"  if [ -d {qcp} ]; then echo '' | tee -a {qout}/challenge/file_info.txt; find {qcp} -maxdepth 2 -type f | sort | head -200 | tee -a {qout}/challenge/file_info.txt; fi; "
-            f"else echo '[!] chemin introuvable: ' {qcp} | tee -a {qout}/challenge/file_info.txt; exit 1; fi"
-        ] if challenge_path else None,
-
-        "challenge_archive_inventory": ["bash","-c",
-            f"mkdir -p {qout}/challenge; "
-            f"if [ -z {qcp} ]; then echo '[!] challenge_path requis'; exit 1; fi; "
-            f"echo '=== INVENTAIRE ===' | tee {qout}/challenge/archive_inventory.txt; "
-            f"if [ -d {qcp} ]; then find {qcp} -maxdepth 3 -type f | sort | tee -a {qout}/challenge/archive_inventory.txt; "
-            f"elif command -v bsdtar >/dev/null; then bsdtar -tf {qcp} 2>&1 | tee -a {qout}/challenge/archive_inventory.txt; "
-            f"elif command -v unzip >/dev/null; then unzip -l {qcp} 2>&1 | tee -a {qout}/challenge/archive_inventory.txt; "
-            f"elif command -v 7z >/dev/null; then 7z l {qcp} 2>&1 | tee -a {qout}/challenge/archive_inventory.txt; "
-            f"else echo '[!] bsdtar/unzip/7z absent'; fi"
-        ] if challenge_path else None,
-
-        "challenge_strings": ["bash","-c",
-            f"mkdir -p {qout}/challenge; "
-            f"command -v strings >/dev/null || {{ echo 'strings manquant'; exit 1; }}; "
-            f"if [ -z {qcp} ]; then echo '[!] challenge_path requis'; exit 1; fi; "
-            f"strings -a -n 6 {qcp} 2>&1 | tee {qout}/challenge/strings.txt | head -200"
-        ] if challenge_path else None,
-
-        "challenge_exif": ["bash","-c",
-            f"mkdir -p {qout}/challenge; "
-            f"command -v exiftool >/dev/null || {{ echo 'exiftool manquant'; exit 1; }}; "
-            f"if [ -z {qcp} ]; then echo '[!] challenge_path requis'; exit 1; fi; "
-            f"exiftool {qcp} 2>&1 | tee {qout}/challenge/exiftool.txt"
-        ] if challenge_path else None,
-
-        "challenge_binwalk": ["bash","-c",
-            f"mkdir -p {qout}/challenge; "
-            f"command -v binwalk >/dev/null || {{ echo 'binwalk manquant'; exit 1; }}; "
-            f"if [ -z {qcp} ]; then echo '[!] challenge_path requis'; exit 1; fi; "
-            f"binwalk {qcp} 2>&1 | tee {qout}/challenge/binwalk.txt"
-        ] if challenge_path else None,
-
-        "challenge_checksec": ["bash","-c",
-            f"mkdir -p {qout}/challenge; "
-            f"if [ -z {qcp} ]; then echo '[!] challenge_path requis'; exit 1; fi; "
-            f"if command -v checksec >/dev/null; then "
-            f"  checksec --file={qcp} 2>&1 | tee {qout}/challenge/checksec.txt; "
-            f"else "
-            f"  echo '[~] checksec absent, fallback readelf' | tee {qout}/challenge/checksec.txt; "
-            f"  readelf -h {qcp} 2>&1 | tee -a {qout}/challenge/checksec.txt; "
-            f"fi"
-        ] if challenge_path else None,
-
-        "challenge_readelf": ["bash","-c",
-            f"mkdir -p {qout}/challenge; "
-            f"command -v readelf >/dev/null || {{ echo 'readelf manquant'; exit 1; }}; "
-            f"if [ -z {qcp} ]; then echo '[!] challenge_path requis'; exit 1; fi; "
-            f"echo '=== ELF HEADERS ===' | tee {qout}/challenge/readelf.txt; "
-            f"readelf -h -l -S -W {qcp} 2>&1 | tee -a {qout}/challenge/readelf.txt; "
-            f"echo ''; echo '=== SYMBOLS ===' | tee -a {qout}/challenge/readelf.txt; "
-            f"readelf -sW {qcp} 2>&1 | tee -a {qout}/challenge/readelf.txt | tail -200"
-        ] if challenge_path else None,
-
-        "challenge_foremost": ["bash","-c",
-            f"mkdir -p {qout}/challenge; "
-            f"command -v foremost >/dev/null || {{ echo 'foremost manquant'; exit 1; }}; "
-            f"if [ -z {qcp} ]; then echo '[!] challenge_path requis'; exit 1; fi; "
-            f"rm -rf {qout}/challenge/foremost_out; "
-            f"foremost -i {qcp} -o {qout}/challenge/foremost_out 2>&1 | tee {qout}/challenge/foremost.txt; "
-            f"echo ''; echo '[+] Sortie carving: {out}/challenge/foremost_out'"
-        ] if challenge_path else None,
-
-        "challenge_http_probe": ["bash","-c",
-            f"mkdir -p {qout}/challenge; "
-            f"if [ -z {qchallenge_ref} ]; then echo '[!] URL ou cible challenge requise'; exit 1; fi; "
-            f"URL={qchallenge_ref}; "
-            f"case \"$URL\" in http://*|https://*) ;; *) URL=\"http://$URL\" ;; esac; "
-            f"echo '[*] Probe HTTP challenge sur' \"$URL\" | tee {qout}/challenge/http_probe.txt; "
-            f"curl -skI \"$URL\" 2>&1 | tee -a {qout}/challenge/http_probe.txt; "
-            f"echo '' | tee -a {qout}/challenge/http_probe.txt; "
-            f"curl -skL \"$URL\" 2>&1 | head -80 | tee -a {qout}/challenge/http_probe.txt; "
-            f"if command -v whatweb >/dev/null; then echo '' | tee -a {qout}/challenge/http_probe.txt; whatweb \"$URL\" 2>&1 | tee -a {qout}/challenge/http_probe.txt; fi"
-        ] if (challenge_path or t) else None,
-
         # ── Recon ────────────────────────────────────────────────────────
         "adfs_probe": ["bash","-c",
             f"mkdir -p {qout}/attack_checks; "
@@ -4619,6 +4698,27 @@ async def ws_endpoint(ws: WebSocket):
                     continue
                 active_run_tasks[tool_id] = asyncio.create_task(run_tool_job(tool_id, cfg))
 
+            elif action == "preview_tool":
+                tool_id = msg.get("tool_id","")
+                raw_cfg = msg.get("cfg",{}) if isinstance(msg.get("cfg",{}), dict) else {}
+                cfg     = normalize_cfg(raw_cfg)
+                sp      = str(raw_cfg.get("sudo_password","") or "")
+                cmd     = build_command(tool_id, cfg)
+                if cmd is None:
+                    await send("preview_result", {"tool_id": tool_id, "ok": False,
+                        "reason": "Commande indisponible (cible/paramètres manquants ?)"})
+                    continue
+                pw, nt = cfg.get("password",""), cfg.get("nt_hash","")
+                if len(cmd) >= 3 and cmd[0] in ("bash","sh") and cmd[1] == "-c":
+                    body = mask_text(cmd[2], pw, nt, sp)
+                    raw  = f"{cmd[0]} -c {shell_quote(body)}"
+                    summary = display_command(cmd, cfg, pw, nt, sp)
+                else:
+                    raw = mask_text(" ".join(cmd), pw, nt, sp)
+                    summary = raw
+                await send("preview_result", {"tool_id": tool_id, "ok": True,
+                    "command": raw, "summary": summary})
+
             elif action == "shell_start":
                 cfg = normalize_cfg(msg.get("cfg", {}))
                 await start_shell(cfg)
@@ -4687,8 +4787,6 @@ async def ws_endpoint(ws: WebSocket):
                 reset_cfg = {
                     "target_type": existing.get("target_type") or "windows",
                     "op_mode": existing.get("op_mode") or "safe",
-                    "challenge_kind": existing.get("challenge_kind") or "web",
-                    "challenge_path": "",
                     "target": "",
                     "domain": "",
                     "dc": "",
@@ -4750,19 +4848,7 @@ async def ws_endpoint(ws: WebSocket):
 
             elif action == "list_loot":
                 domain = normalize_cfg({"domain": msg.get("domain","")}).get("domain","")
-                files = []
-                if not domain:
-                    await send("loot_list", {"files": []})
-                    continue
-                base = get_output_dir(domain)
-                sync_external_loot_artifacts(base)
-                if base.exists():
-                    for f in sorted(base.rglob("*")):
-                        if f.is_file() and f.stat().st_size > 0:
-                            files.append({"path": str(f.relative_to(LOOT_DIR)),
-                                          "size": f.stat().st_size,
-                                          "mtime": f.stat().st_mtime})
-                await send("loot_list", {"files": files})
+                await send("loot_list", {"files": list_loot_files(domain)})
 
             elif action == "list_history":
                 await send("history_list", {"entries": list_history_entries()})
@@ -4778,6 +4864,48 @@ async def ws_endpoint(ws: WebSocket):
             elif action == "get_results_summary":
                 domain = normalize_cfg({"domain": msg.get("domain","")}).get("domain","")
                 await send("results_summary", summarize_domain_results(domain))
+
+            elif action == "reanalyze_loot":
+                domain = normalize_cfg({"domain": msg.get("domain","")}).get("domain","")
+                manual = bool(msg.get("manual"))
+                meta = analyze_loot_artifacts(domain)
+                await send("loot_reanalysis", {"ok": True, "manual": manual, **meta})
+                await send("results_summary", summarize_domain_results(domain))
+                await send("loot_list", {"files": list_loot_files(domain)})
+
+            elif action == "load_notes":
+                domain = normalize_cfg({"domain": msg.get("domain","")}).get("domain","")
+                if not domain:
+                    await send("notes_loaded", {"domain":"", "content":"", "saved_at": None})
+                    continue
+                notes_path = get_output_dir(domain) / "notes.md"
+                content = ""
+                saved_at = None
+                if notes_path.exists():
+                    try:
+                        content = notes_path.read_text(encoding="utf-8")
+                        saved_at = notes_path.stat().st_mtime
+                    except Exception:
+                        content = ""
+                await send("notes_loaded", {"domain": domain, "content": content, "saved_at": saved_at})
+
+            elif action == "save_notes":
+                domain = normalize_cfg({"domain": msg.get("domain","")}).get("domain","")
+                content = str(msg.get("content","") or "")
+                if len(content) > 200_000:
+                    await send("notes_saved", {"ok": False, "domain": domain, "error": "Notes trop longues (>200 Ko)"})
+                    continue
+                if not domain:
+                    await send("notes_saved", {"ok": False, "domain": "", "error": "Domaine manquant — saisis une cible dans la config."})
+                    continue
+                out_dir = get_output_dir(domain)
+                out_dir.mkdir(parents=True, exist_ok=True)
+                notes_path = out_dir / "notes.md"
+                try:
+                    notes_path.write_text(content, encoding="utf-8")
+                    await send("notes_saved", {"ok": True, "domain": domain, "saved_at": notes_path.stat().st_mtime})
+                except Exception as e:
+                    await send("notes_saved", {"ok": False, "domain": domain, "error": str(e)[:300]})
 
             elif action == "save_run_manifest":
                 cfg = normalize_cfg(msg.get("cfg", {}))
@@ -4893,32 +5021,20 @@ async def ws_endpoint(ws: WebSocket):
                 out_dir   = get_output_dir(domain) if domain else None
                 offset_sec: float | None = None
                 method = "unknown"
-                # 1. check loot file first
+                # 1. prefer a live NTP query so the clock widget reflects the current state.
+                if target_ip:
+                    offset_sec, _ = await query_ntp_offset(target_ip)
+                    if offset_sec is not None:
+                        method = "live"
+                # 2. fallback to the latest loot if live NTP is unavailable.
                 if out_dir:
                     ntp_f = out_dir / "attack_checks" / "ntp_sync.txt"
-                    if ntp_f.exists():
+                    if offset_sec is None and ntp_f.exists():
                         txt = safe_read_text(ntp_f, 4000)
                         _off = _parse_ntp_offset(txt)
                         if _off is not None:
                             offset_sec = _off
                             method = "loot"
-                # 2. live ntpdate -q query
-                if offset_sec is None and target_ip:
-                    try:
-                        ntpbin = shutil.which("ntpdate") or shutil.which("ntpdate-debian")
-                        if ntpbin:
-                            proc = await asyncio.create_subprocess_exec(
-                                ntpbin, "-q", target_ip,
-                                stdout=asyncio.subprocess.PIPE,
-                                stderr=asyncio.subprocess.STDOUT)
-                            out, _ = await asyncio.wait_for(proc.communicate(), timeout=8)
-                            txt = out.decode("utf-8", errors="replace")
-                            _off = _parse_ntp_offset(txt)
-                            if _off is not None:
-                                offset_sec = _off
-                                method = "live"
-                    except Exception:
-                        pass
                 import time as _time
                 local_ts = _time.time()
                 await send("target_time", {
@@ -4929,6 +5045,9 @@ async def ws_endpoint(ws: WebSocket):
 
             elif action == "ntp_sync_now":
                 target_ip = msg.get("target","").strip()
+                cfg = normalize_cfg(msg.get("cfg", {}))
+                sudo_password = cfg.get("sudo_password", "")
+                domain = cfg.get("domain", "")
                 if not target_ip:
                     await send("ntp_sync_result", {"ok": False, "error": "IP cible manquante"})
                     continue
@@ -4937,13 +5056,27 @@ async def ws_endpoint(ws: WebSocket):
                     await send("ntp_sync_result", {"ok": False, "error": "ntpdate introuvable"})
                     continue
                 try:
+                    cmd = ["sudo"]
+                    stdin_pipe = None
+                    input_data = None
+                    if sudo_password:
+                        cmd += ["-S", "-p", ""]
+                        stdin_pipe = asyncio.subprocess.PIPE
+                        input_data = f"{sudo_password}\n".encode()
+                    cmd += [ntpbin, "-u", target_ip]
                     proc = await asyncio.create_subprocess_exec(
-                        "sudo", ntpbin, "-u", target_ip,
+                        *cmd,
+                        stdin=stdin_pipe,
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.STDOUT)
-                    out, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+                    out, _ = await asyncio.wait_for(proc.communicate(input=input_data), timeout=15)
                     txt = out.decode("utf-8", errors="replace")
                     ok = proc.returncode == 0 or _parse_ntp_offset(txt) is not None
+                    if ok and domain:
+                        out_dir = get_output_dir(domain)
+                        out_dir.mkdir(parents=True, exist_ok=True)
+                        (out_dir / "attack_checks").mkdir(exist_ok=True)
+                        (out_dir / "attack_checks" / "ntp_sync.txt").write_text(txt[:4000])
                     await send("ntp_sync_result", {"ok": ok, "output": txt[:400],
                         "error": "" if ok else txt[:200]})
                 except asyncio.TimeoutError:

@@ -209,30 +209,6 @@
         "web"
       ],
       "title_en": "Hybrid"
-    },
-    "challenge": {
-      "title": "HTB Challenge",
-      "on": [
-        "challenge",
-        "web"
-      ],
-      "off": [
-        "recon",
-        "smb",
-        "ldap",
-        "kerberos",
-        "adcs",
-        "bh",
-        "postauth",
-        "linux",
-        "sql",
-        "coercion",
-        "tunnel"
-      ],
-      "target_types": [
-        "challenge"
-      ],
-      "title_en": "HTB challenge"
     }
   }
 }
