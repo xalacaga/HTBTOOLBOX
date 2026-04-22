@@ -4373,9 +4373,9 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
         ] if t else None,
 
         "ntp_sync": ["bash","-c",
-            + (f"printf '%s\\n' {shell_quote(sp)} | sudo -S -p '' timedatectl set-ntp false 2>/dev/null || true; "
-               if sp else
-               "sudo -n timedatectl set-ntp false 2>/dev/null || true; ")
+            (f"printf '%s\\n' {shell_quote(sp)} | sudo -S -p '' timedatectl set-ntp false 2>/dev/null || true; "
+             if sp else
+             "sudo -n timedatectl set-ntp false 2>/dev/null || true; ")
             + f"ntpdate -q {qdc} 2>&1 | head -5; ntpdate -q {qt} 2>&1 | head -5"
         ] if t else None,
 
