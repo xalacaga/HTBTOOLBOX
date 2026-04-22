@@ -6,3 +6,7 @@ timeline.json
 config.local.json
 .htbtoolbox_tooling_ok
 *.log
+*.txt
+*.pem
+PKINITtools/
+*.ccache
