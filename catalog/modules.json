@@ -316,6 +316,22 @@
       ],
       "tools": [
         {
+          "id": "krb5_setup",
+          "label": "<b>krb5 setup</b> krb5.conf + NTP + /etc/hosts",
+          "source": "htbtoolbox",
+          "desc": "Bootstrap Kerberos en un clic : génère /etc/krb5.conf (avec backup), ajoute l'entrée /etc/hosts (IP ↔ DC FQDN), synchronise l'horloge via ntpdate/rdate/chronyc. KRB5_CONFIG est ensuite auto-injecté dans tous les outils.",
+          "label_en": "<b>krb5 setup</b> krb5.conf + NTP + /etc/hosts",
+          "desc_en": "One-click Kerberos bootstrap: generates /etc/krb5.conf (with backup), adds /etc/hosts entry (IP ↔ DC FQDN), syncs the clock via ntpdate/rdate/chronyc. KRB5_CONFIG is auto-injected into subsequent tools."
+        },
+        {
+          "id": "nxc_smb_auth_test",
+          "label": "<b>nxc smb</b> auth test (+ Kerberos hint)",
+          "source": "htbtoolbox",
+          "desc": "Teste les credentials SMB/NTLM et détecte STATUS_ACCOUNT_RESTRICTION pour suggérer un basculement sur Kerberos (getTGT puis -k --use-kcache).",
+          "label_en": "<b>nxc smb</b> auth test (+ Kerberos hint)",
+          "desc_en": "Tests SMB/NTLM credentials and detects STATUS_ACCOUNT_RESTRICTION to hint at switching to Kerberos (getTGT then -k --use-kcache)."
+        },
+        {
           "id": "kerbrute_userenum",
           "label": "<b>kerbrute</b> userenum",
           "source": "legacy",
@@ -342,11 +358,19 @@
         },
         {
           "id": "gettgt",
-          "label": "<b>getTGT</b> demander ticket",
+          "label": "<b>getTGT</b> demander ticket (→ ccache)",
           "source": "legacy",
           "desc": "Demande un TGT Kerberos avec les credentials fournis et le sauvegarde au format ccache. Utilisé pour la pass-the-ticket ou l'accès Kerberos ultérieur.",
-          "label_en": "<b>getTGT</b> request ticket",
+          "label_en": "<b>getTGT</b> request ticket (→ ccache)",
           "desc_en": "Requests a Kerberos TGT with the provided credentials and stores it as a ccache for later pass-the-ticket style use."
+        },
+        {
+          "id": "klist_show",
+          "label": "<b>klist</b> dump ccache → kerberos/klist.txt",
+          "source": "htbtoolbox",
+          "desc": "Parcourt tous les .ccache dans attack_checks/ et dump klist pour chacun dans kerberos/klist.txt (avec horodatage). Fallback sur KRB5CCNAME courant si aucun fichier n'existe.",
+          "label_en": "<b>klist</b> dump ccache → kerberos/klist.txt",
+          "desc_en": "Iterates over every .ccache in attack_checks/ and dumps klist into kerberos/klist.txt (timestamped). Falls back to current KRB5CCNAME if no file exists."
         }
       ],
       "title_en": "Kerberos"
@@ -450,6 +474,22 @@
           "desc": "Énumère les ACLs modifiables sur les objets AD (GenericAll, WriteDacl, WriteOwner, ForceChangePassword, AddMember). Identifie les chemins d'élévation.",
           "label_en": "<b>bloodyAD</b> get writable ACLs",
           "desc_en": "Enumerates writable AD ACLs such as GenericAll, WriteDacl, WriteOwner, ForceChangePassword, and AddMember."
+        },
+        {
+          "id": "bloodyad_shadow_add",
+          "label": "<b>bloodyAD</b> add shadowCredentials (→ NT hash)",
+          "source": "htbtoolbox",
+          "desc": "Ajoute msDS-KeyCredentialLink sur le compte cible (target_account dans l'UI) via bloodyAD. Extrait automatiquement le hash NT et suggère les commandes evil-winrm / nxc winrm / secretsdump prêtes à copier. Utilise le ccache si disponible (-k).",
+          "label_en": "<b>bloodyAD</b> add shadowCredentials (→ NT hash)",
+          "desc_en": "Adds msDS-KeyCredentialLink on the target account (target_account field in UI) via bloodyAD. Auto-extracts the NT hash and prints ready-to-copy evil-winrm / nxc winrm / secretsdump commands. Uses ccache when available (-k)."
+        },
+        {
+          "id": "shadowcred_pkinit_chain",
+          "label": "<b>shadowcred</b> auto chain → PKINIT → NT hash",
+          "source": "htbtoolbox",
+          "desc": "Chaîne guidée complète pour shadow credentials : vérifie KRB5CCNAME et /etc/hosts, désactive le NTP auto, tente bloodyAD add shadowCredentials avec --host et --dc-ip, puis enchaîne automatiquement gettgtpkinit.py et getnthash.py si PKINITtools est présent. Termine en affichant les commandes Evil-WinRM / nxc prêtes à l'emploi.",
+          "label_en": "<b>shadowcred</b> auto chain → PKINIT → NT hash",
+          "desc_en": "Full guided shadow credentials chain: checks KRB5CCNAME and /etc/hosts, disables automatic NTP, runs bloodyAD add shadowCredentials with --host and --dc-ip, then automatically chains gettgtpkinit.py and getnthash.py when PKINITtools is available. Ends with ready-to-run Evil-WinRM / nxc commands."
         },
         {
           "id": "gpo_parse",

@@ -14,7 +14,7 @@ Ce guide t'accompagne **pas à pas** pour tirer le maximum de HTB Toolbox sur un
 1. [Démarrage en 5 minutes](#1-démarrage-en-5-minutes)
 2. [Comprendre l'interface](#2-comprendre-linterface)
 3. [Choisir la langue de l'interface](#3-choisir-la-langue-de-linterface)
-4. [Les 3 modes opératoires](#4-les-3-modes-opératoires)
+4. [Les modes opératoires](#4-les-modes-opératoires)
 5. [Les 4 types de cible](#5-les-4-types-de-cible)
 6. [Workflow recommandé sur HTB](#6-workflow-recommandé-sur-htb)
 7. [Le Wizard : 3 clics pour démarrer](#7-le-wizard--3-clics-pour-démarrer)
@@ -38,19 +38,20 @@ cd ~/HTB/HTBTOOLBOX
 ./start.sh --open
 ```
 
-Firefox s'ouvre sur `http://127.0.0.1:8765`. Tu vois :
+Ton navigateur par défaut s'ouvre sur `http://127.0.0.1:8765`. Tu vois :
 
 - **Barre du haut** : état backend, horloge cible, boutons `🔑 Identifiants`, `🪄 Wizard`, `💾 Sauver`.
 - **Sidebar gauche** : champs cible (IP, domaine, user, password), puis la liste des **groupes de modules**.
+- **Barre d’identifiants** : tu peux aussi renseigner `hash NT`, `chemin ccache` et `target account` pour les abus ciblés.
 - **Panel central** : le **terminal** qui affiche les sorties en temps réel.
-- **Panel droit** : `Résultats`, `Loot`, `Timeline`, `Credentials`, `Playbook`, `Analyse IA`, `📝 Notes` (par box).
+- **Panel droit** : `Résultats`, `Loot`, `Timeline`, `Creds Tracker`, `Playbook`, `Analyse IA`, `📝 Notes` (par box).
 
 **Premier lancement :**
 
 1. Clique `🔑 Identifiants` → renseigne `IP cible`, `Domaine`, `DC (FQDN)`, `Utilisateur` si tu en as un.
 2. Clique `🪄 Wizard` → choisis le type de box → sélectionne un preset → `Appliquer + Lancer`.
 3. Regarde les outils s'enchaîner dans le terminal.
-4. Dès qu'un hash ou un credential apparaît, une **toast** te propose de l'enregistrer.
+4. Dès qu'un hash, un mot de passe ou un log exploitable apparaît, l'outil peut l'importer automatiquement dans `Creds Tracker` et enrichir les résultats.
 
 ---
 
@@ -61,20 +62,49 @@ Firefox s'ouvre sur `http://127.0.0.1:8765`. Tu vois :
 - Chaque **groupe** (SMB, LDAP, Kerberos…) est un bandeau pliable.
 - Le **toggle ✓/✗** à droite du bandeau active/désactive le groupe.
 - Les **outils** à l'intérieur se cochent individuellement.
-- Les outils `[noisy]` sont bruyants → masqués en mode `safe`/`enterprise`.
+- Les outils `[noisy]` sont bruyants → restreints surtout en mode `enterprise`.
 - Les outils `[daemon]` (Responder, chisel…) occupent le slot d'exécution tant qu'on ne les stoppe pas.
 
 #### Vue `Résultats`
 
 Compteurs auto-extraits des sorties : **AS-REP roastables, Kerberoastables, SMB signing off, ADCS ESC**, etc.
 
+Tu y trouves aussi :
+
+- un bloc **Anomalies & faiblesses**
+- des **liens de preuve** vers les fichiers de loot qui ont servi à générer le finding
+- les **hôtes intéressants** extraits du loot
+- un bouton **`⟳ Réanalyser le loot`** pour recalculer la synthèse après un nouveau module ou un ajout manuel
+
 #### Vue `Loot`
 
 Navigateur de fichiers sur `loot/<domain>/` — tu peux lire les JSON parsés, les hashes, les rapports nmap.
 
-#### Vue `Credentials`
+#### Vue `Creds Tracker`
 
-Liste des users/passwords/hashes que tu as sauvegardés. Clique sur un user pour le **réinjecter dans la config active**.
+Liste des users/passwords/hashes que tu as sauvegardés ou que le loot a importés automatiquement. Tu peux `Utiliser`, `Appliquer + chaîne` ou `Utiliser + retest`.
+
+#### Champ `target account`
+
+Le champ `target account` sert quand un module a besoin d'un **compte cible explicite** :
+
+- `bloodyAD shadowCredentials`
+- `ForceChangePassword`
+- `getST` en délégation contrainte
+
+Exemples : `MSA_HEALTH$`, `SQLSVC$`, `a.white_adm`.
+
+#### Module `shadowcred_pkinit_chain`
+
+Ce module regroupe le workflow complet :
+
+1. préchecks `KRB5CCNAME`, `/etc/hosts`, `timedatectl set-ntp false`, `ntpdate`
+2. `bloodyAD add shadowCredentials` avec `--host` et `--dc-ip`
+3. tentative automatique `gettgtpkinit.py`
+4. tentative automatique `getnthash.py`
+5. affichage des commandes `evil-winrm` / `nxc winrm` prêtes si le hash NT sort
+
+Si `PKINITtools` n'est pas déjà présent, l'outil tente aussi de l'installer localement en best-effort.
 
 #### Vue `Timeline`
 
@@ -96,13 +126,12 @@ Le sélecteur `Français / English` est en haut de l'interface.
 
 ---
 
-### 4. Les 3 modes opératoires
+### 4. Les modes opératoires
 
 Change le mode via le bouton dans la barre du haut ou `MODE=…` dans le terminal.
 
 | Mode | Objectif | Bruit | Parallélisme typique |
 |------|----------|-------|----------------------|
-| `safe` | Recon discrète, pas de bruteforce | Faible | 1-2 |
 | `htb` | Labo HTB, agressif, fuzzing permis | Moyen-haut | 2-3 |
 | `enterprise` | Pentest réel avec opsec serrée | Très faible | 1-2 |
 
@@ -213,7 +242,7 @@ Exemple type sur une box Windows en mode `htb` :
 - **Focus** : Preset « HTB AD quick win » / enum4linux-ng + LDAP + Kerberos / ADCS + BloodHound dès que des creds existent
 - **Éviter** : Lancer tout le post-auth trop tôt
 
-Le Playbook s'adapte à **chaque combinaison** (4 types × 3 modes = 12 configurations principales dans l'UI).
+Le Playbook s'adapte à **chaque combinaison** (4 types × 2 modes = 8 configurations principales dans l'UI).
 
 ---
 
@@ -236,16 +265,41 @@ L'outil `hosts_autoconf` lit la sortie nmap, extrait les FQDN (ex : `DC01.corp.h
 
 #### Auto-chain credentials
 
-Dès qu'un **hash NT** ou un **mot de passe** est détecté dans une sortie, une toast te le propose. Accepte → il est sauvegardé dans les credentials et peut être réinjecté en un clic dans la config active.
+Dès qu'un **hash NT**, un **mot de passe** ou un **log exploitable** est détecté, l'outil peut alimenter automatiquement `Creds Tracker`, enrichir les `hosts intéressants`, et faire remonter l'information dans `Résultats > Anomalies & faiblesses`.
+
+Cette analyse de loot est aussi capable d'extraire automatiquement depuis les logs :
+
+- des `DOMAIN\\user` ou `user@domain`
+- des mots de passe / hashes
+- des hôtes internes (`DC01`, `HR01`, etc.)
+- des indices de services ou de chemins utiles
+
+#### Quand SMB est valide mais restreint
+
+Le module `nxc smb auth test` détecte maintenant les cas du type `STATUS_ACCOUNT_RESTRICTION` ou `STATUS_LOGON_TYPE_NOT_GRANTED`.
+
+Dans ce cas, l'idée n'est pas forcément que le mot de passe est faux. Le compte peut être **valide**, mais **refusé sur SMB**. Le bon enchaînement devient alors :
+
+1. `krb5 setup` pour générer un `krb5.conf`, vérifier `/etc/hosts` et faire la sync NTP
+2. `gettgt` pour obtenir un ticket Kerberos
+3. coller le `ccache` généré dans le champ `chemin ccache`
+4. relancer les modules compatibles `-k`
+
+#### WinRM interactif automatique
+
+Quand `winrm_checks` confirme une authentification valide avec un **mot de passe** ou un **NT hash** réutilisable, l'UI peut ouvrir automatiquement `evil-winrm` dans le shell intégré.
+
+Ça te permet d'arriver directement dans une session interactive sans copier-coller la commande à la main.
 
 ---
 
 ### 12. Gérer les credentials découverts
 
-1. Vue `Credentials` → tu vois tous les comptes trouvés depuis le début de la session.
-2. Chaque ligne affiche : `user`, `password/hash`, `source` (outil qui l'a trouvé), `note`.
-3. Clique un compte → **réinjecte** dans la config active (user + password/nt_hash).
-4. Relance les modules authentifiés → l'outil utilise ces credentials.
+1. Vue `Creds Tracker` → tu vois tous les comptes trouvés depuis le début de la session.
+2. Chaque ligne affiche : `user`, `password/hash`, `note`, avec auto-import possible depuis les logs lootés.
+3. `Utiliser` → réinjecte dans la config active.
+4. `Appliquer + chaîne` → sélectionne la chaîne auth recommandée et la lance.
+5. `Utiliser + retest` → applique le cred puis relance un lot ciblé (`SMB`, `LDAP`, `BloodHound`, `WinRM`, etc.).
 
 **Astuce** : sur HTB, dès qu'un user est trouvé, lance `getnpusers_asrep` et `getuserspns_kerberoast` — ce sont des gains gratuits.
 
@@ -333,7 +387,7 @@ Idéal pour noter les credentials glanés, les pistes à tester, une checklist, 
 → `sudo apt install sshpass`. C'est requis pour les outils Linux privesc qui passent par SSH.
 
 **Q. `rustscan: command not found`.**
-→ Relance `./install.sh` ou `./install_missing.sh`. Le script tente `apt`, puis fallback release GitHub si nécessaire.
+→ Relance `./install.sh` ou `./install_missing.sh`. Le chemin principal passe par `cargo install rustscan`, puis fallback si nécessaire.
 
 **Q. Le wizard propose toujours le même preset.**
 → Le wizard suit le contexte détecté. Change manuellement le type de cible si nécessaire.
@@ -358,7 +412,7 @@ This guide walks you **step-by-step** through HTB Toolbox on a HackTheBox machin
 1. [5-minute start](#1-5-minute-start)
 2. [Understanding the UI](#2-understanding-the-ui)
 3. [Choosing the interface language](#3-choosing-the-interface-language)
-4. [The 3 operating modes](#4-the-3-operating-modes)
+4. [Operating modes](#4-operating-modes)
 5. [The 4 target types](#5-the-4-target-types)
 6. [Recommended HTB workflow](#6-recommended-htb-workflow)
 7. [The Wizard: 3 clicks to start](#7-the-wizard-3-clicks-to-start)
@@ -382,19 +436,20 @@ cd ~/HTB/HTBTOOLBOX
 ./start.sh --open
 ```
 
-Firefox opens `http://127.0.0.1:8765`. You see:
+Your default browser opens `http://127.0.0.1:8765`. You see:
 
 - **Top bar**: backend status, target clock, `🔑 Credentials`, `🪄 Wizard`, `💾 Save` buttons.
 - **Left sidebar**: target fields (IP, domain, user, password), then the **module groups** list.
+- **Credential bar**: you can also set `NT hash`, `ccache path`, and `target account` for targeted abuse workflows.
 - **Center panel**: the live **terminal** with real-time output.
-- **Right panel**: `Results`, `Loot`, `Timeline`, `Credentials`, `Playbook`, `AI Analysis`, `📝 Notes` (per box).
+- **Right panel**: `Results`, `Loot`, `Timeline`, `Creds Tracker`, `Playbook`, `AI Analysis`, `📝 Notes` (per box).
 
 **First run:**
 
 1. Click `🔑 Credentials` → fill `target IP`, `domain`, `DC (FQDN)`, `user` if you have one.
 2. Click `🪄 Wizard` → pick box type → pick a preset → `Apply + Run`.
 3. Watch tools chain in the terminal.
-4. When a hash or credential shows up, a **toast** suggests saving it.
+4. When a hash, password, or useful log clue shows up, the tool can auto-import it into `Creds Tracker` and enrich the results.
 
 ---
 
@@ -405,20 +460,49 @@ Firefox opens `http://127.0.0.1:8765`. You see:
 - Each **group** (SMB, LDAP, Kerberos…) is a collapsible panel.
 - The **✓/✗ toggle** on the right enables/disables the group.
 - **Tools** are ticked individually.
-- `[noisy]` tools are suppressed in `safe`/`enterprise` mode.
+- `[noisy]` tools are mainly restricted in `enterprise` mode.
 - `[daemon]` tools (Responder, chisel…) occupy the execution slot until stopped.
 
 #### `Results` view
 
 Auto-extracted counters: **AS-REP roastable, Kerberoastable, SMB signing off, ADCS ESC**, etc.
 
+You also get:
+
+- an **Anomalies & weaknesses** block
+- **proof links** back to the loot files that produced the finding
+- **interesting hosts** extracted from loot
+- a **`⟳ Reanalyze loot`** button to recompute the summary after a new module run or manual file import
+
 #### `Loot` view
 
 File browser over `loot/<domain>/` — read parsed JSON, hashes, nmap reports.
 
-#### `Credentials` view
+#### `Creds Tracker` view
 
-Saved users/passwords/hashes. Click a user to **reinject into the active config**.
+Saved or auto-imported users/passwords/hashes. You can `Use`, `Apply + chain`, or `Use + retest`.
+
+#### `target account` field
+
+The `target account` field is used when a module needs an explicit **victim/target account**:
+
+- `bloodyAD shadowCredentials`
+- `ForceChangePassword`
+- constrained-delegation `getST`
+
+Examples: `MSA_HEALTH$`, `SQLSVC$`, `a.white_adm`.
+
+#### `shadowcred_pkinit_chain` module
+
+This module bundles the full workflow:
+
+1. `KRB5CCNAME`, `/etc/hosts`, `timedatectl set-ntp false`, and `ntpdate` prechecks
+2. `bloodyAD add shadowCredentials` with `--host` and `--dc-ip`
+3. automatic `gettgtpkinit.py` attempt
+4. automatic `getnthash.py` attempt
+5. ready-to-run `evil-winrm` / `nxc winrm` commands if the NT hash is recovered
+
+If `PKINITtools` is missing, the tool also attempts a local best-effort install.
 
 #### `Timeline` view
 
@@ -440,13 +524,12 @@ The `Français / English` selector is available at the top of the interface.
 
 ---
 
-### 4. The 3 operating modes
+### 4. Operating modes
 
 Change via the top-bar button or `MODE=…` in the terminal.
 
 | Mode | Goal | Noise | Typical parallelism |
 |------|------|-------|---------------------|
-| `safe` | Stealthy recon, no bruteforce | Low | 1-2 |
 | `htb` | HTB lab, aggressive, fuzzing allowed | Medium-high | 2-3 |
 | `enterprise` | Real engagement, tight opsec | Very low | 1-2 |
 
@@ -557,7 +640,7 @@ Sample output on a Windows box in `htb` mode:
 - **Focus**: Preset "HTB AD quick win" / enum4linux-ng + LDAP + Kerberos / ADCS + BloodHound as soon as creds exist
 - **Avoid**: Firing all post-auth too early
 
-The Playbook adapts to **each combination** (4 types × 3 modes = 12 main UI configurations).
+The Playbook adapts to **each combination** (4 types × 2 modes = 8 main UI configurations).
 
 ---
 
@@ -580,16 +663,41 @@ The `hosts_autoconf` tool reads nmap output, extracts FQDNs (e.g. `DC01.corp.htb
 
 #### Credential auto-chain
 
-When a **NT hash** or **password** is detected in output, a toast suggests it. Accept → saved to credentials, reinjectable in one click into the active config.
+When a **NT hash**, **password**, or **useful log-derived clue** is detected, the tool can automatically feed `Creds Tracker`, enrich `interesting hosts`, and surface it in `Results > Anomalies & weaknesses`.
+
+This loot analysis can also automatically extract from logs:
+
+- `DOMAIN\\user` or `user@domain`
+- passwords / hashes
+- internal hosts (`DC01`, `HR01`, etc.)
+- service or path clues useful for pivoting
+
+#### When SMB auth works but is restricted
+
+The `nxc smb auth test` module now detects cases such as `STATUS_ACCOUNT_RESTRICTION` or `STATUS_LOGON_TYPE_NOT_GRANTED`.
+
+That usually does **not** mean the password is wrong. It often means the account is **valid** but **not allowed over SMB**. The right chain then becomes:
+
+1. `krb5 setup` to generate `krb5.conf`, verify `/etc/hosts`, and sync NTP
+2. `gettgt` to obtain a Kerberos ticket
+3. paste the generated `ccache` into the `ccache path` field
+4. re-run the tools that support `-k`
+
+#### Automatic interactive WinRM
+
+When `winrm_checks` confirms valid authentication with a reusable **password** or **NT hash**, the UI can automatically open `evil-winrm` inside the built-in shell.
+
+That gives you an interactive session directly, without manually copying the command first.
 
 ---
 
 ### 12. Managing discovered credentials
 
-1. `Credentials` view → all accounts found since session start.
-2. Each line: `user`, `password/hash`, `source` (discovering tool), `note`.
-3. Click a row → **reinjects** into active config (user + password/nt_hash).
-4. Re-run authenticated modules → they use these credentials.
+1. `Creds Tracker` view → all accounts found since session start.
+2. Each line shows the `user`, `password/hash`, and `note`, including auto-imports from looted logs.
+3. `Use` reinjects into the active config.
+4. `Apply + chain` selects and runs the recommended auth chain.
+5. `Use + retest` applies the credential and re-runs a focused auth validation set.
 
 **Tip**: on HTB, as soon as a user is found, run `getnpusers_asrep` and `getuserspns_kerberoast` — free wins.
 
@@ -677,7 +785,7 @@ Great for writing down gleaned credentials, leads to test, a checklist, or a wri
 → `sudo apt install sshpass`. Required for Linux privesc tools that use SSH.
 
 **Q. `rustscan: command not found`.**
-→ Re-run `./install.sh` or `./install_missing.sh`. The script tries `apt` first, then a GitHub release fallback if needed.
+→ Re-run `./install.sh` or `./install_missing.sh`. The primary path is `cargo install rustscan`, then fallback if needed.
 
 **Q. The wizard always proposes the same preset.**
 → The wizard follows detected context. Change target type manually if needed.

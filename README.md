@@ -11,13 +11,17 @@ Interface web standalone qui pilote une boîte à outils de pentest **Windows / 
 
 ### Ce que fait l'outil
 
-- **Un navigateur web = ta console opérateur** : sélectionne des outils, lance-les, regarde les sorties en temps réel, parcours le loot, analyse avec Claude.
-- **91 outils catalogués** en 14 groupes : recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, coercition NTLM, tunnel/pivot, plus des helpers de triage avancé.
+- **Un navigateur web = ta console opérateur** : sélectionne des outils, lance-les, regarde les sorties en temps réel, parcours le loot, réanalyse les artefacts, analyse avec Claude.
+- **Catalogue bilingue de modules** : recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, coercition NTLM, tunnel/pivot, plus des helpers de triage avancé.
 - **Wizard guidé + Presets d'attaque** : chaînes prêtes à l'emploi pour `windows`, `linux`, `web` et `hybrid`.
 - **Playbook opérateur** : recommandations adaptées au contexte détecté (type de cible × mode opératoire).
-- **3 modes opératoires** : `safe` (discret), `htb` (agressif pour lab), `enterprise` (opsec serrée).
+- **2 modes opératoires** : `htb` (agressif pour lab) et `enterprise` (opsec serrée).
 - **Détection auto** : après un scan, les modules pertinents se cochent tout seuls selon les ports ouverts.
-- **Auto-complétion** : credentials extraits des sorties (NT hash, TGT, mots de passe) automatiquement proposés pour remplir la config.
+- **Auto-complétion / auto-import** : credentials extraits des sorties ou des logs lootés (NT hash, TGT, mots de passe) automatiquement proposés ou injectés dans `Creds Tracker`.
+- **Résultats enrichis** : anomalies/faiblesses, liens de preuve vers le loot, hôtes intéressants et réanalyse manuelle du loot depuis l'UI.
+- **Workflow Kerberos guidé** : helpers `krb5 setup`, `getTGT`, `ccache`, `target account` et suggestions SMB/Kerberos quand un compte est valide mais bloqué en SMB.
+- **Chaîne Shadow Credentials guidée** : module `shadowcred_pkinit_chain` pour enchaîner `bloodyAD`, `PKINITtools`, récupération de hash NT et commandes WinRM prêtes.
+- **Shell WinRM auto** : si `winrm_checks` valide l'authentification avec un mot de passe ou NT hash réutilisable, `evil-winrm` peut être injecté directement dans le shell intégré de l'UI.
 - **Parallélisme contrôlé** : jusqu'à 3 outils en parallèle selon le contexte et le mode.
 - **Prévisualisation** : bouton `👁 Prévisualiser` qui affiche la commande construite (masquée) sans l'exécuter, pour valider auth/flags avant de lancer.
 - **Notes par box** : vue `📝 Notes` dédiée avec éditeur markdown (aperçu), stockées dans `loot/<domain>/notes.md` — les notes voyagent avec le loot.
@@ -49,13 +53,13 @@ L'interface est disponible sur `http://127.0.0.1:8765`.
 ./install_missing.sh        # tente d'ajouter les outils souvent absents sur certaines Kali
 ```
 
-Ce script complémentaire vise surtout `rustscan`, `mongosh`, `mongodump`, `sshpass`, `foremost`, `checksec` et `cargo`.
+Ce script complémentaire vise surtout `rustscan`, `mongosh`, `mongodump`, `sshpass`, `foremost`, `checksec` et `cargo`. Pour `rustscan`, la tentative principale passe par `cargo install rustscan`.
 
 #### Options start
 
 ```bash
 ./start.sh                        # 127.0.0.1:8765
-./start.sh --open                 # ouvre Firefox automatiquement
+./start.sh --open                 # ouvre le navigateur par défaut
 ./start.sh --host 0.0.0.0         # accessible réseau (⚠ attention)
 ./start.sh --port 9000            # change le port
 ./start.sh --skip-bootstrap       # utilise .venv existant sans vérification
@@ -68,6 +72,7 @@ Ce script complémentaire vise surtout `rustscan`, `mongosh`, `mongodump`, `sshp
 - Scan : `nmap`, `rustscan`, `masscan`
 - AD : `netexec`/`nxc`, `crackmapexec`, `smbclient`, `rpcclient`, `ldap-utils`, `kerbrute`
 - Impacket, `bloodhound-python`, `certipy-ad`, `bloodyAD`, `ldapdomaindump`, `enum4linux-ng`
+- `PKINITtools` en clone local best-effort pour les workflows shadow credentials / PKINIT
 - Web : `ffuf`, `wfuzz`, `feroxbuster`, `gobuster`, `nikto`, `nuclei`, `sqlmap`, `wpscan`, `wafw00f`, `whatweb`
 - Linux : `hydra`, `sshpass`, `responder`, `chisel`, `ligolo-proxy`, `socat`
 - SQL : `mysql`, `psql`, `redis-cli`, `mongosh`, `mongodump`
@@ -84,9 +89,9 @@ HTBTOOLBOX/
 ├── start.sh                ← lanceur (crée .venv, démarre uvicorn)
 ├── server.py               ← backend FastAPI + WebSocket (5000+ lignes)
 ├── index.html              ← SPA, zéro dépendance externe (5000+ lignes)
-├── htbtoolbox.sh           ← script historique AD/HTB (toujours supporté)
+├── htbtoolbox.sh           ← utilitaires pré-flight (tooling + /etc/hosts)
 ├── catalog/
-│   ├── modules.json        ← 91 outils catalogués + métadonnées FR/EN
+│   ├── modules.json        ← catalogue FR/EN des modules et groupes
 │   └── profiles.json       ← profils de sélection FR/EN
 ├── config.example.json     ← template versionné
 ├── config.local.json       ← config locale (ignorée par Git)
@@ -108,6 +113,8 @@ HTBTOOLBOX/
 - Les mots de passe sont masqués dans l'output terminal.
 - N'expose pas `--host 0.0.0.0` sur un réseau non maîtrisé.
 
+Le backend Python est la source unique de vérité pour l’exécution des modules. `htbtoolbox.sh` reste utilisé pour le pré-flight et la synchronisation `/etc/hosts`.
+
 ### Commandes terminal intégrées
 
 ```text
@@ -117,7 +124,7 @@ DC=DC01.corp.htb        # changer le DC
 USER=john               # changer le user
 PASS=P@ssw0rd           # changer le mot de passe
 TYPE=linux              # windows | linux | web | hybrid
-MODE=htb                # safe | htb | enterprise
+MODE=htb                # htb | enterprise
 run                     # lancer la sélection
 stop                    # arrêter le run
 profile=htb             # appliquer un profil de groupes
@@ -142,7 +149,7 @@ clear / help
 
 | Problème | Solution |
 |----------|----------|
-| `claude: command not found` | Claude Code CLI non installé (optionnel) |
+| `Module 'anthropic' non installé` | Relancer `./install.sh --with-ai` |
 | `rustscan` pas trouvé | Relancer `./install.sh` ou `./install_missing.sh` |
 | Modules ne s'affichent pas | Le catalog JSON est invalide — `python3 -c "import json; json.load(open('catalog/modules.json'))"` |
 | Backend injoignable | Vérifier que `./start.sh` tourne, port 8765 libre |
@@ -157,13 +164,17 @@ Standalone web interface driving a **Windows / Linux / Web / Hybrid** pentest to
 
 ### What it does
 
-- **A web browser = your operator console**: pick tools, run them, watch live output, browse the loot, analyze with Claude.
-- **91 catalogued tools** in 14 groups: recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, NTLM coercion, tunneling/pivot, plus advanced local triage helpers.
+- **A web browser = your operator console**: pick tools, run them, watch live output, browse the loot, reanalyze artifacts, and review Claude-assisted analysis.
+- **Bilingual module catalog**: recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, NTLM coercion, tunneling/pivot, plus advanced local triage helpers.
 - **Guided wizard + Attack presets**: ready-made chains for `windows`, `linux`, `web`, and `hybrid`.
 - **Operator playbook**: context-aware recommendations (target type × operating mode).
-- **3 operating modes**: `safe` (stealthy), `htb` (aggressive lab), `enterprise` (tight opsec).
+- **2 operating modes**: `htb` (aggressive lab) and `enterprise` (tight opsec).
 - **Auto-detect**: after a scan, relevant modules are ticked automatically based on open ports.
-- **Auto-fill**: credentials extracted from outputs (NT hash, TGT, passwords) are automatically suggested.
+- **Auto-fill / auto-import**: credentials extracted from outputs or looted logs (NT hash, TGT, passwords) are automatically suggested or injected into `Creds Tracker`.
+- **Enriched results**: anomalies/weaknesses, proof links back into loot, interesting hosts, and manual loot reanalysis directly from the UI.
+- **Guided Kerberos workflow**: `krb5 setup`, `getTGT`, `ccache`, `target account`, and SMB/Kerberos hints when an account is valid but restricted over SMB.
+- **Guided Shadow Credentials chain**: `shadowcred_pkinit_chain` can chain `bloodyAD`, `PKINITtools`, NT hash recovery, and ready-to-run WinRM commands.
+- **Auto WinRM shell**: when `winrm_checks` validates auth with a reusable password or NT hash, `evil-winrm` can be injected straight into the built-in UI shell.
 - **Controlled parallelism**: up to 3 tools in parallel depending on context and mode.
 - **Preview mode**: `👁 Preview` button renders the built (masked) command without running it — lets you validate auth/flags before firing.
 - **Per-box notes**: dedicated `📝 Notes` view with markdown editor (live preview), saved to `loot/<domain>/notes.md` — notes travel with the loot.
@@ -195,13 +206,13 @@ UI at `http://127.0.0.1:8765`.
 ./install_missing.sh        # tries to add tools commonly missing on some Kali builds
 ```
 
-This helper mainly targets `rustscan`, `mongosh`, `mongodump`, `sshpass`, `foremost`, `checksec`, and `cargo`.
+This helper mainly targets `rustscan`, `mongosh`, `mongodump`, `sshpass`, `foremost`, `checksec`, and `cargo`. For `rustscan`, the primary path is `cargo install rustscan`.
 
 #### Start flags
 
 ```bash
 ./start.sh                        # 127.0.0.1:8765
-./start.sh --open                 # auto-open Firefox
+./start.sh --open                 # auto-open the default browser
 ./start.sh --host 0.0.0.0         # expose on network (⚠ careful)
 ./start.sh --port 9000            # change port
 ./start.sh --skip-bootstrap       # reuse existing .venv without checks
@@ -214,6 +225,7 @@ This helper mainly targets `rustscan`, `mongosh`, `mongodump`, `sshpass`, `forem
 - Scan: `nmap`, `rustscan`, `masscan`
 - AD: `netexec`/`nxc`, `crackmapexec`, `smbclient`, `rpcclient`, `ldap-utils`, `kerbrute`
 - Impacket, `bloodhound-python`, `certipy-ad`, `bloodyAD`, `ldapdomaindump`, `enum4linux-ng`
+- Local best-effort `PKINITtools` clone for shadow credentials / PKINIT workflows
 - Web: `ffuf`, `wfuzz`, `feroxbuster`, `gobuster`, `nikto`, `nuclei`, `sqlmap`, `wpscan`, `wafw00f`, `whatweb`
 - Linux: `hydra`, `sshpass`, `responder`, `chisel`, `ligolo-proxy`, `socat`
 - SQL: `mysql`, `psql`, `redis-cli`, `mongosh`, `mongodump`
@@ -230,9 +242,9 @@ HTBTOOLBOX/
 ├── start.sh                ← launcher (builds .venv, starts uvicorn)
 ├── server.py               ← FastAPI + WebSocket backend (5000+ lines)
 ├── index.html              ← SPA, zero external deps (5000+ lines)
-├── htbtoolbox.sh           ← legacy AD/HTB script (still supported)
+├── htbtoolbox.sh           ← pre-flight helpers (tooling + /etc/hosts)
 ├── catalog/
-│   ├── modules.json        ← 91 catalogued tools + FR/EN metadata
+│   ├── modules.json        ← FR/EN module and group catalog
 │   └── profiles.json       ← FR/EN selection profiles
 ├── config.example.json     ← versioned template
 ├── config.local.json       ← local config (Git-ignored)
@@ -254,6 +266,8 @@ HTBTOOLBOX/
 - Passwords are masked in terminal output.
 - Don't expose `--host 0.0.0.0` on untrusted networks.
 
+Python backend execution is now the single source of truth for module runs. `htbtoolbox.sh` remains for pre-flight helpers and `/etc/hosts` synchronization.
+
 ### Built-in terminal commands
 
 ```text
@@ -263,7 +277,7 @@ DC=DC01.corp.htb        # change DC
 USER=john               # change user
 PASS=P@ssw0rd           # change password
 TYPE=linux              # windows | linux | web | hybrid
-MODE=htb                # safe | htb | enterprise
+MODE=htb                # htb | enterprise
 run                     # run selection
 stop                    # stop run
 profile=htb             # apply group profile
@@ -288,7 +302,7 @@ clear / help
 
 | Issue | Fix |
 |-------|-----|
-| `claude: command not found` | Claude Code CLI not installed (optional) |
+| `Module 'anthropic' not installed` | Re-run `./install.sh --with-ai` |
 | `rustscan` missing | Re-run `./install.sh` or `./install_missing.sh` |
 | Modules don't show | Catalog JSON invalid — `python3 -c "import json; json.load(open('catalog/modules.json'))"` |
 | Backend unreachable | Check `./start.sh` is running and port 8765 is free |

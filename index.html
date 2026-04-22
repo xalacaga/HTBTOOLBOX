@@ -141,6 +141,7 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 #inp-user{width:82px}#inp-pass{width:82px}#inp-dom{width:108px}
 #inp-dc{width:126px}#inp-nt{width:88px;color:var(--orange)}
 #inp-cc{width:110px;color:var(--purple)}
+#inp-ta{width:130px;color:var(--yellow)}
 #inp-lang{width:60px}#inp-type{width:104px}
 .cred-sep{color:var(--text3);font-size:10px;padding:0 2px}
 .btn{padding:5px 11px;border:1px solid var(--border2);border-radius:5px;
@@ -225,6 +226,7 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 .tool-badge{font-size:8px;padding:1px 5px;border-radius:999px;border:1px solid rgba(255,255,255,.08);
   color:var(--text3);background:rgba(255,255,255,.03)}
 .tool-badge.auth{color:var(--orange);border-color:rgba(249,115,22,.28);background:rgba(249,115,22,.08)}
+.tool-badge.sudo{color:var(--yellow);border-color:rgba(240,165,0,.28);background:rgba(240,165,0,.08)}
 .tool-badge.port{color:var(--cyan);border-color:rgba(45,212,191,.25);background:rgba(45,212,191,.08)}
 .tool-badge.noisy{color:var(--red);border-color:rgba(232,71,63,.25);background:rgba(232,71,63,.08)}
 .tool-badge.parallel{color:var(--green);border-color:rgba(62,207,110,.24);background:rgba(62,207,110,.08)}
@@ -584,8 +586,15 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 .rc-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:4px}
 .rc-val{font-size:20px;font-weight:700;color:var(--text);margin-bottom:2px}
 .rc-val.red{color:var(--red)}.rc-val.green{color:var(--green)}
-.rc-val.yellow{color:var(--yellow)}.rc-val.cyan{color:var(--cyan)}.rc-val.orange{color:var(--orange)}
+.rc-val.yellow{color:var(--yellow)}.rc-val.cyan{color:var(--cyan)}.rc-val.orange{color:var(--orange)}.rc-val.purple{color:var(--purple)}
+.res-card.clickable{cursor:pointer;transition:background .12s,border-color .12s}
+.res-card.clickable:hover{background:var(--bg0);border-color:var(--blue)}
+.res-card.clickable .rc-label::after{content:" →";color:var(--blue);opacity:.6;font-size:10px}
 .rc-sub{font-size:10px;color:var(--text3)}
+.rc-action{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+.rc-action-btn{font-size:10px;padding:5px 8px;border-radius:8px;border:1px solid rgba(56,189,248,.24);background:rgba(56,189,248,.08);color:var(--cyan);cursor:pointer}
+.rc-action-btn:hover{background:rgba(56,189,248,.16);color:#b6f6ff}
+.rc-action-btn[hidden]{display:none!important}
 /* Séparateur de section */
 .res-sec-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;
   color:var(--text3);padding:2px 0 6px;border-bottom:1px solid var(--border);margin-bottom:2px}
@@ -866,7 +875,7 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
   #sidebar{width:100%;max-height:38vh;border-right:none;border-bottom:1px solid var(--border)}
   .cred-group{width:100%}
   .cred-inp{flex:1;min-width:120px}
-  #inp-user,#inp-pass,#inp-dom,#inp-dc,#inp-nt,#inp-cc,#inp-type{width:auto}
+  #inp-user,#inp-pass,#inp-dom,#inp-dc,#inp-nt,#inp-cc,#inp-ta,#inp-type{width:auto}
   .wizard-modal{width:min(96vw,760px);padding:14px}
   .wiz-grid{grid-template-columns:1fr}
 }
@@ -1055,6 +1064,8 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
              title="NT hash (Pass-the-Hash)" oninput="autoSave()">
       <input class="cred-inp" id="inp-cc"   placeholder="chemin ccache" spellcheck="false"
              title="KRB5CCNAME (Pass-the-Ticket)" oninput="autoSave()">
+      <input class="cred-inp" id="inp-ta"   placeholder="target account (ex: MSA_HEALTH$)" spellcheck="false"
+             title="Compte cible pour shadowCredentials / ForceChangePassword / getST" oninput="autoSave()">
     </div>
     <button class="btn btn-run" id="btn-run-selected" onclick="runSelected()">▶ Lancer la sélection</button>
     <button class="btn btn-all" id="btn-run-all" onclick="runAll()">⚡ Tout lancer</button>
@@ -1248,11 +1259,19 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
               <div class="rc-label">WinRM</div>
               <div class="rc-val" id="stat-winrm">?</div>
               <div class="rc-sub">evil-winrm (5985)</div>
+              <div class="rc-action">
+                <button class="rc-action-btn" id="btn-open-winrm-shell" onclick="launchWinRMShellInteractive(event)" hidden>◈ Ouvrir shell WinRM</button>
+              </div>
             </div>
             <div class="res-card" id="card-adcs">
               <div class="rc-label">ADCS / ESC</div>
               <div class="rc-val red" id="stat-adcs">—</div>
               <div class="rc-sub">certipy-ad find</div>
+            </div>
+            <div class="res-card" id="card-klist">
+              <div class="rc-label">Kerberos ccache</div>
+              <div class="rc-val purple" id="stat-klist">—</div>
+              <div class="rc-sub">klist (lance klist_show)</div>
             </div>
             <div class="res-card" id="card-session">
               <div class="rc-label">Session</div>
@@ -1648,10 +1667,13 @@ const FALLBACK_MODULES = [
     {id:"ldap_gmsa_readable",       label:"<b>LDAP</b> gMSA accounts enum"},
   ]},
   { id:"kerberos", icon:"🎫", title:"Kerberos", tools:[
+    {id:"krb5_setup",               label:"<b>krb5 setup</b> krb5.conf + NTP sync"},
+    {id:"nxc_smb_auth_test",        label:"<b>nxc smb</b> auth test (+ Kerberos hint)"},
     {id:"kerbrute_userenum",        label:"<b>kerbrute</b> userenum", noisy:true},
     {id:"getnpusers_asrep",         label:"<b>GetNPUsers</b> AS-REP roast"},
     {id:"getuserspns_kerberoast",   label:"<b>GetUserSPNs</b> Kerberoast"},
-    {id:"gettgt",                   label:"<b>getTGT</b> demander ticket"},
+    {id:"gettgt",                   label:"<b>getTGT</b> demander ticket (→ ccache)"},
+    {id:"klist_show",               label:"<b>klist</b> dump ccache → kerberos/klist.txt"},
   ]},
   { id:"adcs", icon:"📜", title:"ADCS / Certipy", enabled:false, tools:[
     {id:"certipy_find",             label:"<b>certipy find</b> -vulnerable"},
@@ -1666,6 +1688,8 @@ const FALLBACK_MODULES = [
   { id:"postauth", icon:"💥", title:"Post-auth / Loot", enabled:false, tools:[
     {id:"secretsdump",              label:"<b>secretsdump</b> DCSync -just-dc-ntlm", noisy:true},
     {id:"bloodyad_acls",            label:"<b>bloodyAD</b> get writable ACLs"},
+    {id:"bloodyad_shadow_add",      label:"<b>bloodyAD</b> add shadowCredentials (→ NT hash)"},
+    {id:"shadowcred_pkinit_chain",  label:"<b>shadowcred</b> auto chain → PKINIT → NT hash"},
     {id:"gpo_parse",                label:"<b>GPO</b> SYSVOL / cpassword"},
     {id:"hash_hints",               label:"<b>Hash hints</b> hashcat / john"},
     {id:"postauth_hints",           label:"<b>Post-auth</b> exec / rdp / ptk"},
@@ -1792,7 +1816,9 @@ const PORT_AUTO_RULES = [
 ];
 // Outils qui invoquent `sudo` — si le pwd sudo est vide, prompt explicite avant lancement
 const SUDO_REQUIRED_TOOLS = new Set([
-  "hosts_autoconf", "ntlmrelayx", "responder", "ligolo_proxy", "chisel_server",
+  "hosts_autoconf", "ntp_sync", "krb5_setup", "gettgt", "shadowcred_pkinit_chain",
+  "sudo_enum", "responder_listen", "ntlmrelayx_run", "ntlmrelayx_relay",
+  "ligolo_server", "socat_fwd", "chisel_server",
 ]);
 const TOOL_REQUIREMENTS = {
   smb_signing: { ports:[445] },
@@ -1812,16 +1838,20 @@ const TOOL_REQUIREMENTS = {
   ldaps_probe: { ports:[636] },
   ldap_constrained_deleg: { ports:[389,636,3268,3269], auth:true },
   ldap_gmsa_readable: { ports:[389,636,3268,3269], auth:true },
+  krb5_setup: { ports:[88] },
+  nxc_smb_auth_test: { ports:[445], auth:true },
   kerbrute_userenum: { ports:[88] },
   getnpusers_asrep: { ports:[88] },
   getuserspns_kerberoast: { ports:[88], auth:true },
   gettgt: { ports:[88], auth:true },
+  klist_show: {},
   certipy_find: { ports:[88,389], auth:true },
   certipy_ca: { ports:[88,389], auth:true },
   certipy_shadow: { ports:[88,389], auth:true },
   enum4linux_ng: { ports:[445,139] },
   rpcclient_enum: { ports:[135,445] },
   bloodhound_collect: { ports:[88,389], auth:true },
+  shadowcred_pkinit_chain: { ports:[88,389], auth:true },
   winrm_checks: { ports:[5985,5986], auth:true },
   ssh_banner: { ports:[22] },
   ssh_auth_methods: { ports:[22] },
@@ -1936,6 +1966,7 @@ const UI_I18N = {
     profile_hybrid: "Hybride",
     preset_web: "Web",
     tool_badge_auth: "auth",
+    tool_badge_sudo: "sudo",
     tool_badge_noisy: "bruyant",
     tool_badge_safe: "safe",
     tool_badge_skip: "skip mode",
@@ -2132,10 +2163,16 @@ const UI_I18N = {
     shell_stopped_line: "[console] shell arrêté (rc={rc})",
     shell_closed: "shell fermé",
     shell_closed_line: "[console] shell fermé",
+    winrm_shell_autostart: "WinRM valide — ouverture d'un shell evil-winrm dans la console",
+    winrm_shell_skip: "WinRM valide, mais lancement auto ignoré faute de mot de passe ou NT hash réutilisable",
+    open_winrm_shell_btn: "◈ Ouvrir shell WinRM",
+    open_winrm_shell: "Ouvrir shell WinRM",
+    winrm_shell_manual_start: "Ouverture d'un shell evil-winrm dans la console",
+    winrm_shell_unavailable: "Shell WinRM indisponible sans mot de passe ou NT hash réutilisable",
     script_present: "◈ htbtoolbox.sh présent ✓",
-    script_present_banner: "✓ htbtoolbox.sh détecté — les phases du script seront utilisées directement",
-    script_missing: "◈ script absent (repli)",
-    script_missing_banner: "⚠ htbtoolbox.sh absent — mode de repli (commandes directes)",
+    script_present_banner: "✓ htbtoolbox.sh détecté — utilitaires /etc/hosts & install disponibles",
+    script_missing: "◈ htbtoolbox.sh absent",
+    script_missing_banner: "⚠ htbtoolbox.sh absent — /etc/hosts à gérer manuellement",
     tools_present_summary: "{present}/{total} outils présents",
     present: "présent",
     missing: "absent",
@@ -2274,6 +2311,7 @@ const UI_I18N = {
     profile_hybrid: "Hybrid",
     preset_web: "Web",
     tool_badge_auth: "auth",
+    tool_badge_sudo: "sudo",
     tool_badge_noisy: "noisy",
     tool_badge_safe: "safe",
     tool_badge_skip: "skip mode",
@@ -2470,10 +2508,16 @@ const UI_I18N = {
     shell_stopped_line: "[console] shell stopped (rc={rc})",
     shell_closed: "shell closed",
     shell_closed_line: "[console] shell closed",
+    winrm_shell_autostart: "WinRM valid — opening an evil-winrm shell in the console",
+    winrm_shell_skip: "WinRM valid, but auto-launch skipped because no reusable password or NT hash is available",
+    open_winrm_shell_btn: "◈ Open WinRM shell",
+    open_winrm_shell: "Open WinRM shell",
+    winrm_shell_manual_start: "Opening an evil-winrm shell in the console",
+    winrm_shell_unavailable: "WinRM shell unavailable without a reusable password or NT hash",
     script_present: "◈ htbtoolbox.sh present ✓",
-    script_present_banner: "✓ htbtoolbox.sh detected — script phases will be used directly",
-    script_missing: "◈ script missing (fallback)",
-    script_missing_banner: "⚠ htbtoolbox.sh missing — fallback mode (direct commands)",
+    script_present_banner: "✓ htbtoolbox.sh detected — /etc/hosts & install utilities available",
+    script_missing: "◈ htbtoolbox.sh missing",
+    script_missing_banner: "⚠ htbtoolbox.sh missing — manage /etc/hosts manually",
     tools_present_summary: "{present}/{total} tools present",
     present: "present",
     missing: "missing",
@@ -3508,7 +3552,7 @@ function handleMsg(msg) {
       break;
 
     case "tool_output":
-      if(msg.line!=null){ tl(colorize(msg.line)); tryAutoFillConfig(msg.line); }
+      if(msg.line!=null){ tl(colorize(msg.line)); tryAutoFillConfig(msg.line); _rememberToolOutput(msg.tool_id, msg.line); }
       const activeViewNow = document.querySelector(".view.active")?.id;
       if(!msg.done && msg.tool_id) {
         // Premier output d'un daemon → badge "🔴 actif"
@@ -3529,6 +3573,7 @@ function handleMsg(msg) {
         // Signal kill (SIGTERM=143, SIGKILL=137, SIGINT=130) → "arrêté" pas "erreur"
         const wasKilled = wasDaemon && (msg.rc === 143 || msg.rc === 137 || msg.rc === 130 || msg.rc < 0);
         const ok = msg.rc===0;
+        maybeAutoLaunchWinRMShell(msg.tool_id, ok);
         if(wasDaemon) {
           _activeDaemonId = null;
           _updateDaemonBtn(msg.tool_id, false);
@@ -3772,6 +3817,7 @@ function buildModules() {
           const badges = [];
           if(req.ports?.length) badges.push(`<span class="tool-badge port">${t("tool_badge_port")} ${req.ports.join("/")}</span>`);
           if(req.auth) badges.push(`<span class="tool-badge auth">${t("tool_badge_auth")}</span>`);
+          if(SUDO_REQUIRED_TOOLS.has(tool.id)) badges.push(`<span class="tool-badge sudo">${t("tool_badge_sudo")}</span>`);
           if(tool.noisy) badges.push(`<span class="tool-badge noisy">${t("tool_badge_noisy")}</span>`);
           if(!tool.daemon && !tool.noisy) badges.push(`<span class="tool-badge parallel">${t("tool_badge_safe")}</span>`);
           if(skipReason) badges.push(`<span class="tool-badge skip">${t("tool_badge_skip")}</span>`);
@@ -3885,6 +3931,7 @@ function getCfg() {
     dc:          document.getElementById("inp-dc").value.trim(),
     nt_hash:     document.getElementById("inp-nt").value.trim(),
     ccache:      document.getElementById("inp-cc").value.trim(),
+    target_account: (document.getElementById("inp-ta")?.value || "").trim(),
     claude_api_key: document.getElementById("ai-api-key").value.trim(),
     web_port:    document.getElementById("inp-web-port").value || "80",
     ssh_port:    document.getElementById("inp-ssh-port").value || "22",
@@ -4180,6 +4227,82 @@ async function sendConsoleLine() {
 function sendConsoleSigint() {
   wsSend("shell_sigint",{});
 }
+
+const _toolOutputBuffers = new Map();
+let _winrmAutoLaunchLock = false;
+
+function _rememberToolOutput(toolId, line) {
+  if(!toolId || line == null) return;
+  const cur = _toolOutputBuffers.get(toolId) || [];
+  cur.push(String(line));
+  if(cur.length > 80) cur.shift();
+  _toolOutputBuffers.set(toolId, cur);
+}
+
+function _consumeToolOutput(toolId) {
+  const cur = _toolOutputBuffers.get(toolId) || [];
+  _toolOutputBuffers.delete(toolId);
+  return cur.join("\n");
+}
+
+function normalizeWinRMUser(raw) {
+  const user = String(raw || "").trim();
+  if(!user) return "";
+  if(user.includes("\\")) return user.split("\\").pop();
+  if(user.includes("@")) return user.split("@")[0];
+  return user;
+}
+
+function buildAutoWinRMCmdFromCfg() {
+  const cfg = getCfg();
+  const target = String(cfg.dc || cfg.target || "").trim();
+  const user = normalizeWinRMUser(cfg.user || "");
+  const hash = String(cfg.nt_hash || "").trim();
+  const pass = String(cfg.password || "");
+  if(!target || !user) return "";
+  if(hash) return `evil-winrm -i ${target} -u '${user}' -H '${hash}'`;
+  if(pass) return `evil-winrm -i ${target} -u '${user}' -p '${pass.replace(/'/g, "'\\''")}'`;
+  return "";
+}
+
+function canLaunchWinRMShell(summary = LAST_RESULTS_SUMMARY || {}) {
+  const signal = String(summary?.winrm || "").trim().toLowerCase();
+  if(!buildAutoWinRMCmdFromCfg()) return false;
+  return /(auth ok|authenticated|valid|success|pwn3d)/i.test(signal);
+}
+
+function launchWinRMShellInteractive(ev) {
+  if(ev?.stopPropagation) ev.stopPropagation();
+  const cmd = buildAutoWinRMCmdFromCfg();
+  if(!cmd || !canLaunchWinRMShell()) {
+    toast(t("winrm_shell_unavailable"), "err");
+    return;
+  }
+  toast(t("winrm_shell_manual_start"), "ok");
+  if(!consoleReady) startConsoleShell();
+  setTimeout(() => {
+    wsSend("shell_input", {chars: cmd + "\n", cfg: getCfg()});
+    openConsoleView();
+  }, consoleReady ? 80 : 260);
+}
+
+function maybeAutoLaunchWinRMShell(toolId, ok) {
+  const raw = _consumeToolOutput(toolId);
+  if(toolId !== "winrm_checks" || !ok) return;
+  if(_winrmAutoLaunchLock) return;
+  if(!/\[\+\].*(Pwn3d|\\[^:\s]+:|winrm)/i.test(raw)) return;
+  const cmd = buildAutoWinRMCmdFromCfg();
+  if(!cmd) { toast(t("winrm_shell_skip"), "err"); return; }
+  _winrmAutoLaunchLock = true;
+  toast(t("winrm_shell_autostart"), "ok");
+  if(!consoleReady) startConsoleShell();
+  setTimeout(() => {
+    wsSend("shell_input", {chars: cmd + "\n", cfg: getCfg()});
+    document.getElementById("console-input")?.focus();
+    setTimeout(() => { _winrmAutoLaunchLock = false; }, 1200);
+  }, consoleReady ? 80 : 260);
+}
+
 function ansiToHtml(text) {
   const colors = {
     30:"#4a5568",31:"#f56565",32:"#48bb78",33:"#ecc94b",
@@ -4924,6 +5047,24 @@ function applyResultsLayout(data){
   const summaryContext = inferTargetTypeFromSummary(data);
   if(summaryContext) updateContextSuggestion(summaryContext.type, summaryContext.reason, "loot", summaryContext.confidence, summaryContext.score);
 }
+function wireStatCardLinks(paths) {
+  // Mappe id de carte → clé dans stat_paths
+  const mapping = {
+    "card-users":"users", "card-groups":"groups",
+    "card-asrep":"asrep", "card-kerb":"kerb", "card-ntlm":"ntlm",
+    "card-signing":"signing", "card-winrm":"winrm",
+    "card-adcs":"adcs", "card-klist":"klist",
+  };
+  Object.entries(mapping).forEach(([cardId, statKey]) => {
+    const el = document.getElementById(cardId);
+    if(!el) return;
+    const path = paths?.[statKey];
+    el.classList.toggle("clickable", !!path);
+    el.onclick = path ? () => openLootPath(path) : null;
+    el.title = path ? (getUiLang()==="fr" ? `Ouvrir : ${path}` : `Open: ${path}`) : "";
+  });
+}
+
 function renderResultsSummary(data) {
   LAST_RESULTS_SUMMARY = data;
   applyResultsLayout(data);
@@ -4936,6 +5077,14 @@ function renderResultsSummary(data) {
   document.getElementById("stat-signing").textContent = ((data.smb_signing||"?")+"").toUpperCase();
   document.getElementById("stat-winrm").textContent   = ((data.winrm||"?")+"").toUpperCase();
   document.getElementById("stat-adcs").textContent    = data.adcs_esc?.length ? data.adcs_esc.join(" ") : "—";
+  const winrmBtn = document.getElementById("btn-open-winrm-shell");
+  if(winrmBtn){
+    winrmBtn.textContent = t("open_winrm_shell_btn");
+    winrmBtn.hidden = !canLaunchWinRMShell(data);
+  }
+  const klistEl = document.getElementById("stat-klist");
+  if(klistEl) klistEl.textContent = data.stat_paths?.klist ? "DISPO" : "—";
+  wireStatCardLinks(data.stat_paths || {});
   const findings = document.getElementById("res-findings-list");
   if(findings){
     const findingsRows = Array.isArray(data.interesting) ? [...data.interesting] : [];
@@ -5016,6 +5165,7 @@ function renderPlaybook() {
   const strategy = getStrategyPlan(_contextSuggestion.target_type, mode);
   const recommendedParallel = computeRecommendedParallelism();
   const activeCred = getActiveCredentialInfo();
+  const canOpenWinrmShell = canLaunchWinRMShell(data);
   const confPct = Math.round((_contextSuggestion.confidence || 0) * 100);
   const confCls = confPct >= 80 ? "conf-high" : confPct >= 55 ? "conf-mid" : "conf-low";
   const summaryPills = [
@@ -5057,6 +5207,7 @@ function renderPlaybook() {
         <button class="btn btn-green" onclick="applyAttackPreset('${_contextSuggestion.preset}')">${getUiLang()==="fr"?"Préparer":"Prepare"} ${escapeHtml(getPresetLabel(_contextSuggestion.preset, ATTACK_PRESETS[_contextSuggestion.preset]))}</button>
         <button class="btn btn-run" onclick="applyAttackPreset('${_contextSuggestion.preset}', {autorun:true})">${getUiLang()==="fr"?"Lancer le preset recommandé":"Run recommended preset"}</button>
         <button class="btn" onclick="applyRecommendedParallelism('playbook', true)">${getUiLang()==="fr"?"Appliquer":"Apply"} P${recommendedParallel}</button>
+        ${canOpenWinrmShell ? `<button class="btn" onclick="launchWinRMShellInteractive(event)">${escapeHtml(t("open_winrm_shell"))}</button>` : ``}
       </div>
     </div>
     <div class="playbook-grid">
@@ -5186,6 +5337,7 @@ function renderDetailSections(sections) {
 function renderOperationalView(ops) {
   const grid = document.getElementById("ops-grid");
   if(!grid) return;
+  const winrmLaunch = canLaunchWinRMShell();
   const blocks = [
     {key:"current_state",   title:t("operational_state"), sev:"sev-info",     icon:"◎"},
     {key:"warnings",       title:t("warnings"),         sev:"sev-critical", icon:"⚠"},
@@ -5199,7 +5351,29 @@ function renderOperationalView(ops) {
     grid.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:10px">La vue opérationnelle apparaîtra ici.</div>';
     return;
   }
-  grid.innerHTML = blocks.map(block => {
+  const html = [];
+  if(winrmLaunch){
+    html.push(`<div class="cat-card ops-card sev-info">
+      <div class="cat-head">
+        <span class="cat-icon">⌁</span>
+        <span class="cat-name">${escapeHtml(t("open_winrm_shell"))}</span>
+        <span class="cat-count"></span>
+      </div>
+      <div class="cat-body open">
+        <div class="cat-item ops-cmd">
+          <div class="ops-cmd-main">
+            <span class="ci-icon" style="color:var(--green)">›</span>
+            <code class="ci-label" style="font-family:monospace">evil-winrm</code>
+          </div>
+          <div class="ops-cmd-meta">
+            <span></span>
+            <span class="ops-actions"><button class="ops-btn run-btn" title="${escapeHtml(t("open_winrm_shell"))}" onclick="launchWinRMShellInteractive(event)">▶</button></span>
+          </div>
+        </div>
+      </div>
+    </div>`);
+  }
+  html.push(...blocks.map(block => {
     const items = Array.isArray(ops[block.key]) ? ops[block.key] : [];
     if(!items.length && (block.key === "warnings" || block.key === "current_state")) return "";
     const isCmd = block.key === "next_commands";
@@ -5218,7 +5392,8 @@ function renderOperationalView(ops) {
           : `<div style="padding:8px 0;font-size:10px;color:var(--text3)">${t("no_item")}</div>`}
       </div>
     </div>`;
-  }).join("");
+  }));
+  grid.innerHTML = html.join("");
 }
 
 function encodeOpsPayload(entry) {
@@ -5933,6 +6108,10 @@ function applyConfig(cfg){
   if(cfg.sudo_password != null) document.getElementById("inp-sudo").value=cfg.sudo_password;
   if(cfg.nt_hash != null) document.getElementById("inp-nt").value=cfg.nt_hash;
   if(cfg.ccache != null) document.getElementById("inp-cc").value=cfg.ccache;
+  if(cfg.target_account != null){
+    const taEl = document.getElementById("inp-ta");
+    if(taEl) taEl.value = cfg.target_account;
+  }
   if(cfg.claude_api_key != null) document.getElementById("ai-api-key").value=cfg.claude_api_key;
   if(cfg.web_port != null) document.getElementById("inp-web-port").value=cfg.web_port||"80";
   if(cfg.ssh_port != null) document.getElementById("inp-ssh-port").value=cfg.ssh_port||"22";

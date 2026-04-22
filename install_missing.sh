@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installe les modules souvent absents : mongosh, mongodump, sshpass, rustscan, foremost, checksec, cargo
+# Installe les modules souvent absents : mongosh, mongodump, sshpass, rustscan, foremost, checksec, cargo, PKINITtools
 # Utilise les helpers de install.sh (ensure_rustscan, ensure_mongosh, ensure_mongodb_tools, install_deb_from_url)
 set -euo pipefail
 
@@ -39,6 +39,30 @@ install_deb_from_url() {
   run_priv dpkg -i "$tmpfile" 2>/dev/null || run_priv apt-get install -f -y
   rm -f "$tmpfile"
   have "$bin_name" && good "$bin_name installé" || { warn "$bin_name toujours absent"; return 1; }
+}
+
+ensure_pkinittools() {
+  local repo_dir="$SCRIPT_DIR/PKINITtools"
+  if [[ -f "$repo_dir/gettgtpkinit.py" && -f "$repo_dir/getnthash.py" ]]; then
+    good "PKINITtools déjà présent"
+  else
+    if ! have git; then
+      log "apt install git"
+      apt_install git || warn "git : échec"
+    fi
+    if have git; then
+      log "PKINITtools via git clone"
+      if [[ -d "$repo_dir/.git" ]]; then
+        git -C "$repo_dir" pull --ff-only || warn "PKINITtools : mise à jour échouée"
+      else
+        git clone https://github.com/dirkjanm/PKINITtools.git "$repo_dir" || warn "PKINITtools : clone échoué"
+      fi
+    fi
+  fi
+  if [[ -f "$repo_dir/requirements.txt" ]]; then
+    log "PKINITtools : installation des dépendances Python"
+    python3 -m pip install -r "$repo_dir/requirements.txt" || warn "PKINITtools deps : échec"
+  fi
 }
 
 run_priv apt-get update
@@ -89,8 +113,15 @@ else
     warn "mongodb-database-tools : vérifie la dernière version sur https://www.mongodb.com/try/download/database-tools"
 fi
 
+ensure_pkinittools
+
 echo
 good "Résumé :"
 for b in sshpass foremost checksec cargo rustscan mongosh mongodump; do
   if have "$b"; then printf '  ok    %s\n' "$b"; else printf '  MANQUE %s\n' "$b"; fi
 done
+if [[ -f "$SCRIPT_DIR/PKINITtools/gettgtpkinit.py" && -f "$SCRIPT_DIR/PKINITtools/getnthash.py" ]]; then
+  printf '  ok    %s\n' "PKINITtools"
+else
+  printf '  MANQUE %s\n' "PKINITtools"
+fi

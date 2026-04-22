@@ -238,6 +238,27 @@ ensure_mongodb_tools() {
   install_deb_from_url mongodump "$url"
 }
 
+ensure_pkinittools() {
+  local repo_dir="$SCRIPT_DIR/PKINITtools"
+  if [[ -f "$repo_dir/gettgtpkinit.py" && -f "$repo_dir/getnthash.py" ]]; then
+    good "PKINITtools déjà présent dans $repo_dir"
+  else
+    log "Installation de PKINITtools depuis GitHub"
+    if [[ -d "$repo_dir/.git" ]]; then
+      git -C "$repo_dir" pull --ff-only || warn "Mise à jour PKINITtools échouée"
+    else
+      git clone https://github.com/dirkjanm/PKINITtools.git "$repo_dir" || {
+        warn "Impossible de cloner PKINITtools"
+        return 1
+      }
+    fi
+  fi
+  if [[ -f "$repo_dir/requirements.txt" ]]; then
+    log "Installation des dépendances Python de PKINITtools"
+    python -m pip install -r "$repo_dir/requirements.txt" || warn "Dépendances PKINITtools : échec"
+  fi
+}
+
 main() {
   command -v python3 >/dev/null || { bad "python3 est requis"; exit 1; }
   command -v git >/dev/null || { bad "git est requis"; exit 1; }
@@ -319,6 +340,7 @@ main() {
   ensure_impacket_launchers
   good "Wrappers Impacket créés dans $VENV_DIR/bin pour éviter les conflits avec le .venv"
   ensure_pipx bloodyAD git+https://github.com/CravateRouge/bloodyAD.git || true
+  ensure_pkinittools || true
 
   if ! have ligolo-proxy; then
     install_release_binary ligolo-proxy \
