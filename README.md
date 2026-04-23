@@ -13,19 +13,24 @@ Interface web standalone qui pilote une boîte à outils de pentest **Windows / 
 
 - **Un navigateur web = ta console opérateur** : sélectionne des outils, lance-les, regarde les sorties en temps réel, parcours le loot, réanalyse les artefacts, analyse avec Claude.
 - **Catalogue bilingue de modules** : recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, coercition NTLM, tunnel/pivot, plus des helpers de triage avancé.
+- **Aide contextuelle dynamique** : chaque outil expose un `ⓘ` avec rôle, usages, points d'attention et exemples qui se réécrivent avec la box courante (`target`, `domain`, `dc`, `user`, `target account`).
 - **Wizard guidé + Presets d'attaque** : chaînes prêtes à l'emploi pour `windows`, `linux`, `web` et `hybrid`.
 - **Playbook opérateur** : recommandations adaptées au contexte détecté (type de cible × mode opératoire).
 - **2 modes opératoires** : `htb` (agressif pour lab) et `enterprise` (opsec serrée).
 - **Détection auto** : après un scan, les modules pertinents se cochent tout seuls selon les ports ouverts.
 - **Auto-complétion / auto-import** : credentials extraits des sorties ou des logs lootés (NT hash, TGT, mots de passe) automatiquement proposés ou injectés dans `Creds Tracker`.
 - **Résultats enrichis** : anomalies/faiblesses, liens de preuve vers le loot, hôtes intéressants et réanalyse manuelle du loot depuis l'UI.
-- **Workflow Kerberos guidé** : helpers `krb5 setup`, `getTGT`, `ccache`, `target account` et suggestions SMB/Kerberos quand un compte est valide mais bloqué en SMB.
-- **Chaîne Shadow Credentials guidée** : module `shadowcred_pkinit_chain` pour enchaîner `bloodyAD`, `PKINITtools`, récupération de hash NT et commandes WinRM prêtes.
+- **Workflow Kerberos complet & guidé** : `krb5_setup` (bootstrap krb5.conf + /etc/hosts + NTP en 1 clic), `nxc_smb_auth_test` (détection STATUS_ACCOUNT_RESTRICTION + hint Kerberos), `gettgt` (TGT persisté + klist horodaté dans le loot), `klist_show` (dump consolidé de tous les ccache), auto-injection `KRB5_CONFIG` dans tous les outils dès que le fichier existe, champ `target account` pour les abus ciblés (shadowCredentials, ForceChangePassword, S4U).
+- **Chaîne Shadow Credentials → NT hash, 2 modes** :
+  - **Auto tout-en-un** : `shadowcred_pkinit_chain` enchaîne bloodyAD → PKINITtools → getnthash → commandes evil-winrm prêtes.
+  - **Granulaire** : `bloodyad_shadow_add` → `pkinit_gettgt` → `pkinit_getnthash`, chacun avec auto-détection des artefacts (PEM, ccache, AS-REP key).
+  - **Preset wizard** `Shadow Credentials → NT hash` qui pré-sélectionne toute la chaîne (krb5_setup + gettgt + shadowCredentials + PKINIT + getnthash).
+- **Installation auto de PKINITtools** : si `gettgtpkinit.py` / `getnthash.py` ne sont pas présents, les outils PKINIT les clonent + `pip install -r requirements.txt` à la volée.
 - **Shell WinRM auto** : si `winrm_checks` valide l'authentification avec un mot de passe ou NT hash réutilisable, `evil-winrm` peut être injecté directement dans le shell intégré de l'UI.
 - **Parallélisme contrôlé** : jusqu'à 3 outils en parallèle selon le contexte et le mode.
 - **Prévisualisation** : bouton `👁 Prévisualiser` qui affiche la commande construite (masquée) sans l'exécuter, pour valider auth/flags avant de lancer.
 - **Notes par box** : vue `📝 Notes` dédiée avec éditeur markdown (aperçu), stockées dans `loot/<domain>/notes.md` — les notes voyagent avec le loot.
-- **Prompt sudo à la demande** : l'UI réclame le mot de passe sudo uniquement pour les outils qui en ont besoin (responder, ntlmrelayx, ligolo, chisel, hosts_autoconf). Jamais persisté sur disque.
+- **Prompt sudo à la demande** : l'UI marque visuellement les modules `sudo`, puis ouvre une modale uniquement si nécessaire (`hosts_autoconf`, `ntp_sync`, `krb5_setup`, `gettgt`, `shadowcred_pkinit_chain`, `sudo_enum`, `responder`, `ntlmrelayx`, `ligolo`, `socat`, `chisel_server`). Jamais persisté sur disque.
 - **UI bilingue** : bascule `Français / English` directement dans l'interface, avec persistance dans la config locale.
 
 ### Installation from-scratch sur Kali
@@ -104,6 +109,13 @@ HTBTOOLBOX/
         └── attack_checks/
 ```
 
+### Aide outil dans l'UI
+
+- Le bouton `ⓘ` d'un module ouvre une aide lisible par initié ou non.
+- Les exemples sont **dynamiques** : ils reprennent automatiquement la cible, le domaine, le DC, le user, le mode d'authentification et le `target account` actuellement saisis.
+- Les modules critiques expliquent le but, la sortie attendue et le chaînage logique (`krb5_setup` → `getTGT`, `shadowcred` → `PKINIT`, `winrm_checks` → `evil-winrm`, etc.).
+- Le tooltip affiche aussi le **contexte courant** de la box pour éviter les exemples figés sur une machine précise.
+
 ### Sécurité & secrets
 
 - Le backend écoute sur `127.0.0.1` par défaut.
@@ -166,6 +178,7 @@ Standalone web interface driving a **Windows / Linux / Web / Hybrid** pentest to
 
 - **A web browser = your operator console**: pick tools, run them, watch live output, browse the loot, reanalyze artifacts, and review Claude-assisted analysis.
 - **Bilingual module catalog**: recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, NTLM coercion, tunneling/pivot, plus advanced local triage helpers.
+- **Dynamic contextual help**: every tool exposes an `ⓘ` tooltip with purpose, practical usage, what to watch for, and examples rewritten with the current box (`target`, `domain`, `dc`, `user`, `target account`).
 - **Guided wizard + Attack presets**: ready-made chains for `windows`, `linux`, `web`, and `hybrid`.
 - **Operator playbook**: context-aware recommendations (target type × operating mode).
 - **2 operating modes**: `htb` (aggressive lab) and `enterprise` (tight opsec).
@@ -178,7 +191,7 @@ Standalone web interface driving a **Windows / Linux / Web / Hybrid** pentest to
 - **Controlled parallelism**: up to 3 tools in parallel depending on context and mode.
 - **Preview mode**: `👁 Preview` button renders the built (masked) command without running it — lets you validate auth/flags before firing.
 - **Per-box notes**: dedicated `📝 Notes` view with markdown editor (live preview), saved to `loot/<domain>/notes.md` — notes travel with the loot.
-- **On-demand sudo prompt**: UI asks for the sudo password only when a tool actually needs it (responder, ntlmrelayx, ligolo, chisel, hosts_autoconf). Never persisted to disk.
+- **On-demand sudo prompt**: the UI visually marks `sudo` modules, then opens a modal only when needed (`hosts_autoconf`, `ntp_sync`, `krb5_setup`, `gettgt`, `shadowcred_pkinit_chain`, `sudo_enum`, `responder`, `ntlmrelayx`, `ligolo`, `socat`, `chisel_server`). Never persisted to disk.
 - **Bilingual UI**: switch `Français / English` directly in the interface, with persistence in local config.
 
 ### From-scratch install on Kali
@@ -256,6 +269,13 @@ HTBTOOLBOX/
         ├── adcs/ kerberos/ bloodhound/ smb_shares/ …
         └── attack_checks/
 ```
+
+### Tool Help In The UI
+
+- The `ⓘ` button on a module opens help readable by both beginners and experienced operators.
+- Examples are **dynamic**: they automatically reuse the currently entered target, domain, DC, user, auth mode, and `target account`.
+- Critical modules explain the goal, expected output, and natural follow-up (`krb5_setup` → `getTGT`, `shadowcred` → `PKINIT`, `winrm_checks` → `evil-winrm`, and so on).
+- The tooltip also shows the **current box context**, which avoids hard-coded examples tied to a specific machine.
 
 ### Security & secrets
 

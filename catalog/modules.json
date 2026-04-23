@@ -319,17 +319,17 @@
           "id": "krb5_setup",
           "label": "<b>krb5 setup</b> krb5.conf + NTP + /etc/hosts",
           "source": "htbtoolbox",
-          "desc": "Bootstrap Kerberos en un clic : génère /etc/krb5.conf (avec backup), ajoute l'entrée /etc/hosts (IP ↔ DC FQDN), synchronise l'horloge via ntpdate/rdate/chronyc. KRB5_CONFIG est ensuite auto-injecté dans tous les outils.",
+          "desc": "Bootstrap Kerberos en un clic pour pouvoir executer getTGT, getST, PKINIT et tous les modules en mode -k.\n\nCe que ca fait :\n1. Genere /etc/krb5.conf (via nxc ou template) + backup auto de l'existant\n2. Ajoute ou met a jour /etc/hosts (IP ↔ DC FQDN ↔ domaine) via sudo\n3. Synchronise l'horloge sur le DC (ntpdate / rdate / chronyc) — critique pour Kerberos (skew < 5 min)\n4. Auto-injecte KRB5_CONFIG pour que les outils Kerberos fonctionnent sans export manuel\n\nExemple sur la box en cours :\n• cible = {target}, domaine = {domain}, dc = {dc}\n• resultat attendu : le DC resout, l'horloge est alignee, puis tu peux lancer getTGT",
           "label_en": "<b>krb5 setup</b> krb5.conf + NTP + /etc/hosts",
-          "desc_en": "One-click Kerberos bootstrap: generates /etc/krb5.conf (with backup), adds /etc/hosts entry (IP ↔ DC FQDN), syncs the clock via ntpdate/rdate/chronyc. KRB5_CONFIG is auto-injected into subsequent tools."
+          "desc_en": "One-click Kerberos bootstrap so getTGT, getST, PKINIT, and all -k based modules work cleanly.\n\nSteps:\n1. Generates /etc/krb5.conf (via nxc or a template) + auto-backup of the existing file\n2. Adds or updates /etc/hosts (IP ↔ DC FQDN ↔ domain) via sudo\n3. Syncs the system clock against the DC (ntpdate / rdate / chronyc) — critical for Kerberos (skew < 5 min)\n4. Auto-injects KRB5_CONFIG so Kerberos tools work without manual exports\n\nCurrent box example:\n• target = {target}, domain = {domain}, dc = {dc}\n• expected result: the DC resolves, the clock is aligned, and you can safely move on to getTGT"
         },
         {
           "id": "nxc_smb_auth_test",
           "label": "<b>nxc smb</b> auth test (+ Kerberos hint)",
           "source": "htbtoolbox",
-          "desc": "Teste les credentials SMB/NTLM et détecte STATUS_ACCOUNT_RESTRICTION pour suggérer un basculement sur Kerberos (getTGT puis -k --use-kcache).",
+          "desc": "Teste un credential ou un NT hash contre SMB pour savoir si le compte est reellement valide.\n\nCe que ca fait :\n• lance nxc smb avec le couple user/password ou user/hash\n• distingue mauvais secret, acces SMB standard, admin, ou compte valide mais restreint\n• si STATUS_ACCOUNT_RESTRICTION apparait, l'outil te conseille de basculer sur Kerberos\n\nExemple sur la box en cours :\n• user = {user}\n• si le mot de passe est bon mais SMB restreint, enchaine par krb5_setup → getTGT → outils en -k",
           "label_en": "<b>nxc smb</b> auth test (+ Kerberos hint)",
-          "desc_en": "Tests SMB/NTLM credentials and detects STATUS_ACCOUNT_RESTRICTION to hint at switching to Kerberos (getTGT then -k --use-kcache)."
+          "desc_en": "Tests a credential or NT hash against SMB to verify whether the account is actually valid.\n\nWhat it does:\n• runs nxc smb with the current user/password or user/hash\n• distinguishes bad secrets, standard SMB access, admin access, or a valid but restricted account\n• if STATUS_ACCOUNT_RESTRICTION appears, it tells you to switch to Kerberos\n\nCurrent box example:\n• user = {user}\n• if the password is valid but SMB is restricted, follow up with krb5_setup → getTGT → -k based tools"
         },
         {
           "id": "kerbrute_userenum",
@@ -360,17 +360,17 @@
           "id": "gettgt",
           "label": "<b>getTGT</b> demander ticket (→ ccache)",
           "source": "legacy",
-          "desc": "Demande un TGT Kerberos avec les credentials fournis et le sauvegarde au format ccache. Utilisé pour la pass-the-ticket ou l'accès Kerberos ultérieur.",
+          "desc": "Recupere un TGT Kerberos via impacket-getTGT et le persiste en ccache + klist dans le loot.\n\nCe que ca fait :\n• execute getTGT avec le credential actuel ou le NT hash courant\n• stocke le ticket dans loot/<domaine>/attack_checks/{user}.ccache\n• ecrit un klist horodate dans loot/<domaine>/kerberos/klist.txt\n• te donne immediatement le chemin a remettre dans le champ ccache de l'UI\n\nExemple sur la box en cours :\n• principal = {DOMAIN}/{user}\n• dc-ip = {target}\n• resultat attendu : un fichier .ccache utilisable par BloodHound, GetUserSPNs, Certipy, bloodyAD, etc.\n\nPre-requis : lance krb5_setup avant si l'horloge n'est pas alignee.",
           "label_en": "<b>getTGT</b> request ticket (→ ccache)",
-          "desc_en": "Requests a Kerberos TGT with the provided credentials and stores it as a ccache for later pass-the-ticket style use."
+          "desc_en": "Requests a Kerberos TGT via impacket-getTGT and persists ccache + klist in the loot.\n\nWhat it does:\n• runs getTGT with the current credential or NT hash\n• stores the ticket in loot/<domain>/attack_checks/{user}.ccache\n• writes a timestamped klist to loot/<domain>/kerberos/klist.txt\n• immediately gives you the path to paste back into the UI ccache field\n\nCurrent box example:\n• principal = {DOMAIN}/{user}\n• dc-ip = {target}\n• expected result: a .ccache usable by BloodHound, GetUserSPNs, Certipy, bloodyAD, and other Kerberos-aware tools\n\nPrerequisite: run krb5_setup first if the clock is not aligned."
         },
         {
           "id": "klist_show",
           "label": "<b>klist</b> dump ccache → kerberos/klist.txt",
           "source": "htbtoolbox",
-          "desc": "Parcourt tous les .ccache dans attack_checks/ et dump klist pour chacun dans kerberos/klist.txt (avec horodatage). Fallback sur KRB5CCNAME courant si aucun fichier n'existe.",
+          "desc": "Parcourt tous les .ccache du loot et dump klist pour chacun dans kerberos/klist.txt.\n\nCe que ca fait :\n• execute KRB5CCNAME=<ccache> klist avec horodatage pour chaque ticket trouve\n• consolide tout dans un seul fichier lisible depuis la vue Resultats\n• permet de verifier les principals, dates d'expiration et tickets encore exploitables\n\nUtile pour :\n• voir si ton TGT actuel est encore valide\n• confirmer qu'un TGT PKINIT ou shadow credential a bien ete obtenu\n• verifier quel compte sera reellement utilise avant un getST, Certipy ou bloodyAD",
           "label_en": "<b>klist</b> dump ccache → kerberos/klist.txt",
-          "desc_en": "Iterates over every .ccache in attack_checks/ and dumps klist into kerberos/klist.txt (timestamped). Falls back to current KRB5CCNAME if no file exists."
+          "desc_en": "Walks through every .ccache in the loot and dumps klist for each into kerberos/klist.txt.\n\nWhat it does:\n• runs KRB5CCNAME=<ccache> klist with timestamps for every ticket found\n• consolidates everything into a single file readable from the Results view\n• lets you inspect principals, expiration times, and still-usable tickets\n\nUseful for:\n• checking whether your current TGT is still valid\n• confirming that a PKINIT or shadow credential TGT was successfully obtained\n• verifying which account will really be used before getST, Certipy, or bloodyAD"
         }
       ],
       "title_en": "Kerberos"
@@ -479,17 +479,33 @@
           "id": "bloodyad_shadow_add",
           "label": "<b>bloodyAD</b> add shadowCredentials (→ NT hash)",
           "source": "htbtoolbox",
-          "desc": "Ajoute msDS-KeyCredentialLink sur le compte cible (target_account dans l'UI) via bloodyAD. Extrait automatiquement le hash NT et suggère les commandes evil-winrm / nxc winrm / secretsdump prêtes à copier. Utilise le ccache si disponible (-k).",
+          "desc": "Abuse GenericWrite/WriteDACL sur un compte machine ou user pour ajouter msDS-KeyCredentialLink (Shadow Credentials).\n\nCe que ca fait :\n• utilise le champ target account de l'UI comme cible de l'abus\n• supporte -k (ccache), mot de passe, ou NT hash\n• genere automatiquement un certificat PEM + une cle privee PEM\n• prepare la suite PKINIT en affichant quoi lancer ensuite\n\nExemple sur la box en cours :\n• auth = {user} avec le mode courant\n• target account = {target_account}\n• resultat attendu : des artefacts *_cert.pem et *_priv.pem, puis enchainement vers pkinit_gettgt",
           "label_en": "<b>bloodyAD</b> add shadowCredentials (→ NT hash)",
-          "desc_en": "Adds msDS-KeyCredentialLink on the target account (target_account field in UI) via bloodyAD. Auto-extracts the NT hash and prints ready-to-copy evil-winrm / nxc winrm / secretsdump commands. Uses ccache when available (-k)."
+          "desc_en": "Abuses GenericWrite/WriteDACL on a machine or user account to add msDS-KeyCredentialLink (Shadow Credentials).\n\nWhat it does:\n• uses the UI target account field as the abuse target\n• supports -k (ccache), password, or NT hash\n• automatically generates a PEM certificate + PEM private key\n• prepares the next PKINIT step by telling you what to run next\n\nCurrent box example:\n• auth = {user} with the current auth mode\n• target account = {target_account}\n• expected result: *_cert.pem and *_priv.pem artifacts, then a natural follow-up into pkinit_gettgt"
         },
         {
           "id": "shadowcred_pkinit_chain",
           "label": "<b>shadowcred</b> auto chain → PKINIT → NT hash",
           "source": "htbtoolbox",
-          "desc": "Chaîne guidée complète pour shadow credentials : vérifie KRB5CCNAME et /etc/hosts, désactive le NTP auto, tente bloodyAD add shadowCredentials avec --host et --dc-ip, puis enchaîne automatiquement gettgtpkinit.py et getnthash.py si PKINITtools est présent. Termine en affichant les commandes Evil-WinRM / nxc prêtes à l'emploi.",
+          "desc": "Chaine automatique Shadow Credentials → PKINIT → NT hash en un seul run.\n\nCe que ca fait :\n1. verifie le ccache actif, /etc/hosts et la sync NTP\n2. tente d'installer PKINITtools si absent\n3. lance bloodyAD add shadowCredentials sur {target_account}\n4. recupere cert + key → gettgtpkinit → ccache PKINIT\n5. enchaine getnthash → extraction NT hash\n6. imprime les commandes pretes pour WinRM, nxc et secretsdump\n\nExemple sur la box en cours :\n• auth = {user} avec le mode courant\n• target account = {target_account}\n• resultat attendu : un NT hash reutilisable sans refaire chaque etape a la main\n\nAlternative : lance les modules separes si tu veux inspecter chaque artefact.",
           "label_en": "<b>shadowcred</b> auto chain → PKINIT → NT hash",
-          "desc_en": "Full guided shadow credentials chain: checks KRB5CCNAME and /etc/hosts, disables automatic NTP, runs bloodyAD add shadowCredentials with --host and --dc-ip, then automatically chains gettgtpkinit.py and getnthash.py when PKINITtools is available. Ends with ready-to-run Evil-WinRM / nxc commands."
+          "desc_en": "Automated Shadow Credentials → PKINIT → NT hash chain in a single run.\n\nWhat it does:\n1. checks the active ccache, /etc/hosts, and NTP state\n2. tries to install PKINITtools if missing\n3. runs bloodyAD add shadowCredentials against {target_account}\n4. pulls cert + key → gettgtpkinit → PKINIT ccache\n5. chains getnthash → NT hash extraction\n6. prints ready-to-use commands for WinRM, nxc, and secretsdump\n\nCurrent box example:\n• auth = {user} with the current auth mode\n• target account = {target_account}\n• expected result: a reusable NT hash without replaying every step manually\n\nAlternative: run the modules separately if you want to inspect every artifact."
+        },
+        {
+          "id": "pkinit_getnthash",
+          "label": "<b>PKINIT</b> getnthash (ccache + AS-REP key → NT hash)",
+          "source": "htbtoolbox",
+          "desc": "Extrait le NT hash NTLM d'un compte a partir d'un ccache PKINIT + cle AS-REP (via PKINITtools/getnthash.py).\n\nCe que ca fait :\n• auto-detecte le dernier .ccache PKINIT + la derniere AS-REP key\n• execute getnthash.py pour {domain}/{target_account}\n• extrait le hash NTLM depuis la sortie\n• affiche les commandes pretes pour WinRM, nxc ou secretsdump\n\nExemple sur la box en cours :\n• target account = {target_account}\n• resultat attendu : un NT hash reutilisable pour evil-winrm, nxc winrm ou un autre pivot",
+          "label_en": "<b>PKINIT</b> getnthash (ccache + AS-REP key → NT hash)",
+          "desc_en": "Extracts the NTLM hash of an account from a PKINIT ccache + AS-REP key (via PKINITtools/getnthash.py).\n\nWhat it does:\n• auto-detects the latest PKINIT .ccache + latest AS-REP key\n• runs getnthash.py for {domain}/{target_account}\n• extracts the NTLM hash from the output\n• prints ready-to-use commands for WinRM, nxc, or secretsdump\n\nCurrent box example:\n• target account = {target_account}\n• expected result: a reusable NT hash for evil-winrm, nxc winrm, or another pivot"
+        },
+        {
+          "id": "pkinit_gettgt",
+          "label": "<b>PKINIT</b> gettgtpkinit (cert/key → TGT + AS-REP key)",
+          "source": "htbtoolbox",
+          "desc": "Utilise PKINITtools/gettgtpkinit.py avec un pair cert/key PEM pour obtenir un TGT Kerberos PKINIT.\n\nCe que ca fait :\n• auto-detecte le dernier pair *_cert.pem / *_priv.pem dans le loot ou le dossier courant\n• execute gettgtpkinit.py pour {domain}/{target_account}\n• persiste un ccache PKINIT + une cle AS-REP pour l'etape getnthash\n• tente d'installer PKINITtools localement si absent\n\nExemple sur la box en cours :\n• cible PKINIT = {domain}/{target_account}\n• resultat attendu : un .ccache PKINIT et une AS-REP key exploitables par pkinit_getnthash",
+          "label_en": "<b>PKINIT</b> gettgtpkinit (cert/key → TGT + AS-REP key)",
+          "desc_en": "Uses PKINITtools/gettgtpkinit.py with a cert/key PEM pair to obtain a Kerberos PKINIT TGT.\n\nWhat it does:\n• auto-detects the latest *_cert.pem / *_priv.pem pair in the loot or current directory\n• runs gettgtpkinit.py for {domain}/{target_account}\n• persists a PKINIT ccache + an AS-REP key for the getnthash step\n• can try to install PKINITtools locally if missing\n\nCurrent box example:\n• PKINIT target = {domain}/{target_account}\n• expected result: a PKINIT .ccache and an AS-REP key usable by pkinit_getnthash"
         },
         {
           "id": "gpo_parse",

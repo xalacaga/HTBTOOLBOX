@@ -62,8 +62,10 @@ Ton navigateur par défaut s'ouvre sur `http://127.0.0.1:8765`. Tu vois :
 - Chaque **groupe** (SMB, LDAP, Kerberos…) est un bandeau pliable.
 - Le **toggle ✓/✗** à droite du bandeau active/désactive le groupe.
 - Les **outils** à l'intérieur se cochent individuellement.
+- Le bouton **`ⓘ`** sur un outil ouvre une aide contextuelle : rôle du module, sortie utile, exemple adapté à la box courante, et suite logique.
 - Les outils `[noisy]` sont bruyants → restreints surtout en mode `enterprise`.
 - Les outils `[daemon]` (Responder, chisel…) occupent le slot d'exécution tant qu'on ne les stoppe pas.
+- Les outils marqués **`sudo`** affichent un badge dédié et ouvrent une modale seulement si le mot de passe sudo manque au moment du lancement.
 
 #### Vue `Résultats`
 
@@ -202,6 +204,12 @@ Tu peux **combiner plusieurs presets** : applique « HTB AD quick win » puis «
 ### 9. Comprendre les outils et leurs résultats utiles
 
 Le but n'est pas seulement de lancer des commandes, mais de savoir **ce que chaque outil peut t'apporter**. Voici la lecture opérateur des plus importants.
+
+Dans l'interface, utilise `ⓘ` dès que tu hésites :
+
+- le tooltip reformule l'outil avec un langage compréhensible même si tu débutes
+- il affiche un **exemple dynamique** construit avec la box courante (`target`, `domain`, `dc`, `user`, `target account`)
+- il indique aussi **quoi lancer ensuite** quand le résultat est bon
 
 | Outil | À quoi il sert | Ce qui est réellement utile |
 |------|-----------------|-----------------------------|
@@ -460,8 +468,10 @@ Your default browser opens `http://127.0.0.1:8765`. You see:
 - Each **group** (SMB, LDAP, Kerberos…) is a collapsible panel.
 - The **✓/✗ toggle** on the right enables/disables the group.
 - **Tools** are ticked individually.
+- The **`ⓘ`** button on a tool opens contextual help: module purpose, useful output, example adapted to the current box, and the natural follow-up.
 - `[noisy]` tools are mainly restricted in `enterprise` mode.
 - `[daemon]` tools (Responder, chisel…) occupy the execution slot until stopped.
+- Tools marked **`sudo`** show a dedicated badge and open a modal only if the sudo password is still missing at launch time.
 
 #### `Results` view
 
@@ -600,6 +610,12 @@ You can **combine presets**: apply "HTB AD quick win" then "Web focus" if port 8
 ### 9. Understanding tools and useful results
 
 The goal is not just to launch commands, but to understand **what each tool can actually give you**. Here's the operator view of the most useful ones.
+
+Inside the UI, use `ⓘ` whenever you hesitate:
+
+- the tooltip rewrites the module in a way that stays readable even if you're still learning
+- it shows a **dynamic example** built from the current box (`target`, `domain`, `dc`, `user`, `target account`)
+- it also tells you **what to run next** when the result is good
 
 | Tool | What it does | What is genuinely useful in the output |
 |------|---------------|----------------------------------------|

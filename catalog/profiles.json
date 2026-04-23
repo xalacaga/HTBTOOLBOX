@@ -209,6 +209,23 @@
         "web"
       ],
       "title_en": "Hybrid"
+    },
+    "shadow_cred_attack": {
+      "label": "Shadow Credentials → NT hash",
+      "label_en": "Shadow Credentials → NT hash",
+      "desc": "Wizard HTB Logging : /etc/hosts + NTP + TGT svc → bloodyAD shadowCredentials → PKINIT gettgt → NT hash MSA_HEALTH$ → evil-winrm prêt.",
+      "desc_en": "HTB Logging wizard: /etc/hosts + NTP + TGT svc → bloodyAD shadowCredentials → PKINIT gettgt → NT hash MSA_HEALTH$ → evil-winrm ready.",
+      "target_types": [
+        "windows",
+        "hybrid"
+      ],
+      "tools": [
+        "krb5_setup",
+        "gettgt",
+        "bloodyad_shadow_add",
+        "pkinit_gettgt",
+        "pkinit_getnthash"
+      ]
     }
   }
 }

@@ -234,10 +234,10 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 .tool-info-btn{background:none;border:none;color:var(--text3);font-size:10px;
   cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1;transition:color .1s}
 .tool-info-btn:hover{color:var(--cyan)}
-#tool-tip{display:none;position:fixed;z-index:500;max-width:280px;
+#tool-tip{display:none;position:fixed;z-index:500;max-width:460px;
   background:var(--bg3);border:1px solid var(--border2);border-radius:6px;
-  padding:8px 10px;font-size:10px;color:var(--text2);line-height:1.5;
-  box-shadow:0 4px 16px rgba(0,0,0,.5);pointer-events:none}
+  padding:10px 12px;font-size:10.5px;color:var(--text2);line-height:1.55;
+  white-space:pre-wrap;box-shadow:0 4px 16px rgba(0,0,0,.5);pointer-events:none}
 .tool-chk{width:13px;height:13px;flex-shrink:0;border:1px solid var(--border2);
   border-radius:3px;display:flex;align-items:center;justify-content:center;
   font-size:8px;color:transparent;transition:all .1s}
@@ -1690,6 +1690,8 @@ const FALLBACK_MODULES = [
     {id:"bloodyad_acls",            label:"<b>bloodyAD</b> get writable ACLs"},
     {id:"bloodyad_shadow_add",      label:"<b>bloodyAD</b> add shadowCredentials (→ NT hash)"},
     {id:"shadowcred_pkinit_chain",  label:"<b>shadowcred</b> auto chain → PKINIT → NT hash"},
+    {id:"pkinit_gettgt",            label:"<b>PKINIT</b> gettgtpkinit (cert/key → TGT + AS-REP key)"},
+    {id:"pkinit_getnthash",         label:"<b>PKINIT</b> getnthash (ccache + AS-REP key → NT hash)"},
     {id:"gpo_parse",                label:"<b>GPO</b> SYSVOL / cpassword"},
     {id:"hash_hints",               label:"<b>Hash hints</b> hashcat / john"},
     {id:"postauth_hints",           label:"<b>Post-auth</b> exec / rdp / ptk"},
@@ -1852,6 +1854,8 @@ const TOOL_REQUIREMENTS = {
   rpcclient_enum: { ports:[135,445] },
   bloodhound_collect: { ports:[88,389], auth:true },
   shadowcred_pkinit_chain: { ports:[88,389], auth:true },
+  pkinit_gettgt: { ports:[88], auth:true },
+  pkinit_getnthash: { ports:[88] },
   winrm_checks: { ports:[5985,5986], auth:true },
   ssh_banner: { ports:[22] },
   ssh_auth_methods: { ports:[22] },
@@ -2616,7 +2620,291 @@ function getToolLabel(tool) {
   return getUiLang()==="en" ? (tool.label_en || tool.label) : tool.label;
 }
 function getToolDesc(tool) {
-  return getUiLang()==="en" ? (tool.desc_en || tool.desc) : tool.desc;
+  const raw = getUiLang()==="en" ? (tool.desc_en || tool.desc) : tool.desc;
+  if(!raw) return raw;
+  const rendered = substituteToolDescPlaceholders(raw).trim();
+  const checklist = buildToolDescChecklist(tool);
+  const sampleOutput = buildToolDescSampleOutput(tool);
+  const ctx = buildToolDescContext(tool);
+  return [rendered, checklist, sampleOutput, ctx].filter(Boolean).join("\n\n");
+}
+function substituteToolDescPlaceholders(text) {
+  // Remplace {target}, {domain}, {dc}, {user}, {target_account} par les valeurs actuelles.
+  // Si un champ est vide, on laisse un placeholder explicite genre <target> pour que l'utilisateur sache ce qu'il doit remplir.
+  const cfg = (typeof getCfg === "function") ? getCfg() : {};
+  const fallback = (val, ph) => (val && String(val).trim()) ? String(val).trim() : `<${ph}>`;
+  return text
+    .replaceAll("{target}",         fallback(cfg.target,         "target"))
+    .replaceAll("{domain}",         fallback(cfg.domain,         "domain"))
+    .replaceAll("{DOMAIN}",         fallback((cfg.domain||"").toUpperCase(), "DOMAIN"))
+    .replaceAll("{dc}",             fallback(cfg.dc,             "dc"))
+    .replaceAll("{user}",           fallback(cfg.user,           "user"))
+    .replaceAll("{target_account}", fallback(cfg.target_account, "target_account"));
+}
+function buildToolDescContext(tool) {
+  const cfg = (typeof getCfg === "function") ? getCfg() : {};
+  const req = TOOL_REQUIREMENTS?.[tool?.id] || {};
+  const authMode = getAuthMode(cfg);
+  const lines = getUiLang()==="en"
+    ? [
+        "Current box context:",
+        `• target = ${cfg.target || "<target>"}`,
+        `• domain = ${cfg.domain || "<domain>"}`,
+        `• dc = ${cfg.dc || "<dc>"}`,
+        `• auth = ${authMode}`,
+        `• user = ${cfg.user || "<user>"}`,
+        `• target account = ${cfg.target_account || "<target_account>"}`,
+        req.ports?.length ? `• typical ports = ${req.ports.join(", ")}` : "",
+        req.auth ? "• note = this module expects reusable credentials or a ccache" : "",
+        SUDO_REQUIRED_TOOLS.has(tool?.id) ? "• note = this module may prompt for sudo in the UI" : "",
+      ]
+    : [
+        "Contexte courant :",
+        `• cible = ${cfg.target || "<target>"}`,
+        `• domaine = ${cfg.domain || "<domain>"}`,
+        `• dc = ${cfg.dc || "<dc>"}`,
+        `• auth = ${authMode}`,
+        `• user = ${cfg.user || "<user>"}`,
+        `• target account = ${cfg.target_account || "<target_account>"}`,
+        req.ports?.length ? `• ports typiques = ${req.ports.join(", ")}` : "",
+        req.auth ? "• note = ce module attend des credentials réutilisables ou un ccache" : "",
+        SUDO_REQUIRED_TOOLS.has(tool?.id) ? "• note = ce module peut demander sudo dans l'UI" : "",
+      ];
+  return lines.filter(Boolean).join("\n");
+}
+function buildToolDescChecklist(tool) {
+  const id = String(tool?.id || "");
+  const groupId = getModuleByTool(id)?.id || "";
+  const byId = {
+    ldap_anon_base: "ldap",
+    ldap_users_auth: "ldap",
+    ldap_kerberoastable: "ldap",
+    ldap_asrep_candidates: "ldap",
+    ldapdomaindump: "ldap",
+    ldaps_probe: "ldap",
+    ldap_constrained_deleg: "ldap",
+    ldap_gmsa_readable: "ldap",
+    enum4linux_ng: "bh",
+    rpcclient_enum: "bh",
+    bloodhound_collect: "bh",
+    tls_probe: "web",
+    web_robots: "web",
+    web_tech_detect: "web",
+    web_dir_quick: "web",
+    web_nuclei_safe: "web",
+    ffuf_vhost: "web",
+    ffuf_dir_fast: "web",
+    wfuzz_params: "web",
+    nikto_scan: "web",
+    waf_detect: "web",
+    cms_scan: "web",
+    lfi_probe: "web",
+    sqlmap_basic: "web",
+    web_login_brute: "web",
+    mysql_probe: "sql",
+    mssql_probe: "sql",
+    postgres_probe: "sql",
+    redis_probe: "sql",
+    mongodb_probe: "sql",
+    sqlmap_crawl: "sql",
+    responder_listen: "pivot",
+    ntlmrelayx_run: "pivot",
+    ntlmrelayx_relay: "pivot",
+    coercer_run: "pivot",
+    ligolo_server: "pivot",
+    chisel_server: "pivot",
+    chisel_client: "pivot",
+    socat_fwd: "pivot",
+  };
+  const family = byId[id] || (["ldap","bh","web","sql"].includes(groupId) ? groupId : "");
+  const fr = {
+    ldap: [
+      "À regarder en priorité :",
+      "• users, groupes, descriptions et OU intéressantes",
+      "• comptes avec SPN, DONT_REQ_PREAUTH, delegation, gMSA ou ACLs faibles",
+      "• indices textuels: password, svc, backup, sql, admin, helpdesk",
+      "• FQDN de machines, DC, services internes ou hôtes jamais vus ailleurs",
+    ],
+    bh: [
+      "À regarder en priorité :",
+      "• chemins vers Domain Admins ou un serveur critique",
+      "• droits exploitables: GenericAll, WriteDacl, AddMember, ForceChangePassword, AllowedToAct",
+      "• machines où ton compte a AdminTo, CanPSRemote ou session admin",
+      "• groupes sensibles, adminCount=1, HighValue et relations inattendues",
+    ],
+    web: [
+      "À regarder en priorité :",
+      "• nouveaux endpoints, vhosts, répertoires cachés, backups, .git, .env",
+      "• technologies/frameworks/CMS et versions qui orientent tes exploits",
+      "• auth panels, APIs internes, paramètres injectables, upload, LFI/RFI",
+      "• résultats actionnables plutôt que le bruit: admin, creds, RCE, fuite, source",
+    ],
+    sql: [
+      "À regarder en priorité :",
+      "• auth réussie, bases visibles, users, rôles, linked servers, xp_cmdshell",
+      "• noms de bases métiers, tables RH, secrets, credentials, chemins UNC",
+      "• comptes de service SQL réutilisables ailleurs dans la box",
+      "• toute capacité de lecture/écriture menant à exécution ou exfiltration",
+    ],
+    pivot: [
+      "À regarder en priorité :",
+      "• prérequis réseau réels: interface, port, cible de relay, route ou listener",
+      "• confirmation que le service tourne vraiment et sur quelle IP/port",
+      "• sorties indiquant une auth capturée, un relay réussi ou un tunnel établi",
+      "• impact concret: nouveau shell, nouveau segment atteint, nouveau hash ou ticket",
+    ],
+  };
+  const en = {
+    ldap: [
+      "What to look for first:",
+      "• interesting users, groups, descriptions, and OUs",
+      "• accounts with SPNs, DONT_REQ_PREAUTH, delegation, gMSA, or weak ACLs",
+      "• textual clues such as password, svc, backup, sql, admin, helpdesk",
+      "• FQDNs of machines, DCs, internal services, or previously unseen hosts",
+    ],
+    bh: [
+      "What to look for first:",
+      "• paths to Domain Admins or another critical server",
+      "• exploitable rights: GenericAll, WriteDacl, AddMember, ForceChangePassword, AllowedToAct",
+      "• machines where your account has AdminTo, CanPSRemote, or admin sessions",
+      "• sensitive groups, adminCount=1, HighValue nodes, and unexpected relationships",
+    ],
+    web: [
+      "What to look for first:",
+      "• new endpoints, vhosts, hidden directories, backups, .git, .env",
+      "• technologies/frameworks/CMS and versions that drive exploit choices",
+      "• auth panels, internal APIs, injectable parameters, upload, LFI/RFI",
+      "• actionable results over noise: admin panels, creds, RCE, leaks, source",
+    ],
+    sql: [
+      "What to look for first:",
+      "• successful auth, visible databases, users, roles, linked servers, xp_cmdshell",
+      "• business DB names, HR tables, secrets, credentials, UNC paths",
+      "• SQL service accounts reusable elsewhere on the box",
+      "• any read/write capability that leads to execution or exfiltration",
+    ],
+    pivot: [
+      "What to look for first:",
+      "• real network prerequisites: interface, port, relay target, route, or listener",
+      "• confirmation that the service is actually running and on which IP/port",
+      "• output proving a captured auth, successful relay, or established tunnel",
+      "• concrete impact: new shell, new segment reached, new hash, or new ticket",
+    ],
+  };
+  const lines = (getUiLang()==="en" ? en : fr)[family];
+  return lines ? lines.join("\n") : "";
+}
+function buildToolDescSampleOutput(tool) {
+  const id = String(tool?.id || "");
+  const groupId = getModuleByTool(id)?.id || "";
+  const byId = {
+    ldap_anon_base: "ldap",
+    ldap_users_auth: "ldap",
+    ldap_kerberoastable: "ldap",
+    ldap_asrep_candidates: "ldap",
+    ldapdomaindump: "ldap",
+    ldaps_probe: "ldap",
+    ldap_constrained_deleg: "ldap",
+    ldap_gmsa_readable: "ldap",
+    enum4linux_ng: "bh",
+    rpcclient_enum: "bh",
+    bloodhound_collect: "bh",
+    tls_probe: "web",
+    web_robots: "web",
+    web_tech_detect: "web",
+    web_dir_quick: "web",
+    web_nuclei_safe: "web",
+    ffuf_vhost: "web",
+    ffuf_dir_fast: "web",
+    wfuzz_params: "web",
+    nikto_scan: "web",
+    waf_detect: "web",
+    cms_scan: "web",
+    lfi_probe: "web",
+    sqlmap_basic: "web",
+    web_login_brute: "web",
+    mysql_probe: "sql",
+    mssql_probe: "sql",
+    postgres_probe: "sql",
+    redis_probe: "sql",
+    mongodb_probe: "sql",
+    sqlmap_crawl: "sql",
+    responder_listen: "pivot",
+    ntlmrelayx_run: "pivot",
+    ntlmrelayx_relay: "pivot",
+    coercer_run: "pivot",
+    ligolo_server: "pivot",
+    chisel_server: "pivot",
+    chisel_client: "pivot",
+    socat_fwd: "pivot",
+  };
+  const family = byId[id] || (["ldap","bh","web","sql"].includes(groupId) ? groupId : "");
+  const fr = {
+    ldap: [
+      "Sorties typiques à reconnaître :",
+      "• sAMAccountName: alice / description: Helpdesk password reset",
+      "• servicePrincipalName: MSSQLSvc/sql01.{domain}:1433",
+      "• userAccountControl: ... DONT_REQ_PREAUTH ...",
+    ],
+    bh: [
+      "Sorties typiques à reconnaître :",
+      "• GenericAll -> AddMember -> Domain Admins",
+      "• admincount = true / highvalue = true",
+      "• CanPSRemote / AdminTo / AllowedToAct",
+    ],
+    web: [
+      "Sorties typiques à reconnaître :",
+      "• 200 /admin  | 302 /login  | 403 /.git/  | 200 /backup.zip",
+      "• Server: nginx / X-Powered-By: PHP / WordPress 6.x / Laravel",
+      "• GET parameter 'id' appears injectable / interesting vhost found",
+    ],
+    sql: [
+      "Sorties typiques à reconnaître :",
+      "• login success / SHOW DATABASES / SELECT @@version",
+      "• xp_cmdshell is disabled/enabled / sysadmin / db_owner",
+      "• linked server found / table names like users, employees, secrets",
+    ],
+    pivot: [
+      "Sorties typiques à reconnaître :",
+      "• NTLMv2 hash captured / relay succeeded / authenticated against LDAP",
+      "• tunnel established / session connected / socks listener started",
+      "• route added / agent connected / new segment reachable",
+    ],
+  };
+  const en = {
+    ldap: [
+      "Typical output to recognize:",
+      "• sAMAccountName: alice / description: Helpdesk password reset",
+      "• servicePrincipalName: MSSQLSvc/sql01.{domain}:1433",
+      "• userAccountControl: ... DONT_REQ_PREAUTH ...",
+    ],
+    bh: [
+      "Typical output to recognize:",
+      "• GenericAll -> AddMember -> Domain Admins",
+      "• admincount = true / highvalue = true",
+      "• CanPSRemote / AdminTo / AllowedToAct",
+    ],
+    web: [
+      "Typical output to recognize:",
+      "• 200 /admin  | 302 /login  | 403 /.git/  | 200 /backup.zip",
+      "• Server: nginx / X-Powered-By: PHP / WordPress 6.x / Laravel",
+      "• GET parameter 'id' appears injectable / interesting vhost found",
+    ],
+    sql: [
+      "Typical output to recognize:",
+      "• login success / SHOW DATABASES / SELECT @@version",
+      "• xp_cmdshell is disabled/enabled / sysadmin / db_owner",
+      "• linked server found / table names like users, employees, secrets",
+    ],
+    pivot: [
+      "Typical output to recognize:",
+      "• NTLMv2 hash captured / relay succeeded / authenticated against LDAP",
+      "• tunnel established / session connected / socks listener started",
+      "• route added / agent connected / new segment reachable",
+    ],
+  };
+  const lines = (getUiLang()==="en" ? en : fr)[family];
+  return lines ? substituteToolDescPlaceholders(lines.join("\n")) : "";
 }
 function getProfileTitle(name, profile) {
   return getUiLang()==="en" ? (profile?.title_en || profile?.title || name) : (profile?.title || name);
