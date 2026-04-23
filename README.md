@@ -16,12 +16,15 @@ Interface web standalone qui pilote une boîte à outils de pentest **Windows / 
 - **Catalogue bilingue de modules** : recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, coercition NTLM, tunnel/pivot, plus des helpers de triage avancé.
 - **Aide contextuelle dynamique** : chaque outil expose un `ⓘ` avec rôle, usages, points d'attention et exemples qui se réécrivent avec la box courante (`target`, `domain`, `dc`, `user`, `target account`).
 - **Wizard guidé + Presets d'attaque** : chaînes prêtes à l'emploi pour `windows`, `linux`, `web` et `hybrid`.
+- **Wizard interactif jusqu'à WinRM** : pour les boxes AD, le wizard propose aussi un vrai chemin opérateur inspiré de cas réels type `Logging` : recon → loot/logs → cred → Kerberos → ACL / shadow credentials → PKINIT → test WinRM → ouverture `evil-winrm`.
 - **Playbook opérateur** : recommandations adaptées au contexte détecté (type de cible × mode opératoire).
 - **2 modes opératoires** : `htb` (agressif pour lab) et `enterprise` (opsec serrée).
 - **Détection auto** : après un scan, les modules pertinents se cochent tout seuls selon les ports ouverts.
 - **Auto-complétion / auto-import** : credentials extraits des sorties ou des logs lootés (NT hash, TGT, mots de passe) automatiquement proposés ou injectés dans `Creds Tracker`.
 - **Résultats enrichis** : anomalies/faiblesses, liens de preuve vers le loot, hôtes intéressants et réanalyse manuelle du loot depuis l'UI.
 - **Workflow Kerberos complet & guidé** : `krb5_setup` (bootstrap krb5.conf + /etc/hosts + NTP en 1 clic), `nxc_smb_auth_test` (détection STATUS_ACCOUNT_RESTRICTION + hint Kerberos), `gettgt` (TGT persisté + klist horodaté dans le loot), `klist_show` (dump consolidé de tous les ccache), auto-injection `KRB5_CONFIG` dans tous les outils dès que le fichier existe, champ `target account` pour les abus ciblés (shadowCredentials, ForceChangePassword, S4U).
+- **Aide visuelle Kerberos** : badge `Kerberos prêt` / `ccache seul` / `getTGT: secret manquant` dans la barre d’auth, plus bouton `Use for getTGT` dans `Creds Tracker` pour préparer immédiatement `user + password/hash` avant `gettgt`.
+- **Horloge DC clarifiée** : la barre d’horloge affiche le skew utile à Kerberos, `DC UTC`, et une ligne `DC local time` qui n’est remplie que si l’outil connaît réellement le fuseau local du DC.
 - **Chaîne Shadow Credentials → NT hash, 2 modes** :
   - **Auto tout-en-un** : `shadowcred_pkinit_chain` enchaîne bloodyAD → PKINITtools → getnthash → commandes evil-winrm prêtes.
   - **Granulaire** : `bloodyad_shadow_add` → `pkinit_gettgt` → `pkinit_getnthash`, chacun avec auto-détection des artefacts (PEM, ccache, AS-REP key).
@@ -115,6 +118,7 @@ HTBTOOLBOX/
 - Le bouton `ⓘ` d'un module ouvre une aide lisible par initié ou non.
 - Les exemples sont **dynamiques** : ils reprennent automatiquement la cible, le domaine, le DC, le user, le mode d'authentification et le `target account` actuellement saisis.
 - Les modules critiques expliquent le but, la sortie attendue et le chaînage logique (`krb5_setup` → `getTGT`, `shadowcred` → `PKINIT`, `winrm_checks` → `evil-winrm`, etc.).
+- Pour `getTGT`, l’aide précise maintenant qu’un `ccache` seul ne suffit pas : il faut encore `user + password` ou `user + NT hash` pour demander le premier ticket.
 - Le tooltip affiche aussi le **contexte courant** de la box pour éviter les exemples figés sur une machine précise.
 
 ### Sécurité & secrets
@@ -181,12 +185,15 @@ Standalone web interface driving a **Windows / Linux / Web / Hybrid** pentest to
 - **Bilingual module catalog**: recon, SMB, LDAP, Kerberos, ADCS, BloodHound, post-auth, Linux privesc, Web, SQL, NTLM coercion, tunneling/pivot, plus advanced local triage helpers.
 - **Dynamic contextual help**: every tool exposes an `ⓘ` tooltip with purpose, practical usage, what to watch for, and examples rewritten with the current box (`target`, `domain`, `dc`, `user`, `target account`).
 - **Guided wizard + Attack presets**: ready-made chains for `windows`, `linux`, `web`, and `hybrid`.
+- **Interactive wizard up to WinRM**: for AD boxes, the wizard also exposes a real operator path inspired by walkthroughs like `Logging`: recon → loot/logs → credential → Kerberos → ACL / shadow credentials → PKINIT → WinRM test → `evil-winrm`.
 - **Operator playbook**: context-aware recommendations (target type × operating mode).
 - **2 operating modes**: `htb` (aggressive lab) and `enterprise` (tight opsec).
 - **Auto-detect**: after a scan, relevant modules are ticked automatically based on open ports.
 - **Auto-fill / auto-import**: credentials extracted from outputs or looted logs (NT hash, TGT, passwords) are automatically suggested or injected into `Creds Tracker`.
 - **Enriched results**: anomalies/weaknesses, proof links back into loot, interesting hosts, and manual loot reanalysis directly from the UI.
 - **Guided Kerberos workflow**: `krb5 setup`, `getTGT`, `ccache`, `target account`, and SMB/Kerberos hints when an account is valid but restricted over SMB.
+- **Kerberos readiness cues**: the auth bar now shows `Kerberos ready`, `ccache only`, or `getTGT: missing secret`, and `Creds Tracker` exposes `Use for getTGT` to prepare the right credential set before requesting the first TGT.
+- **Clearer DC clock widget**: the UI separates the Kerberos-relevant offset from `DC UTC`, and only shows `DC local time` when the real DC local timezone is actually known.
 - **Guided Shadow Credentials chain**: `shadowcred_pkinit_chain` can chain `bloodyAD`, `PKINITtools`, NT hash recovery, and ready-to-run WinRM commands.
 - **Auto WinRM shell**: when `winrm_checks` validates auth with a reusable password or NT hash, `evil-winrm` can be injected straight into the built-in UI shell.
 - **Controlled parallelism**: up to 3 tools in parallel depending on context and mode.
@@ -276,6 +283,7 @@ HTBTOOLBOX/
 - The `ⓘ` button on a module opens help readable by both beginners and experienced operators.
 - Examples are **dynamic**: they automatically reuse the currently entered target, domain, DC, user, auth mode, and `target account`.
 - Critical modules explain the goal, expected output, and natural follow-up (`krb5_setup` → `getTGT`, `shadowcred` → `PKINIT`, `winrm_checks` → `evil-winrm`, and so on).
+- For `getTGT`, the help now makes the distinction explicit: a `ccache` alone is not enough; you still need `user + password` or `user + NT hash` to request the first TGT.
 - The tooltip also shows the **current box context**, which avoids hard-coded examples tied to a specific machine.
 
 ### Security & secrets

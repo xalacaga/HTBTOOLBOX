@@ -42,6 +42,7 @@ cd ~/HTB/HTBTOOLBOX
 Ton navigateur par défaut s'ouvre sur `http://127.0.0.1:8765`. Tu vois :
 
 - **Barre du haut** : état backend, horloge cible, boutons `🔑 Identifiants`, `🪄 Wizard`, `💾 Sauver`.
+- **Barre d’auth** : elle affiche aussi un état Kerberos en direct (`Kerberos prêt`, `ccache seul`, `getTGT: secret manquant`) pour savoir immédiatement si `gettgt` est lançable.
 - **Sidebar gauche** : champs cible (IP, domaine, user, password), puis la liste des **groupes de modules**.
 - **Barre d’identifiants** : tu peux aussi renseigner `hash NT`, `chemin ccache` et `target account` pour les abus ciblés.
 - **Panel central** : le **terminal** qui affiche les sorties en temps réel.
@@ -85,7 +86,13 @@ Navigateur de fichiers sur `loot/<domain>/` — tu peux lire les JSON parsés, l
 
 #### Vue `Creds Tracker`
 
-Liste des users/passwords/hashes que tu as sauvegardés ou que le loot a importés automatiquement. Tu peux `Utiliser`, `Appliquer + chaîne` ou `Utiliser + retest`.
+Liste des users/passwords/hashes que tu as sauvegardés ou que le loot a importés automatiquement. Tu peux `Utiliser`, `Use for getTGT`, `Appliquer + chaîne` ou `Utiliser + retest`.
+
+`Use for getTGT` sert à préparer exactement le cas Kerberos initial :
+- remplit `user`
+- remplit `password` ou `hash NT`
+- vide le `ccache` actif si besoin pour éviter la confusion
+- te laisse dans un état immédiatement compatible avec `gettgt`
 
 #### Champ `target account`
 
@@ -186,6 +193,17 @@ Bouton `🪄 Wizard` en haut.
 - `Appliquer + Lancer` : enchaîne immédiatement.
 
 Le Wizard **analyse le contexte** (ports déjà détectés, credentials présents) et met en surbrillance le preset recommandé.
+
+Pour les boxes `windows / AD`, il affiche aussi un **chemin interactif jusqu'à WinRM** :
+
+- `Recon initial + loot exploitable`
+- `Lire le loot et transformer le signal en credential`
+- `Kerberos : préparer puis demander le TGT`
+- `Confirmer le chemin d'abus`
+- `Shadow credentials → PKINIT → NT hash`
+- `Tester WinRM puis ouvrir evil-winrm`
+
+Ce flux est inspiré d'un chemin réaliste type `HTB Logging`, mais il **s'adapte à la box courante** avec tes vrais champs `target`, `domain`, `dc`, `user`, `target account`, les creds déjà trouvés et les cibles WinRM probables détectées.
 
 ---
 
@@ -293,6 +311,21 @@ Dans ce cas, l'idée n'est pas forcément que le mot de passe est faux. Le compt
 2. `gettgt` pour obtenir un ticket Kerberos
 3. coller le `ccache` généré dans le champ `chemin ccache`
 4. relancer les modules compatibles `-k`
+
+Points utiles à retenir :
+
+- `krb5_setup` prépare Kerberos mais **ne crée pas de ticket**
+- `gettgt` a encore besoin de `user + password` ou `user + NT hash`
+- un `ccache` seul sert aux outils `-k`, mais ne suffit pas pour demander le premier TGT
+- le badge de la barre d’auth (`Kerberos prêt` / `ccache seul` / `getTGT: secret manquant`) te donne maintenant l’état exact
+- le bouton `Use for getTGT` dans `Creds Tracker` prépare directement le bon couple pour ce cas
+
+La barre d’horloge se lit maintenant comme ça :
+
+- `ATK` = heure locale de ta machine
+- `TGT` = heure cible reconstituée à partir de l’offset NTP
+- `DC UTC` = heure absolue du DC, fiable pour Kerberos
+- `DC local time` n’est affichée que si le fuseau local réel du DC est connu
 
 #### WinRM interactif automatique
 
@@ -593,6 +626,17 @@ Optimal flow, clocked on a typical HTB box:
 
 The Wizard **analyzes context** (already detected ports, existing credentials) and highlights the recommended preset.
 
+For `windows / AD` boxes, it also shows an **interactive path up to WinRM**:
+
+- `Initial recon + exploitable loot`
+- `Read the loot and turn the signal into a credential`
+- `Kerberos: prepare then request the TGT`
+- `Confirm the abuse path`
+- `Shadow credentials → PKINIT → NT hash`
+- `Test WinRM then open evil-winrm`
+
+This flow is inspired by a realistic path such as `HTB Logging`, but it **adapts to the current box** using your real `target`, `domain`, `dc`, `user`, `target account`, already found creds, and detected likely WinRM targets.
+
 ---
 
 ### 8. Attack presets
@@ -699,6 +743,21 @@ That usually does **not** mean the password is wrong. It often means the account
 2. `gettgt` to obtain a Kerberos ticket
 3. paste the generated `ccache` into the `ccache path` field
 4. re-run the tools that support `-k`
+
+Useful reminders:
+
+- `krb5_setup` prepares Kerberos but **does not create a ticket**
+- `gettgt` still needs `user + password` or `user + NT hash`
+- a `ccache` alone is useful for `-k` tools, but not enough to request the first TGT
+- the auth bar badge (`Kerberos ready` / `ccache only` / `getTGT: missing secret`) now tells you the exact state
+- the `Use for getTGT` button in `Creds Tracker` prepares the right credential set for this case
+
+The clock bar should now be read like this:
+
+- `ATK` = your local machine time
+- `TGT` = target time reconstructed from the NTP offset
+- `DC UTC` = the DC absolute time, reliable for Kerberos
+- `DC local time` is only shown when the actual local timezone of the DC is known
 
 #### Automatic interactive WinRM
 

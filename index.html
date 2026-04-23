@@ -77,6 +77,7 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 .krb-fill{height:100%;border-radius:2px;transition:width .5s,background .5s}
 .clock-footer{display:flex;align-items:center;gap:4px;margin-top:3px}
 .clock-method{font-size:8px;color:var(--text3);flex:1}
+.clock-meta{font-size:8px;color:var(--text3);margin-top:2px;white-space:pre-line}
 .clock-sync{cursor:pointer;border:none;background:none;color:var(--text3);
   font-size:11px;padding:1px 3px;transition:color .15s}
 .clock-sync:hover{color:var(--cyan)}
@@ -144,6 +145,11 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 #inp-ta{width:130px;color:var(--yellow)}
 #inp-lang{width:60px}#inp-type{width:104px}
 .cred-sep{color:var(--text3);font-size:10px;padding:0 2px}
+.cred-status{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:1px solid var(--border2);
+  border-radius:999px;font-size:10px;font-family:var(--mono);white-space:nowrap}
+.cred-status.ok{background:rgba(62,207,110,.12);color:var(--green);border-color:rgba(62,207,110,.28)}
+.cred-status.warn{background:rgba(255,165,0,.12);color:var(--orange);border-color:rgba(255,165,0,.28)}
+.cred-status.off{background:var(--bg3);color:var(--text3)}
 .btn{padding:5px 11px;border:1px solid var(--border2);border-radius:5px;
   background:transparent;color:var(--text2);font-size:11px;cursor:pointer;
   font-family:var(--mono);display:flex;align-items:center;gap:5px;
@@ -557,6 +563,12 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 .machine-line b{color:var(--text3);font-weight:700}
 .machine-src{color:var(--yellow)}
 .machine-info{color:var(--text3);overflow-wrap:anywhere}
+.machine-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.machine-btn{font-size:10px;padding:5px 8px;border-radius:8px;border:1px solid rgba(56,189,248,.24);
+  background:rgba(56,189,248,.08);color:var(--cyan);cursor:pointer}
+.machine-btn:hover{background:rgba(56,189,248,.16);color:#b6f6ff}
+.machine-btn.secondary{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--text2)}
+.machine-btn.secondary:hover{background:rgba(255,255,255,.09);color:var(--text)}
 .json-key{color:var(--blue)}
 .json-str{color:var(--green)}
 .json-num{color:var(--orange)}
@@ -852,6 +864,31 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
 .wiz-options{display:flex;flex-wrap:wrap;gap:12px}
 .wiz-check{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text2)}
 .wiz-check input{accent-color:var(--cyan)}
+.wiz-flow-intro{font-size:11px;line-height:1.6;color:var(--text2);padding:10px 12px;
+  border:1px solid rgba(45,212,191,.12);background:rgba(45,212,191,.04);border-radius:12px;
+  margin-bottom:10px}
+.wiz-flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+.wiz-step{padding:12px;border-radius:14px;border:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02))}
+.wiz-step-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.wiz-step-num{font-size:10px;font-family:var(--mono);color:var(--text3);letter-spacing:.12em}
+.wiz-step-title{font-size:12px;font-weight:700;color:var(--text)}
+.wiz-step-state{font-size:9px;padding:2px 7px;border-radius:999px;border:1px solid var(--border2);
+  color:var(--text2);background:rgba(255,255,255,.04);text-transform:uppercase;letter-spacing:.08em}
+.wiz-step-state.done{color:var(--green);border-color:rgba(62,207,110,.32);background:rgba(62,207,110,.08)}
+.wiz-step-state.ready{color:var(--cyan);border-color:rgba(45,212,191,.28);background:rgba(45,212,191,.08)}
+.wiz-step-state.blocked{color:var(--yellow);border-color:rgba(250,204,21,.28);background:rgba(250,204,21,.08)}
+.wiz-step-body{font-size:10px;line-height:1.55;color:var(--text2)}
+.wiz-step-why{margin-bottom:8px}
+.wiz-step-signal{margin-bottom:8px;color:var(--text3)}
+.wiz-step-tools{margin-bottom:8px;color:var(--text3);font-size:9px}
+.wiz-step-tools code{font-size:9px}
+.wiz-step-actions{display:flex;flex-wrap:wrap;gap:6px}
+.wiz-step-btn{padding:6px 9px;border-radius:8px;border:1px solid var(--border2);background:var(--bg1);
+  color:var(--text2);font-size:10px;cursor:pointer}
+.wiz-step-btn:hover{border-color:rgba(59,130,246,.35);color:var(--text)}
+.wiz-step-btn.primary{border-color:rgba(45,212,191,.3);background:rgba(45,212,191,.08);color:var(--cyan)}
+.wiz-step-btn.warn{border-color:rgba(250,204,21,.26);background:rgba(250,204,21,.08);color:var(--yellow)}
 .wiz-actions{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px}
 .wiz-actions-left,.wiz-actions-right{display:flex;gap:8px;flex-wrap:wrap}
 
@@ -904,12 +941,12 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
     </div>
     <div class="clock-bar" id="clock-bar">
       <div class="clock-row">
-        <span class="clock-label">ATK</span>
+        <span class="clock-label" title="Heure locale de la machine d'attaque dans le fuseau du navigateur">ATK</span>
         <span class="clock-val atk" id="clk-local">--:--:--</span>
       </div>
       <div class="clock-row">
-        <span class="clock-label">TGT</span>
-        <span class="clock-val tgt" id="clk-target">--:--:--</span>
+        <span class="clock-label" title="Heure cible déduite depuis l'offset NTP. Utile pour Kerberos, pas pour afficher le fuseau réel du DC.">TGT</span>
+        <span class="clock-val tgt" id="clk-target" title="Affichage basé sur le décalage NTP absolu, dans le fuseau local du navigateur.">--:--:--</span>
         <span class="clock-offset-badge unknown" id="clk-offset-badge">?</span>
       </div>
       <div class="clock-krb-bar">
@@ -926,6 +963,7 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
         <button class="clock-sync" id="clk-sync-btn" onclick="fetchTargetTime()" title="Relire l'offset NTP">⟳</button>
         <button class="clock-sync" id="clk-ntpsync-btn" onclick="syncNtpNow()" title="Synchroniser l'horloge locale sur la cible (sudo ntpdate)" style="color:var(--text3);font-size:10px">⏱</button>
       </div>
+      <div class="clock-meta" id="clk-meta"></div>
     </div>
 
     <div class="script-pill off" id="script-pill">
@@ -1069,6 +1107,7 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
              title="KRB5CCNAME (Pass-the-Ticket)" oninput="autoSave()">
       <input class="cred-inp" id="inp-ta"   placeholder="target account (ex: MSA_HEALTH$)" spellcheck="false"
              title="Compte cible pour shadowCredentials / ForceChangePassword / getST" oninput="autoSave()">
+      <span class="cred-status off" id="kerb-ready-badge" title="État de préparation pour getTGT">Kerberos ?</span>
     </div>
     <button class="btn btn-run" id="btn-run-selected" onclick="runSelected()">▶ Lancer la sélection</button>
     <button class="btn btn-all" id="btn-run-all" onclick="runAll()">⚡ Tout lancer</button>
@@ -1350,6 +1389,11 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
         <div id="section-machines">
           <div class="res-sec-title">Machines découvertes</div>
           <div class="res-findings">
+            <div class="machines-list" id="probable-winrm-list">
+              <div class="res-find-empty">Aucune cible WinRM probable supplémentaire pour le moment.</div>
+            </div>
+          </div>
+          <div class="res-findings" style="margin-top:10px">
             <div class="machines-list" id="machines-list">
               <div class="res-find-empty">Aucune machine supplémentaire détectée pour le moment.</div>
             </div>
@@ -1596,6 +1640,11 @@ La clé API est sauvegardée dans <b style="color:var(--text)">config.local.json
         <label class="wiz-check"><input type="checkbox" id="wiz-autorun"> Lancer la chaîne après application</label>
       </div>
     </div>
+    <div class="wizard-section">
+      <div class="wizard-label" id="wizard-step4-label">4. Chemin guidé jusqu'à WinRM</div>
+      <div class="wiz-flow-intro" id="wizard-flow-intro"></div>
+      <div class="wiz-flow" id="wizard-flow"></div>
+    </div>
     <div class="wiz-actions">
       <div class="wiz-actions-left">
         <button class="modal-btn" onclick="closeWizard();openModal()">Configurer la cible</button>
@@ -1805,6 +1854,12 @@ const ATTACK_PRESETS = {
     tools: ["rustscan_fast","nmap_targeted","ssh_banner","ssh_auth_methods","nfs_probe","linux_http_fingerprint","linux_services_enum","linux_docker_check"],
     desc: "Recon Linux ciblee sur SSH, NFS, HTTP local, services exposes et premiers indices de pivot/privesc.",
   },
+  winrm_path: {
+    label: "AD → WinRM guided path",
+    target_type: "windows",
+    tools: ["rustscan_fast","nmap_targeted","hosts_autoconf","smbmap_enum","ldapdomaindump","bloodhound_collect","krb5_setup","gettgt","klist_show","bloodyad_acls","shadowcred_pkinit_chain","winrm_checks"],
+    desc: "Parcours guidé type lab AD: loot SMB, credentials de service, Kerberos, ACLs / shadow credentials, PKINIT puis validation WinRM.",
+  },
 };
 const PORT_AUTO_RULES = [
   { ports:[445,139], label:"SMB / RPC", groups:["smb","bh"], tools:["smb_signing","nxc_anon_probe","smbclient_list","enum4linux_ng","rpcclient_enum"] },
@@ -1932,6 +1987,10 @@ const UI_I18N = {
     creds_tracker: "Creds tracker",
     credentials: "Identifiants",
     practical_guide: "Guide pratique",
+    kerberos_ready: "Kerberos prêt",
+    kerberos_missing_secret: "getTGT: secret manquant",
+    kerberos_ccache_only: "ccache seul",
+    use_for_gettgt: "Use for getTGT",
     export_report: "Export rapport .md",
     save_config: "Sauver la config",
     clear_terminal: "Effacer le terminal",
@@ -2033,6 +2092,7 @@ const UI_I18N = {
     sensitive_groups: "Groupes AD sensibles",
     operational_view: "Vue Opérationnelle",
     discovered_machines: "Machines découvertes",
+    probable_winrm_targets: "Machines probables pour WinRM",
     loot_details: "Détails du loot",
     scans_to_fill: "Lance des scans pour voir les findings catégorisés.",
     open_history_hint: "Ouvre un historique ou lance un scan pour alimenter cette vue.",
@@ -2040,6 +2100,11 @@ const UI_I18N = {
     no_group_detail: "Aucun groupe détaillé pour le moment.",
     operational_appear: "La vue opérationnelle apparaîtra ici.",
     no_more_machines: "Aucune machine supplémentaire détectée pour le moment.",
+    no_probable_winrm_targets: "Aucune cible WinRM probable supplémentaire pour le moment.",
+    test_winrm_here: "Tester WinRM ici",
+    set_target_and_test_winrm: "Cible mise à jour — test WinRM lancé",
+    set_target_only: "Utiliser comme cible",
+    target_set: "Cible active mise à jour",
     details_appear: "Le détail du loot apparaîtra ici.",
     playbook_wait: "Le playbook apparaîtra ici dès que des résultats seront disponibles.",
     export_md: "↓ Export .md",
@@ -2278,6 +2343,10 @@ const UI_I18N = {
     creds_tracker: "Creds tracker",
     credentials: "Credentials",
     practical_guide: "Practical guide",
+    kerberos_ready: "Kerberos ready",
+    kerberos_missing_secret: "getTGT: missing secret",
+    kerberos_ccache_only: "ccache only",
+    use_for_gettgt: "Use for getTGT",
     export_report: "Export .md report",
     save_config: "Save config",
     clear_terminal: "Clear terminal",
@@ -2379,6 +2448,7 @@ const UI_I18N = {
     sensitive_groups: "Sensitive AD groups",
     operational_view: "Operational view",
     discovered_machines: "Discovered machines",
+    probable_winrm_targets: "Likely WinRM targets",
     loot_details: "Loot details",
     scans_to_fill: "Run scans to populate categorized findings.",
     open_history_hint: "Open history or run a scan to populate this view.",
@@ -2386,6 +2456,11 @@ const UI_I18N = {
     no_group_detail: "No detailed groups yet.",
     operational_appear: "The operational view will appear here.",
     no_more_machines: "No additional machines detected yet.",
+    no_probable_winrm_targets: "No additional likely WinRM target yet.",
+    test_winrm_here: "Test WinRM here",
+    set_target_and_test_winrm: "Target updated — WinRM test launched",
+    set_target_only: "Use as target",
+    target_set: "Active target updated",
     details_appear: "Loot details will appear here.",
     playbook_wait: "The playbook will appear here as soon as results are available.",
     export_md: "↓ Export .md",
@@ -2651,6 +2726,11 @@ function buildToolDescContext(tool) {
   const cfg = (typeof getCfg === "function") ? getCfg() : {};
   const req = TOOL_REQUIREMENTS?.[tool?.id] || {};
   const authMode = getAuthMode(cfg);
+  const extraNote = tool?.id === "gettgt"
+    ? (getUiLang()==="en"
+        ? "• note = getTGT needs the initial secret (password or NT hash); an existing ccache is not enough to request the first TGT"
+        : "• note = getTGT demande le secret initial (mot de passe ou hash NT) ; un ccache seul ne suffit pas pour demander le premier TGT")
+    : "";
   const lines = getUiLang()==="en"
     ? [
         "Current box context:",
@@ -2662,6 +2742,7 @@ function buildToolDescContext(tool) {
         `• target account = ${cfg.target_account || "<target_account>"}`,
         req.ports?.length ? `• typical ports = ${req.ports.join(", ")}` : "",
         req.auth ? "• note = this module expects reusable credentials or a ccache" : "",
+        extraNote,
         SUDO_REQUIRED_TOOLS.has(tool?.id) ? "• note = this module may prompt for sudo in the UI" : "",
       ]
     : [
@@ -2674,6 +2755,7 @@ function buildToolDescContext(tool) {
         `• target account = ${cfg.target_account || "<target_account>"}`,
         req.ports?.length ? `• ports typiques = ${req.ports.join(", ")}` : "",
         req.auth ? "• note = ce module attend des credentials réutilisables ou un ccache" : "",
+        extraNote,
         SUDO_REQUIRED_TOOLS.has(tool?.id) ? "• note = ce module peut demander sudo dans l'UI" : "",
       ];
   return lines.filter(Boolean).join("\n");
@@ -3242,6 +3324,7 @@ let _seenPortFingerprints = new Set();
 let _wizardPreset = "htb_ad_quick_win";
 let _lastOpenPorts = new Set();
 let LAST_RESULTS_SUMMARY = null;
+let LAST_CREDS_TRACKER = [];
 let LAST_RUN_MANIFEST = null;
 let _pendingCredAutoApply = null;
 let _contextSuggestion = {target_type:"windows", preset:"htb_ad_quick_win", reason:"en attente", confidence:0.2, score:0};
@@ -3411,6 +3494,7 @@ function applyI18n() {
   if(wizLabels[0]) wizLabels[0].textContent = t("wizard_step1");
   if(wizLabels[1]) wizLabels[1].textContent = t("wizard_step2");
   if(wizLabels[2]) wizLabels[2].textContent = t("wizard_step3");
+  if(wizLabels[3]) wizLabels[3].textContent = wizardText("4. Chemin guidé jusqu'à WinRM", "4. Guided path to WinRM");
   const wizChecks = document.querySelectorAll("#wizard-overlay .wiz-check");
   if(wizChecks[0]) wizChecks[0].lastChild.textContent = " " + t("replace_selection");
   if(wizChecks[1]) wizChecks[1].lastChild.textContent = " " + t("autorun_chain");
@@ -3418,6 +3502,7 @@ function applyI18n() {
   if(wizActionBtns[0]) wizActionBtns[0].textContent = t("configure_target");
   if(wizActionBtns[1]) wizActionBtns[1].textContent = t("cancel");
   if(wizActionBtns[2]) wizActionBtns[2].textContent = getUiLang()==="fr" ? "Appliquer" : "Apply";
+  if(wizardIsOpen()) renderInteractiveWizard();
   const wlTitle = document.querySelector("#wl-picker h3");
   if(wlTitle) wlTitle.textContent = t("launch_hashcat");
   const wlLabel = document.querySelector("#wl-picker > div");
@@ -3448,6 +3533,7 @@ function handleLanguageChange() {
   applyI18n();
   updateDom();
   buildModules();
+  updateKerberosReadyBadge();
   if(document.getElementById("view-playbook")?.classList.contains("active")) renderPlaybook();
   autoSave();
 }
@@ -3798,6 +3884,45 @@ function getAuthCapabilities(cfg=getCfg()) {
     hasCcache: !!cfg.ccache,
   };
 }
+function getGetTgtStatus(cfg=getCfg()) {
+  const hasUser = !!(cfg.user && String(cfg.user).trim());
+  const hasPassword = !!(cfg.password && String(cfg.password).trim());
+  const hasHash = !!(cfg.nt_hash && String(cfg.nt_hash).trim());
+  const hasCcache = !!(cfg.ccache && String(cfg.ccache).trim());
+  if(hasUser && (hasPassword || hasHash)) {
+    return {
+      cls: "ok",
+      text: t("kerberos_ready"),
+      title: getUiLang()==="en"
+        ? "getTGT can request a first TGT with the current username and password/NT hash"
+        : "getTGT peut demander un premier TGT avec le username courant et le mot de passe / hash NT"
+    };
+  }
+  if(hasUser && hasCcache) {
+    return {
+      cls: "warn",
+      text: t("kerberos_ccache_only"),
+      title: getUiLang()==="en"
+        ? "A ccache is loaded, but getTGT still needs the initial secret (password or NT hash) to request a first TGT"
+        : "Un ccache est chargé, mais getTGT a encore besoin du secret initial (mot de passe ou hash NT) pour demander un premier TGT"
+    };
+  }
+  return {
+    cls: "off",
+    text: t("kerberos_missing_secret"),
+    title: getUiLang()==="en"
+      ? "Fill a username plus password or NT hash before launching getTGT"
+      : "Renseigne un username puis un mot de passe ou hash NT avant de lancer getTGT"
+  };
+}
+function updateKerberosReadyBadge() {
+  const el = document.getElementById("kerb-ready-badge");
+  if(!el) return;
+  const st = getGetTgtStatus();
+  el.className = `cred-status ${st.cls}`;
+  el.textContent = st.text;
+  el.title = st.title;
+}
 function hasUsableAuth(cfg=getCfg()) {
   const caps = getAuthCapabilities(cfg);
   return !!(caps.hasPassword || caps.hasHash || caps.hasCcache);
@@ -3822,6 +3947,10 @@ function toolSkipReason(toolId, cfg=getCfg()) {
   if(!req) return "";
   if(req.ports && req.ports.length && !portReqSatisfied(req.ports))
     return t("required_ports_closed",{ports:req.ports.join("/")});
+  if(toolId === "gettgt" && !(cfg.user && (cfg.password || cfg.nt_hash)))
+    return getUiLang()==="en"
+      ? "getTGT needs a username plus password or NT hash"
+      : "getTGT demande un username + mot de passe ou hash NT";
   if(req.auth && !hasUsableAuth(cfg))
     return t("credentials_required");
   return "";
@@ -3890,6 +4019,7 @@ async function applyActiveCredential(user, pass="", hash="", ccache="", opts={})
   if(pEl) pEl.value = pass || "";
   if(hEl) hEl.value = hash || "";
   if(cEl) cEl.value = ccache || "";
+  updateKerberosReadyBadge();
   saveConfig();
   ping();
   if(opts.toast !== false) {
@@ -4728,11 +4858,107 @@ function buildAutoWinRMCmdFromCfg() {
   if(pass) return `evil-winrm -i ${target} -u '${user}' -p '${pass.replace(/'/g, "'\\''")}'`;
   return "";
 }
+function buildWinRMCmdForTarget(targetValue, cfg=getCfg()) {
+  const target = String(targetValue || cfg.dc || cfg.target || "").trim();
+  const user = normalizeWinRMUser(cfg.user || "");
+  const hash = String(cfg.nt_hash || "").trim();
+  const pass = String(cfg.password || "");
+  if(!target || !user) return "";
+  if(hash) return `evil-winrm -i ${target} -u '${user}' -H '${hash}'`;
+  if(pass) return `evil-winrm -i ${target} -u '${user}' -p '${pass.replace(/'/g, "'\\''")}'`;
+  return "";
+}
 
 function canLaunchWinRMShell(summary = LAST_RESULTS_SUMMARY || {}) {
   const signal = String(summary?.winrm || "").trim().toLowerCase();
   if(!buildAutoWinRMCmdFromCfg()) return false;
   return /(auth ok|authenticated|valid|success|pwn3d)/i.test(signal);
+}
+function setActiveTarget(targetValue, opts={}) {
+  const val = String(targetValue || "").trim();
+  if(!val) return;
+  const tEl = document.getElementById("inp-target");
+  if(tEl) tEl.value = val;
+  autoSave();
+  ping();
+  if(opts.toast !== false) toast(t("target_set"), "ok");
+}
+async function setTargetAndTestWinRM(targetValue, ev) {
+  if(ev?.stopPropagation) ev.stopPropagation();
+  setActiveTarget(targetValue, {toast:false});
+  toast(t("set_target_and_test_winrm"), "ok");
+  await runToolBatch(["winrm_checks"], {toast:false, emptyToast:false});
+}
+function inferLikelyWinRMTargets(data = LAST_RESULTS_SUMMARY || {}) {
+  const curTarget = String(document.getElementById("inp-target")?.value || "").trim().toLowerCase();
+  const machines = Array.isArray(data.machines) ? data.machines : [];
+  const remoteMgmtMembers = (Array.isArray(data.group_profiles) ? data.group_profiles : [])
+    .filter(g => /^remote management users$/i.test(String(g.name || "").trim()))
+    .flatMap(g => Array.isArray(g.members) ? g.members : [])
+    .map(x => String(x || "").trim().toLowerCase().replace(/\$$/, ""))
+    .filter(Boolean);
+  const currentUser = String(document.getElementById("inp-user")?.value || "").trim().toLowerCase().replace(/\$$/, "");
+  const ranked = [];
+  const seen = new Set();
+  machines.forEach(m => {
+    const host = String(m.host || "").trim();
+    const ip = String(m.ip || "").trim();
+    const source = String(m.source || "").toLowerCase();
+    const info = String(m.info || "").toLowerCase();
+    const target = host || ip;
+    if(!target) return;
+    const key = target.toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key);
+    let score = 0;
+    const shortHost = host.toLowerCase().split(".")[0];
+    const remoteMgmtHit = remoteMgmtMembers.some(u => u === shortHost || shortHost.includes(u) || u.includes(shortHost));
+    if(host) score += 2;
+    if(/\bwindows\b|server 20|domain controller|wsman|winrm/i.test(info)) score += 4;
+    if(/bloodhound|ldap|dns|nxc|smb/i.test(source)) score += 2;
+    if(/^dc\d*/i.test(host) || /\bdc\d*\./i.test(host)) score += 3;
+    if(/^\d+\.\d+\.\d+\.\d+$/.test(ip)) score += 1;
+    if(key === curTarget) score += 5;
+    if(currentUser && shortHost === currentUser) score += 6;
+    if(remoteMgmtHit) score += 6;
+    if(score >= 3) ranked.push({target, host, ip, source:m.source || "", info:m.info || "", score, remoteMgmtHit});
+  });
+  if((data.winrm || "").toLowerCase().includes("auth ok") || (data.winrm || "").toLowerCase().includes("ouvert")) {
+    const cfgTarget = String(document.getElementById("inp-target")?.value || "").trim();
+    if(cfgTarget && !ranked.some(x => x.target.toLowerCase() === cfgTarget.toLowerCase())) {
+      ranked.unshift({target:cfgTarget, host:cfgTarget, ip:"", source:"WinRM", info:String(data.winrm || ""), score:99, remoteMgmtHit:false});
+    }
+  }
+  return ranked.sort((a,b)=>b.score-a.score).slice(0,6);
+}
+function renderProbableWinRMTargets(data = LAST_RESULTS_SUMMARY || {}) {
+  const box = document.getElementById("probable-winrm-list");
+  if(!box) return;
+  const targets = inferLikelyWinRMTargets(data);
+  box.innerHTML = targets.length
+    ? targets.map(m => `
+      <div class="machine-item">
+        <div class="machine-top">
+          <div class="machine-main">
+            <div class="machine-host">${escapeHtml(m.host || m.target)}</div>
+            <div class="machine-ip">${escapeHtml(m.ip || m.target)}</div>
+          </div>
+          <div class="machine-badges">
+            <span class="machine-badge info">WinRM?</span>
+            ${m.remoteMgmtHit ? `<span class="machine-badge high">Remote Management Users</span>` : ``}
+            <span class="machine-badge ${m.score >= 7 ? "high" : "warn"}">score ${escapeHtml(String(m.score))}</span>
+          </div>
+        </div>
+        <div class="machine-meta">
+          ${m.source ? `<div class="machine-line"><b>${getUiLang()==="fr"?"Source":"Source"} :</b> <span class="machine-src">${escapeHtml(m.source)}</span></div>` : ""}
+          ${m.info ? `<div class="machine-line"><b>${getUiLang()==="fr"?"Infos":"Info"} :</b> <span class="machine-info">${escapeHtml(m.info)}</span></div>` : ""}
+          <div class="machine-actions">
+            <button class="machine-btn" onclick="setTargetAndTestWinRM('${escapeHtml(m.target)}', event)">${escapeHtml(t("test_winrm_here"))}</button>
+            <button class="machine-btn secondary" onclick="setActiveTarget('${escapeHtml(m.target)}', {toast:true}); event.stopPropagation();">${escapeHtml(t("set_target_only"))}</button>
+          </div>
+        </div>
+      </div>`).join("")
+    : `<div class="res-find-empty">${t("no_probable_winrm_targets")}</div>`;
 }
 
 function launchWinRMShellInteractive(ev) {
@@ -5587,6 +5813,7 @@ function renderResultsSummary(data) {
     renderGroupProfilesList();
   }
   const machinesBox = document.getElementById("machines-list");
+  renderProbableWinRMTargets(data);
   if(machinesBox){
     const machines = Array.isArray(data.machines) ? data.machines : [];
     machinesBox.innerHTML = machines.length
@@ -5604,6 +5831,10 @@ function renderResultsSummary(data) {
           <div class="machine-meta">
             <div class="machine-line"><b>${getUiLang()==="fr"?"Source":"Source"} :</b> <span class="machine-src">${escapeHtml(m.source || (getUiLang()==="fr"?"source inconnue":"unknown source"))}</span></div>
             ${m.info ? `<div class="machine-line"><b>${getUiLang()==="fr"?"Infos":"Info"} :</b> <span class="machine-info">${escapeHtml(m.info)}</span></div>` : ""}
+            <div class="machine-actions">
+              <button class="machine-btn" onclick="setTargetAndTestWinRM('${escapeHtml((m.host || m.ip || ""))}', event)">${escapeHtml(t("test_winrm_here"))}</button>
+              <button class="machine-btn secondary" onclick="setActiveTarget('${escapeHtml((m.host || m.ip || ""))}', {toast:true}); event.stopPropagation();">${escapeHtml(t("set_target_only"))}</button>
+            </div>
           </div>
         </div>`).join("")
       : `<div class="res-find-empty">${t("no_more_machines")}</div>`;
@@ -5612,6 +5843,7 @@ function renderResultsSummary(data) {
   if(data.categories) renderCategories(data.categories);
   renderDetailSections(data.detail_sections || []);
   renderPlaybook();
+  if(wizardIsOpen()) renderInteractiveWizard();
 }
 
 function renderPlaybook() {
@@ -6059,6 +6291,10 @@ function _fmtTime(ts) {
   const d = new Date(ts * 1000);
   return d.toTimeString().slice(0,8);  // HH:MM:SS
 }
+function _fmtTimeUtc(ts) {
+  const d = new Date(ts * 1000);
+  return d.toISOString().slice(11,19) + " UTC";
+}
 
 const KRB_MAX_SKEW = 300; // 5 minutes Kerberos hard limit
 
@@ -6069,6 +6305,7 @@ function _tickClocks() {
   const badgeEl  = document.getElementById("clk-offset-badge");
   const krbBadge = document.getElementById("clk-krb-badge");
   const krbFill  = document.getElementById("clk-krb-fill");
+  const metaEl   = document.getElementById("clk-meta");
 
   if(localEl) localEl.textContent = _fmtTime(now);
 
@@ -6081,6 +6318,11 @@ function _tickClocks() {
     if(targetEl) {
       targetEl.textContent = _fmtTime(tgtTs);
       targetEl.className = "clock-val tgt " + (absSec > KRB_MAX_SKEW ? "crit" : absSec > 180 ? "warn" : "ok");
+    }
+    if(metaEl) {
+      metaEl.textContent = getUiLang()==="en"
+        ? `DC UTC ${_fmtTimeUtc(tgtTs)}\nDC local time unknown (timezone unknown)`
+        : `DC UTC ${_fmtTimeUtc(tgtTs)}\nDC local time inconnue (fuseau inconnu)`;
     }
 
     // Offset badge
@@ -6112,6 +6354,7 @@ function _tickClocks() {
     if(badgeEl)  { badgeEl.textContent = "?"; badgeEl.className = "clock-offset-badge unknown"; }
     if(krbBadge) { krbBadge.textContent = "inconnu"; krbBadge.className = "clock-krb-badge unknown"; }
     if(krbFill)  { krbFill.style.width = "0%"; krbFill.style.background = "var(--text3)"; }
+    if(metaEl)   { metaEl.textContent = ""; }
   }
 }
 
@@ -6154,8 +6397,16 @@ function applyTargetTime(msg) {
   _clockMethod = msg.method;
   const s = Math.round(msg.offset_sec);
   const absSec = Math.abs(s);
-  const methodLabel = msg.method === "live" ? "NTP live" : msg.method === "loot" ? "loot NTP" : msg.method;
-  if(methodEl) methodEl.textContent = `via ${methodLabel} · ${new Date().toLocaleTimeString()}`;
+  const isEn = getUiLang()==="en";
+  const methodLabel = msg.method === "live" ? "NTP live" : msg.method === "loot" ? (isEn ? "NTP loot" : "loot NTP") : msg.method;
+  if(methodEl) {
+    methodEl.textContent = isEn
+      ? `via ${methodLabel} · offset only, target timezone unknown · ${new Date().toLocaleTimeString()}`
+      : `via ${methodLabel} · offset seulement, fuseau cible inconnu · ${new Date().toLocaleTimeString()}`;
+    methodEl.title = isEn
+      ? "This widget compares absolute clock offset for Kerberos. It does not know the remote DC timezone."
+      : "Ce widget compare le décalage absolu d'horloge pour Kerberos. Il ne connaît pas le fuseau horaire réel du DC distant.";
+  }
   if(absSec > KRB_MAX_SKEW)
     toast(`⚠ Skew ${s}s > 5 min — Kerberos va échouer ! Synchroniser l'horloge.`, "err");
   else if(absSec > 180)
@@ -6356,12 +6607,19 @@ function machineBadges(m){
   const host = (m.host||"").toLowerCase();
   const source = (m.source||"").toLowerCase();
   const info = (m.info||"").toLowerCase();
+  const remoteMgmtMembers = (Array.isArray(LAST_GROUP_PROFILES) ? LAST_GROUP_PROFILES : [])
+    .filter(g => /^remote management users$/i.test(String(g.name || "").trim()))
+    .flatMap(g => Array.isArray(g.members) ? g.members : [])
+    .map(x => String(x || "").trim().toLowerCase().replace(/\$$/, ""))
+    .filter(Boolean);
+  const shortHost = host.split(".")[0];
   if(host.startsWith("dc") || host.includes("dc01") || info.includes("domain controller")) badges.push({txt:"DC", cls:"high"});
   if(source.includes("ldap")) badges.push({txt:"LDAP", cls:"info"});
   if(source.includes("dns")) badges.push({txt:"DNS", cls:"info"});
   if(source.includes("arp") || source.includes("neigh")) badges.push({txt:"ARP", cls:"warn"});
   if(source.includes("bloodhound")) badges.push({txt:"BloodHound", cls:"info"});
   if(info.includes("server 2019") || info.includes("windows")) badges.push({txt:"Windows", cls:""});
+  if(remoteMgmtMembers.some(u => u === shortHost || shortHost.includes(u) || u.includes(shortHost))) badges.push({txt:"Remote Management Users", cls:"high"});
   return badges.slice(0,4);
 }
 
@@ -6501,6 +6759,8 @@ function saveConfig(){ wsSend("save_config",{cfg:getCfg()}); }
 let _autoSaveTimer = null;
 function autoSave(){
   clearTimeout(_autoSaveTimer);
+  updateKerberosReadyBadge();
+  if(wizardIsOpen()) renderInteractiveWizard();
   _autoSaveTimer = setTimeout(()=>{ if(wsReady) saveConfig(); }, 800);
 }
 function applySessionReset(payload){
@@ -6586,6 +6846,7 @@ function applyConfig(cfg){
   if(cfg.notes != null) document.getElementById("inp-notes").value=cfg.notes;
   applyI18n();
   updateDom();
+  updateKerberosReadyBadge();
   buildModules();
   updateContextSuggestion(getTargetType(), t("config_loaded_reason"), "config", 0.45, 0);
   loadResultsSummary();
@@ -6627,16 +6888,260 @@ function updateWizardSummary() {
     `<span class="wiz-pill"><b>auth</b> ${escapeHtml(getAuthMode(cfg))}</span>`,
   ].join("");
 }
+function wizardText(fr, en) {
+  return getUiLang()==="fr" ? fr : en;
+}
+function wizardIsOpen() {
+  return document.getElementById("wizard-overlay")?.classList.contains("open");
+}
+function wizardNav(view) {
+  closeWizard();
+  const nav = document.getElementById("nav-"+view);
+  switchView(view, nav || null);
+  if(view==="loot") loadLoot();
+  if(view==="creds") loadCreds();
+  if(view==="results") loadResultsSummary();
+  if(view==="playbook") renderPlaybook();
+}
+function wizardPrepareTools(toolIds, opts={}) {
+  const ids = [...new Set((toolIds || []).filter(Boolean))];
+  if(!ids.length) return;
+  if(!opts.preserve) selectAll(false);
+  const groups = new Set();
+  ids.forEach(toolId => {
+    const mod = getModuleByTool(toolId);
+    if(mod && isGroupVisible(mod, getTargetType())) {
+      groups.add(mod.id);
+      setGroupSelected(mod.id, true, false);
+      setToolSelected(toolId, true);
+    }
+  });
+  [...groups].forEach(syncGroupStateFromTools);
+  autoSave();
+  switchView("modules", document.getElementById("nav-modules"));
+  toast(wizardText("Sélection guidée préparée","Guided selection prepared"), "ok");
+}
+async function wizardRunTools(toolIds) {
+  wizardPrepareTools(toolIds, {preserve:false});
+  closeWizard();
+  await runToolBatch(toolIds, {toast:true, emptyToast:false});
+}
+function getBestSavedCredForGetTgt() {
+  const creds = Array.isArray(LAST_CREDS_TRACKER) ? LAST_CREDS_TRACKER : [];
+  return creds.find(c => c?.user && (c?.pass || c?.hash)) || null;
+}
+function wizardUseBestCredForGetTgt() {
+  const cred = getBestSavedCredForGetTgt();
+  if(!cred) {
+    toast(wizardText("Aucun credential réutilisable trouvé dans Creds Tracker","No reusable credential found in Creds Tracker"), "err");
+    return;
+  }
+  useCredForGetTgt(cred.user || "", cred.pass || "", cred.hash || "");
+}
+function inferWizardTargetAccountCandidate(data = LAST_RESULTS_SUMMARY || {}) {
+  const remoteMgmtMembers = (Array.isArray(data.group_profiles) ? data.group_profiles : [])
+    .filter(g => /^remote management users$/i.test(String(g.name || "").trim()))
+    .flatMap(g => Array.isArray(g.members) ? g.members : [])
+    .map(x => String(x || "").trim())
+    .filter(Boolean);
+  const current = String(document.getElementById("inp-ta")?.value || "").trim();
+  if(current) return current;
+  const member = remoteMgmtMembers[0];
+  if(member) return `${member.replace(/\$$/, "").toUpperCase()}$`;
+  const likely = inferLikelyWinRMTargets(data)[0];
+  const short = String(likely?.host || "").split(".")[0].trim();
+  return short ? `${short.replace(/\$$/, "").toUpperCase()}$` : "";
+}
+function wizardUseLikelyTargetAccount() {
+  const candidate = inferWizardTargetAccountCandidate();
+  if(!candidate) {
+    toast(wizardText("Aucun target account crédible détecté pour le moment","No credible target account detected yet"), "err");
+    return;
+  }
+  const el = document.getElementById("inp-ta");
+  if(el) el.value = candidate;
+  autoSave();
+  toast(wizardText(`Target account rempli: ${candidate}`, `Target account filled: ${candidate}`), "ok");
+}
+function wizardTestBestWinRMTarget() {
+  const target = inferLikelyWinRMTargets()[0]?.target || "";
+  if(!target) {
+    toast(wizardText("Aucune cible WinRM probable pour le moment","No likely WinRM target yet"), "err");
+    return;
+  }
+  setTargetAndTestWinRM(target);
+}
+function renderInteractiveWizard() {
+  const intro = document.getElementById("wizard-flow-intro");
+  const box = document.getElementById("wizard-flow");
+  if(!intro || !box) return;
+  const cfg = getCfg();
+  const data = LAST_RESULTS_SUMMARY || {};
+  const bestCred = getBestSavedCredForGetTgt();
+  const gettgtStatus = getGetTgtStatus(cfg);
+  const likelyWinrm = inferLikelyWinRMTargets(data)[0] || null;
+  const targetAccountCandidate = inferWizardTargetAccountCandidate(data);
+  const attackPaths = Array.isArray(data?.operational?.attack_paths) ? data.operational.attack_paths : [];
+  const reconDone = !!(data.machines?.length || data.users || data.groups || data.stat_paths?.signing || data.interesting?.length);
+  const credsReady = !!(bestCred || (cfg.user && (cfg.password || cfg.nt_hash)));
+  const kerberosDone = !!data.stat_paths?.klist;
+  const pathDone = !!(attackPaths.length || data.group_profiles?.length || data.anomalies?.length);
+  const shadowDone = !!(data.ntlm_hashes > 0 || canLaunchWinRMShell(data));
+  const winrmDone = canLaunchWinRMShell(data);
+  const steps = [
+    {
+      num: "01",
+      title: wizardText("Recon initial + loot exploitable", "Initial recon + exploitable loot"),
+      state: reconDone ? "done" : (cfg.target ? "ready" : "blocked"),
+      why: wizardText(
+        "Inspiration Logging: le vrai pivot n'est pas venu d'un exploit direct, mais d'un partage SMB et de fichiers de trace qui ont donné du contexte puis des credentials.",
+        "Logging-inspired path: the real pivot did not come from a direct exploit, but from an SMB share and trace files that yielded context and then credentials."
+      ),
+      signal: reconDone
+        ? wizardText(`Signal actuel: ${data.machines?.length || 0} machine(s) recensée(s), ${data.interesting?.length || 0} élément(s) marquant(s).`, `Current signal: ${data.machines?.length || 0} machine(s) collected, ${data.interesting?.length || 0} notable item(s).`)
+        : (cfg.target
+            ? wizardText("Signal attendu: ports ouverts, partages SMB lisibles, logs ou noms de services réutilisables.", "Expected signal: open ports, readable SMB shares, logs or reusable service names.")
+            : wizardText("Renseigne d'abord l'IP cible pour démarrer un vrai chemin opérateur.", "Fill the target IP first to start a real operator path.")),
+      tools: ["rustscan_fast","nmap_targeted","hosts_autoconf","smbmap_enum"],
+      actions: [
+        {label: wizardText("Configurer la cible","Configure target"), onclick:"closeWizard();openModal()", cls:"warn"},
+        {label: wizardText("Préparer la recon","Prepare recon"), onclick:"wizardPrepareTools(['rustscan_fast','nmap_targeted','hosts_autoconf','smbmap_enum'])", cls:""},
+        {label: wizardText("Lancer maintenant","Run now"), onclick:"wizardRunTools(['rustscan_fast','nmap_targeted','hosts_autoconf','smbmap_enum'])", cls:"primary"},
+      ]
+    },
+    {
+      num: "02",
+      title: wizardText("Lire le loot et transformer le signal en credential", "Read the loot and turn signal into a credential"),
+      state: credsReady ? "done" : (reconDone ? "ready" : "blocked"),
+      why: wizardText(
+        "Sur un chemin type Logging, les fichiers `*.log` ou `IdentitySync` valent souvent plus qu'un scan de plus: user, mot de passe, hôte interne, compte machine ou service métier.",
+        "On a Logging-like path, `*.log` or `IdentitySync` files are often worth more than one more scan: username, password, internal host, machine account, or business service."
+      ),
+      signal: credsReady
+        ? wizardText(`Credential réutilisable détecté: ${(cfg.user && (cfg.password || cfg.nt_hash)) ? cfg.user : bestCred?.user}.`, `Reusable credential detected: ${(cfg.user && (cfg.password || cfg.nt_hash)) ? cfg.user : bestCred?.user}.`)
+        : wizardText("Cherche un log, une config ou une anomalie qui mentionne user / pass / bind / token / SQL / LDAP.", "Look for a log, config or anomaly mentioning user / pass / bind / token / SQL / LDAP."),
+      tools: ["smbmap_enum","ldapdomaindump"],
+      actions: [
+        {label: wizardText("Ouvrir Résultats","Open results"), onclick:"wizardNav('results')", cls:""},
+        {label: wizardText("Ouvrir Loot","Open loot"), onclick:"wizardNav('loot')", cls:""},
+        {label: wizardText("Creds Tracker","Creds Tracker"), onclick:"wizardNav('creds')", cls:""},
+        ...(bestCred ? [{label: wizardText("Use for getTGT","Use for getTGT"), onclick:"wizardUseBestCredForGetTgt()", cls:"primary"}] : []),
+      ]
+    },
+    {
+      num: "03",
+      title: wizardText("Kerberos: préparer puis demander le TGT", "Kerberos: prepare then request the TGT"),
+      state: kerberosDone ? "done" : (gettgtStatus.ready ? "ready" : "blocked"),
+      why: wizardText(
+        "Le but n'est pas juste d'avoir un mot de passe: il faut un vrai ticket Kerberos stable pour basculer vers les outils `-k`, confirmer le compte, puis préparer la suite ACL / PKINIT.",
+        "The goal is not just to have a password: you want a stable Kerberos ticket so you can switch to `-k` tools, confirm the account, then prepare the ACL / PKINIT follow-up."
+      ),
+      signal: kerberosDone
+        ? wizardText("Signal actuel: un `klist` a déjà été persisté dans le loot.", "Current signal: a `klist` has already been persisted in loot.")
+        : (gettgtStatus.ready
+            ? wizardText("Le secret initial est prêt: lance `krb5_setup`, puis `getTGT`, puis `klist`.", "The initial secret is ready: run `krb5_setup`, then `getTGT`, then `klist`.")
+            : wizardText("Il manque encore un secret initial actif: user + mot de passe ou NT hash.", "An initial active secret is still missing: user + password or NT hash.")),
+      tools: ["krb5_setup","gettgt","klist_show"],
+      actions: [
+        ...(bestCred && !gettgtStatus.ready ? [{label: wizardText("Use for getTGT","Use for getTGT"), onclick:"wizardUseBestCredForGetTgt()", cls:""}] : []),
+        {label: wizardText("Préparer Kerberos","Prepare Kerberos"), onclick:"wizardPrepareTools(['krb5_setup','gettgt','klist_show'])", cls:""},
+        {label: wizardText("Lancer Kerberos","Run Kerberos"), onclick:"wizardRunTools(['krb5_setup','gettgt','klist_show'])", cls:"primary"},
+      ]
+    },
+    {
+      num: "04",
+      title: wizardText("Confirmer le chemin d'abus", "Confirm the abuse path"),
+      state: pathDone ? "done" : ((cfg.ccache || cfg.password || cfg.nt_hash) ? "ready" : "blocked"),
+      why: wizardText(
+        "Avant la chaîne finale, il faut une preuve crédible: groupes, ACLs, piste BloodHound, `Remote Management Users`, ou un compte machine / service qui sent le pivot.",
+        "Before the final chain, you want a credible path: groups, ACLs, a BloodHound lead, `Remote Management Users`, or a machine / service account that smells like a pivot."
+      ),
+      signal: pathDone
+        ? wizardText(`Signal actuel: ${attackPaths.length || 0} chemin(s) probable(s) et ${data.group_profiles?.length || 0} groupe(s) détaillé(s).`, `Current signal: ${attackPaths.length || 0} likely path(s) and ${data.group_profiles?.length || 0} detailed group(s).`)
+        : wizardText("Cherche surtout: GenericWrite / WriteDACL / groupes sensibles / membre de Remote Management Users.", "Focus on: GenericWrite / WriteDACL / sensitive groups / membership in Remote Management Users."),
+      tools: ["bloodhound_collect","bloodyad_acls"],
+      actions: [
+        {label: wizardText("Ouvrir Playbook","Open playbook"), onclick:"wizardNav('playbook')", cls:""},
+        {label: wizardText("Préparer BH + ACL","Prepare BH + ACL"), onclick:"wizardPrepareTools(['bloodhound_collect','bloodyad_acls'])", cls:""},
+        {label: wizardText("Lancer BH + ACL","Run BH + ACL"), onclick:"wizardRunTools(['bloodhound_collect','bloodyad_acls'])", cls:"primary"},
+      ]
+    },
+    {
+      num: "05",
+      title: wizardText("Shadow credentials → PKINIT → NT hash", "Shadow credentials → PKINIT → NT hash"),
+      state: shadowDone ? "done" : ((cfg.ccache || cfg.password || cfg.nt_hash) && (cfg.target_account || targetAccountCandidate) ? "ready" : "blocked"),
+      why: wizardText(
+        "C'est l'étape la plus proche du chemin Logging: prendre un compte de service ou machine intéressant, pousser `shadowCredentials`, demander un TGT PKINIT, puis extraire un NT hash exploitable.",
+        "This is the closest step to the Logging path: take an interesting service or machine account, push `shadowCredentials`, request a PKINIT TGT, then extract a reusable NT hash."
+      ),
+      signal: shadowDone
+        ? wizardText("Signal actuel: un hash NTLM réutilisable ou un accès WinRM exploitable existe déjà.", "Current signal: a reusable NTLM hash or a usable WinRM access already exists.")
+        : ((cfg.target_account || targetAccountCandidate)
+            ? wizardText(`Compte cible prêt: ${cfg.target_account || targetAccountCandidate}.`, `Target account ready: ${cfg.target_account || targetAccountCandidate}.`)
+            : wizardText("Choisis d'abord un `target account` crédible, idéalement suggéré par les groupes / machines / logs.", "Pick a credible `target account` first, ideally suggested by groups / machines / logs.")),
+      tools: ["shadowcred_pkinit_chain"],
+      actions: [
+        ...(targetAccountCandidate && !cfg.target_account ? [{label: wizardText("Préremplir target account","Fill target account"), onclick:"wizardUseLikelyTargetAccount()", cls:""}] : []),
+        {label: wizardText("Préparer la chaîne","Prepare the chain"), onclick:"wizardPrepareTools(['shadowcred_pkinit_chain'])", cls:""},
+        {label: wizardText("Lancer la chaîne","Run the chain"), onclick:"wizardRunTools(['shadowcred_pkinit_chain'])", cls:"primary"},
+      ]
+    },
+    {
+      num: "06",
+      title: wizardText("Tester WinRM puis ouvrir evil-winrm", "Test WinRM then open evil-winrm"),
+      state: winrmDone ? "done" : ((likelyWinrm || String(data.winrm || "").trim()) ? "ready" : "blocked"),
+      why: wizardText(
+        "Le rebond final doit rester sobre: cible probable, test `winrm_checks`, puis shell interactif seulement quand l'accès est validé. Pas l'inverse.",
+        "The final pivot should stay disciplined: likely target, `winrm_checks`, then an interactive shell only once access is validated. Not the other way around."
+      ),
+      signal: winrmDone
+        ? wizardText(`WinRM est exploitable sur ${cfg.target || likelyWinrm?.target || "la cible actuelle"}.`, `WinRM is usable on ${cfg.target || likelyWinrm?.target || "the current target"}.`)
+        : (likelyWinrm
+            ? wizardText(`Cible WinRM la plus probable: ${likelyWinrm.target}.`, `Most likely WinRM target: ${likelyWinrm.target}.`)
+            : wizardText("Attends d'avoir soit une cible WinRM probable, soit un résultat `auth ok`.", "Wait until you have either a likely WinRM target or an `auth ok` result.")),
+      tools: ["winrm_checks"],
+      actions: [
+        ...(likelyWinrm ? [{label: wizardText("Tester la meilleure cible","Test best target"), onclick:"wizardTestBestWinRMTarget()", cls:"primary"}] : []),
+        {label: wizardText("Ouvrir Résultats","Open results"), onclick:"wizardNav('results')", cls:""},
+        ...(canLaunchWinRMShell(data) ? [{label: wizardText("Ouvrir evil-winrm","Open evil-winrm"), onclick:"launchWinRMShellInteractive()", cls:"primary"}] : []),
+      ]
+    }
+  ];
+  intro.textContent = wizardText(
+    "Parcours inspiré d'un vrai chemin de lab AD: partir de l'IP, faire parler le loot, transformer un log en credential, sécuriser Kerberos, confirmer le chemin ACL, puis finir proprement sur WinRM. Chaque étape s'adapte à ta box courante.",
+    "Path inspired by a real AD lab flow: start from the IP, make loot talk, turn a log into a credential, secure Kerberos, confirm the ACL path, then finish cleanly on WinRM. Each step adapts to the current box."
+  );
+  box.innerHTML = steps.map(step => `
+    <div class="wiz-step">
+      <div class="wiz-step-top">
+        <div>
+          <div class="wiz-step-num">STEP ${step.num}</div>
+          <div class="wiz-step-title">${escapeHtml(step.title)}</div>
+        </div>
+        <span class="wiz-step-state ${step.state}">${escapeHtml(step.state === "done" ? wizardText("ok","done") : (step.state === "ready" ? wizardText("prêt","ready") : wizardText("bloqué","blocked")))}</span>
+      </div>
+      <div class="wiz-step-body">
+        <div class="wiz-step-why">${escapeHtml(step.why)}</div>
+        <div class="wiz-step-signal">${escapeHtml(step.signal)}</div>
+        <div class="wiz-step-tools">${wizardText("Outils clefs","Key tools")} : <code>${escapeHtml(step.tools.join(" • "))}</code></div>
+        <div class="wiz-step-actions">
+          ${step.actions.map(a => `<button class="wiz-step-btn ${a.cls||""}" onclick="${a.onclick}">${escapeHtml(a.label)}</button>`).join("")}
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
 function updateWizardTypeButtons() {
   document.querySelectorAll(".wiz-type-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.type === getTargetType());
   });
 }
 function openWizard() {
-  _wizardPreset = defaultPresetForType(getTargetType());
+  _wizardPreset = getTargetType() === "windows" ? "winrm_path" : defaultPresetForType(getTargetType());
   updateWizardSummary();
   updateWizardTypeButtons();
   renderWizardCards();
+  renderInteractiveWizard();
   document.getElementById("wizard-overlay").classList.add("open");
 }
 function closeWizard() {
@@ -6645,6 +7150,7 @@ function closeWizard() {
 function pickWizardPreset(name) {
   _wizardPreset = name;
   renderWizardCards();
+  renderInteractiveWizard();
 }
 function setWizardType(type) {
   const inpType = document.getElementById("inp-type");
@@ -6654,9 +7160,10 @@ function setWizardType(type) {
   updateWizardSummary();
   updateWizardTypeButtons();
   if(!_wizardPreset || ATTACK_PRESETS[_wizardPreset]?.target_type !== type) {
-    _wizardPreset = defaultPresetForType(type);
+    _wizardPreset = type === "windows" ? "winrm_path" : defaultPresetForType(type);
   }
   renderWizardCards();
+  renderInteractiveWizard();
 }
 function applyWizardPreset() {
   applyAttackPreset(_wizardPreset, {
@@ -7032,7 +7539,15 @@ function useCredRow(user, pass, hash, mode="use") {
   };
   applyActiveCredential(user, pass, hash, "", opts);
 }
+function useCredForGetTgt(user, pass, hash) {
+  applyActiveCredential(user, pass, hash, "", {toast:true});
+  const msg = getUiLang()==="en"
+    ? "Credential applied for getTGT"
+    : "Credential appliqué pour getTGT";
+  toast(msg, "ok");
+}
 function renderCreds(creds) {
+  LAST_CREDS_TRACKER = Array.isArray(creds) ? creds : [];
   const list  = document.getElementById("creds-list");
   const empty = document.getElementById("creds-empty");
   const badge = document.getElementById("creds-badge");
@@ -7069,6 +7584,9 @@ function renderCreds(creds) {
         <button class="cred-btn use"
           onclick="useCredRow('${escapeHtml(c.user||'')}','${escapeHtml(c.pass||'')}','${escapeHtml(c.hash||'')}','use')">
           ${t("use")}</button>
+        ${(c.pass || c.hash) ? `<button class="cred-btn use"
+          onclick="useCredForGetTgt('${escapeHtml(c.user||'')}','${escapeHtml(c.pass||'')}','${escapeHtml(c.hash||'')}')">
+          ${t("use_for_gettgt")}</button>` : ""}
         <button class="cred-btn use"
           onclick="useCredRow('${escapeHtml(c.user||'')}','${escapeHtml(c.pass||'')}','${escapeHtml(c.hash||'')}','chain')">
           ${t("apply_and_chain")}</button>
@@ -7080,6 +7598,7 @@ function renderCreds(creds) {
       </div>
     </div>`;
   }).join("");
+  if(wizardIsOpen()) renderInteractiveWizard();
 }
 
 /* ══════════════════════════════════════════════════════════════════

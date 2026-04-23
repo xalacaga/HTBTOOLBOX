@@ -84,6 +84,15 @@ The easiest flow:
 - choose the type
 - apply a preset
 
+If you are on a `windows / AD` box, you can also use the **interactive path up to WinRM** directly inside the wizard. It follows a realistic order:
+- recon
+- read loot / logs
+- apply a credential
+- `krb5_setup` then `getTGT`
+- confirm the BloodHound / ACL path
+- run `shadowcred_pkinit_chain`
+- test WinRM and then open `evil-winrm`
+
 Good defaults:
 - `windows` → `HTB AD quick win`
 - `linux` → `Linux focus`
@@ -222,6 +231,11 @@ Always do:
 3. reread `Results`
 4. reread `Playbook`
 
+If your immediate goal is Kerberos:
+- click `Use for getTGT`
+- check that the auth bar badge switches to `Kerberos ready`
+- then run `gettgt`
+
 Typical modules to rerun at that point:
 - `nxc_smb_auth_test`
 - `ldap_users_auth`
@@ -287,6 +301,9 @@ Keep in mind:
 - `STATUS_ACCOUNT_RESTRICTION` does not mean “bad password”
 - `invalid credentials` in one tool does not mean the account is dead everywhere
 - some accounts are meant for LDAP, Kerberos, SQL, or services, not interactive SMB
+- `krb5_setup` prepares Kerberos but does not create the ticket
+- `gettgt` still needs `user + password` or `user + NT hash`
+- the `Kerberos ready` / `ccache only` / `getTGT: missing secret` badge helps avoid confusion
 
 ### Step 8 — turn access into privilege or endgame
 

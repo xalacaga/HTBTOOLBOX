@@ -2556,6 +2556,13 @@ def collect_operational_view(out_dir: Path, domain: str, summary: dict) -> dict:
     anomaly_items = summary.get("anomalies") or []
     bh_review_items = summary.get("bloodhound_review") or []
     loot_hunt_items = summary.get("loot_hunt") or []
+    group_profiles = summary.get("group_profiles") or []
+    remote_mgmt_members: list[str] = []
+    for grp in group_profiles:
+        gname = str(grp.get("name") or "").strip().lower()
+        if gname in {"remote management users", "gestion a distance", "gestion à distance"}:
+            remote_mgmt_members = [str(m).strip() for m in (grp.get("members") or []) if str(m).strip()]
+            break
 
     # ── SAM / DCSync loot ────────────────────────────────────────────────────
     dcsync_f = out_dir / "attack_checks" / "secretsdump_dcsync.txt"
@@ -3108,6 +3115,10 @@ def collect_operational_view(out_dir: Path, domain: str, summary: dict) -> dict:
         add("priorities", f"Délégation NON contrainte sur {unconstrained_users[:2]} — capturer TGT via PrinterBug/PetitPotam.")
     if winrm_ok and auth_user:
         add("priorities", f"WinRM authentifié ({auth_user}) — accès shell direct via evil-winrm.")
+    if remote_mgmt_members:
+        add("priorities", f"Groupe 'Remote Management Users' détecté ({', '.join(remote_mgmt_members[:4])}) — forte probabilité de logon WinRM/WMI.")
+        if auth_user and any(auth_user.lower() == m.lower().rstrip('$') for m in remote_mgmt_members):
+            add("priorities", f"{auth_user} est membre de 'Remote Management Users' — tester WinRM en priorité sur les hôtes Windows découverts.")
     if auth_user and not pth_hashes and not asrep_hash_count and not tgs_hash_count:
         add("priorities", f"Credential valide ({auth_user}) — relancer modules avancés (BloodHound, ADCS, BloodyAD).")
     if coerce_success and not smb_signing_off:
@@ -3166,6 +3177,9 @@ def collect_operational_view(out_dir: Path, domain: str, summary: dict) -> dict:
         add("attack_paths", f"Coerce_plus → NTLM relay vers /certsrv sur '{ca_target}' → certificat machine / utilisateur → authentification certipy.")
     if bloodhound_gc_issue:
         add("attack_paths", "BloodHound Legacy bloqué par le GC → continuer l'attaque avec LDAP ciblé, BloodyAD, Certipy et chemins de délégation déjà identifiés.")
+    if remote_mgmt_members:
+        _rmu = remote_mgmt_members[0]
+        add("attack_paths", f"Membre de 'Remote Management Users' ({_rmu}) → tester WinRM / evil-winrm sur les machines Windows découvertes avant toute chaîne plus complexe.")
     _ACL_TECHNIQUE = {
         "GenericAll": "accès total → reset mdp / shadow creds / RBCD",
         "WriteDacl": "modifier les DACL → s'octroyer DCSync / ForceChangePassword",
@@ -6252,8 +6266,11 @@ async def ws_endpoint(ws: WebSocket):
 
         cmd = build_command(tool_id, cfg)
         if cmd is None:
+            line = f"[!] Credentials manquants ou outil indisponible: {tool_id}"
+            if tool_id == "gettgt":
+                line = "[!] getTGT demande un username + mot de passe ou hash NT actif. krb5_setup prepare Kerberos, mais ne cree pas de ticket a lui seul."
             await send("tool_output", {"tool_id": tool_id,
-                "line": f"[!] Credentials manquants ou outil indisponible: {tool_id}",
+                "line": line,
                 "done": True, "rc": 1})
             active_run_tasks.pop(tool_id, None)
             return

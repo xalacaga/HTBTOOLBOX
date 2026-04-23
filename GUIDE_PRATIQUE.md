@@ -84,6 +84,15 @@ Le plus simple :
 - choisis le type
 - applique un preset
 
+Si tu es sur une box `windows / AD`, tu peux aussi suivre le **chemin interactif jusqu'à WinRM** directement dans le wizard. Il te guide dans l'ordre réaliste :
+- recon
+- lecture du loot / logs
+- application d'un credential
+- `krb5_setup` puis `getTGT`
+- confirmation BloodHound / ACL
+- chaîne `shadowcred_pkinit_chain`
+- test WinRM puis ouverture `evil-winrm`
+
 Bon réflexe :
 - `windows` → `HTB AD quick win`
 - `linux` → `Linux focus`
@@ -222,6 +231,11 @@ Tu fais toujours :
 3. relis `Résultats`
 4. relis `Playbook`
 
+Si ton but immédiat est Kerberos :
+- clique `Use for getTGT`
+- vérifie que le badge de la barre d’auth passe sur `Kerberos prêt`
+- puis lance `gettgt`
+
 Modules typiques à relancer à ce moment :
 - `nxc_smb_auth_test`
 - `ldap_users_auth`
@@ -287,6 +301,9 @@ Objectif :
 - `STATUS_ACCOUNT_RESTRICTION` ne veut pas dire “mauvais password”
 - `invalid credentials` sur un outil ne veut pas dire que le compte est mort partout
 - certains comptes servent à LDAP, Kerberos, SQL ou services, mais pas à SMB interactif
+- `krb5_setup` prépare Kerberos mais ne crée pas le ticket
+- `gettgt` demande encore `user + password` ou `user + NT hash`
+- le badge `Kerberos prêt` / `ccache seul` / `getTGT: secret manquant` aide à ne pas se tromper
 
 ### Étape 8 — transformer l’accès en privilège ou en fin de box
 
