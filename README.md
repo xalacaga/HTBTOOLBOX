@@ -2,6 +2,7 @@
 
 > 🇫🇷 [Français](#-français) · 🇬🇧 [English](#-english)
 > 📖 Guide utilisateur assisté : [GUIDE.md](GUIDE.md)
+> 🧭 Guide pratique lab : [GUIDE_PRATIQUE.md](GUIDE_PRATIQUE.md)
 
 ---
 

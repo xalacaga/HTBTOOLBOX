@@ -4,7 +4,7 @@ HTB Toolbox v1 — Backend
 
 """
 
-import asyncio, fcntl, json, os, pty, re, shlex, shutil, signal, subprocess, sys, termios, time
+import asyncio, fcntl, html, json, os, pty, re, shlex, shutil, signal, subprocess, sys, termios, time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -25,6 +25,8 @@ CATALOG_DIR   = BASE_DIR / "catalog"
 TIMELINE_PATH = BASE_DIR / "timeline.json"
 CONFIG_PATH   = BASE_DIR / "config.local.json"
 CONFIG_EXAMPLE_PATH = BASE_DIR / "config.example.json"
+PRACTICAL_GUIDE_FR_PATH = BASE_DIR / "GUIDE_PRATIQUE.md"
+PRACTICAL_GUIDE_EN_PATH = BASE_DIR / "GUIDE_PRACTICAL_EN.md"
 LOOT_DIR.mkdir(exist_ok=True)
 
 active_proc: asyncio.subprocess.Process | None = None
@@ -6103,6 +6105,129 @@ def generate_markdown(domain: str) -> str:
                    fp.read_text(errors="replace")[:3000].rstrip(), "```\n"]
     return "\n".join(md)
 
+
+def _inline_md(text: str) -> str:
+    text = html.escape(text)
+    text = re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
+    text = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", text)
+    return text
+
+
+def render_markdown_document(md_text: str, title: str) -> str:
+    lines = md_text.splitlines()
+    body: list[str] = []
+    in_code = False
+    list_kind: str | None = None
+    para: list[str] = []
+
+    def flush_para():
+        nonlocal para
+        if para:
+            body.append(f"<p>{_inline_md(' '.join(p.strip() for p in para))}</p>")
+            para = []
+
+    def close_list():
+        nonlocal list_kind
+        if list_kind:
+            body.append(f"</{list_kind}>")
+            list_kind = None
+
+    for raw in lines:
+        line = raw.rstrip("\n")
+        stripped = line.strip()
+        if in_code:
+            if stripped.startswith("```"):
+                body.append("</code></pre>")
+                in_code = False
+            else:
+                body.append(html.escape(line) + "\n")
+            continue
+        if stripped.startswith("```"):
+            flush_para()
+            close_list()
+            body.append("<pre><code>")
+            in_code = True
+            continue
+        if not stripped:
+            flush_para()
+            close_list()
+            continue
+        if stripped.startswith("### "):
+            flush_para()
+            close_list()
+            body.append(f"<h3>{_inline_md(stripped[4:])}</h3>")
+            continue
+        if stripped.startswith("## "):
+            flush_para()
+            close_list()
+            body.append(f"<h2>{_inline_md(stripped[3:])}</h2>")
+            continue
+        if stripped.startswith("# "):
+            flush_para()
+            close_list()
+            body.append(f"<h1>{_inline_md(stripped[2:])}</h1>")
+            continue
+        if re.match(r"^\d+\.\s+", stripped):
+            flush_para()
+            if list_kind != "ol":
+                close_list()
+                list_kind = "ol"
+                body.append("<ol>")
+            body.append(f"<li>{_inline_md(re.sub(r'^\\d+\\.\\s+', '', stripped))}</li>")
+            continue
+        if stripped.startswith("- "):
+            flush_para()
+            if list_kind != "ul":
+                close_list()
+                list_kind = "ul"
+                body.append("<ul>")
+            body.append(f"<li>{_inline_md(stripped[2:])}</li>")
+            continue
+        para.append(stripped)
+
+    flush_para()
+    close_list()
+    if in_code:
+        body.append("</code></pre>")
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{html.escape(title)}</title>
+  <style>
+    :root {{
+      --bg:#0b0f14; --panel:#121922; --text:#e6edf3; --muted:#9aa6b2; --line:#233041; --accent:#4fd1c5;
+    }}
+    body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.65 ui-sans-serif, system-ui, sans-serif; }}
+    .wrap {{ max-width:980px; margin:0 auto; padding:28px 22px 80px; }}
+    .top {{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; }}
+    .title {{ font-size:14px; color:var(--muted); }}
+    .actions a {{ color:var(--accent); text-decoration:none; border:1px solid var(--line); padding:8px 12px; border-radius:8px; background:var(--panel); }}
+    h1,h2,h3 {{ line-height:1.25; margin:26px 0 12px; }}
+    h1 {{ font-size:30px; }}
+    h2 {{ font-size:22px; border-top:1px solid var(--line); padding-top:18px; }}
+    h3 {{ font-size:18px; }}
+    p, ul, ol {{ margin:12px 0; }}
+    ul,ol {{ padding-left:22px; }}
+    code {{ background:#182230; padding:2px 6px; border-radius:6px; }}
+    pre {{ background:#0f1620; border:1px solid var(--line); padding:14px; border-radius:10px; overflow:auto; }}
+    pre code {{ background:none; padding:0; }}
+    strong {{ color:#fff; }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="title">{html.escape(title)}</div>
+      <div class="actions"><a href="/">HTB Toolbox</a></div>
+    </div>
+    {''.join(body)}
+  </div>
+</body>
+</html>"""
+
 # ── WebSocket ──────────────────────────────────────────────────────────
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
@@ -6824,6 +6949,16 @@ async def root():
 async def loot_file(path: str):
     fp = resolve_loot_path(path)
     return FileResponse(str(fp))
+
+
+@app.get("/docs/practical-guide")
+async def practical_guide(lang: str = "fr"):
+    use_en = str(lang or "fr").lower().startswith("en")
+    path = PRACTICAL_GUIDE_EN_PATH if use_en else PRACTICAL_GUIDE_FR_PATH
+    if not path.exists():
+        return HTMLResponse("<h1>Guide not found</h1>", status_code=404)
+    title = "HTB Toolbox — Practical Lab Guide" if use_en else "HTB Toolbox — Guide pratique lab"
+    return HTMLResponse(render_markdown_document(path.read_text(errors="replace"), title))
 
 @app.get("/api/catalog")
 async def api_catalog():

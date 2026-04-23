@@ -1004,6 +1004,9 @@ body{font-family:var(--mono);background:var(--bg0);color:var(--text);
     <div class="nav-item" id="nav-action-creds" onclick="openModal()">
       <span class="ni">◎</span> Identifiants
     </div>
+    <div class="nav-item" id="nav-action-practical-guide" onclick="openPracticalGuide()">
+      <span class="ni">🧭</span> Guide pratique
+    </div>
     <div class="nav-item" id="nav-action-export" onclick="exportMarkdown()">
       <span class="ni">↓</span> Export rapport .md
     </div>
@@ -1928,6 +1931,7 @@ const UI_I18N = {
     hashes: "Hashes",
     creds_tracker: "Creds tracker",
     credentials: "Identifiants",
+    practical_guide: "Guide pratique",
     export_report: "Export rapport .md",
     save_config: "Sauver la config",
     clear_terminal: "Effacer le terminal",
@@ -2273,6 +2277,7 @@ const UI_I18N = {
     hashes: "Hashes",
     creds_tracker: "Creds tracker",
     credentials: "Credentials",
+    practical_guide: "Practical guide",
     export_report: "Export .md report",
     save_config: "Save config",
     clear_terminal: "Clear terminal",
@@ -2623,10 +2628,11 @@ function getToolDesc(tool) {
   const raw = getUiLang()==="en" ? (tool.desc_en || tool.desc) : tool.desc;
   if(!raw) return raw;
   const rendered = substituteToolDescPlaceholders(raw).trim();
+  const guideStep = buildToolGuideStep(tool);
   const checklist = buildToolDescChecklist(tool);
   const sampleOutput = buildToolDescSampleOutput(tool);
   const ctx = buildToolDescContext(tool);
-  return [rendered, checklist, sampleOutput, ctx].filter(Boolean).join("\n\n");
+  return [rendered, guideStep, checklist, sampleOutput, ctx].filter(Boolean).join("\n\n");
 }
 function substituteToolDescPlaceholders(text) {
   // Remplace {target}, {domain}, {dc}, {user}, {target_account} par les valeurs actuelles.
@@ -2671,6 +2677,175 @@ function buildToolDescContext(tool) {
         SUDO_REQUIRED_TOOLS.has(tool?.id) ? "• note = ce module peut demander sudo dans l'UI" : "",
       ];
   return lines.filter(Boolean).join("\n");
+}
+function buildToolGuideStep(tool) {
+  const id = String(tool?.id || "");
+  const groupId = getModuleByTool(id)?.id || "";
+  const map = {
+    hosts_autoconf: "start",
+    rustscan_fast: "start",
+    nmap_targeted: "start",
+    nxc_anon_probe: "windows_phase1",
+    smbclient_list: "windows_phase1",
+    ldap_anon_base: "windows_phase1",
+    getnpusers_asrep: "windows_phase1",
+    nxc_smb_auth_test: "first_creds",
+    ldap_users_auth: "first_creds",
+    ldapdomaindump: "first_creds",
+    bloodhound_collect: "first_creds",
+    getuserspns_kerberoast: "first_creds",
+    gettgt: "first_creds",
+    winrm_checks: "first_creds",
+    krb5_setup: "kerberos_chain",
+    klist_show: "kerberos_chain",
+    bloodyad_acls: "post_auth",
+    certipy_find: "post_auth",
+    gpo_parse: "post_auth",
+    shadowcred_pkinit_chain: "post_auth",
+    secretsdump: "post_auth",
+    tls_probe: "web",
+    web_robots: "web",
+    web_tech_detect: "web",
+    ffuf_dir_fast: "web",
+    ffuf_vhost: "web",
+    nikto_scan: "web",
+    web_nuclei_safe: "web",
+    sqlmap_basic: "web",
+    wfuzz_params: "web",
+    ssh_banner: "linux",
+    ssh_auth_methods: "linux",
+    nfs_probe: "linux",
+    linux_http_fingerprint: "linux",
+    linux_services_enum: "linux",
+    sudo_enum: "linux_post",
+    suid_sgid_find: "linux_post",
+    linux_caps_check: "linux_post",
+    linux_cron_check: "linux_post",
+    linux_docker_check: "linux_post",
+    linux_privesc_check: "linux_post",
+    smbmap_enum: "loot",
+    enum4linux_ng: "loot",
+  };
+  const family = map[id] || ({
+    web: "web",
+    sql: "web",
+    ldap: "windows_phase1",
+    bh: "first_creds",
+  }[groupId] || "");
+  const fr = {
+    start: [
+      "Guide pratique → départ de box",
+      "• étape 1 = remplir target / domain / dc proprement",
+      "• étape 3 = lancer la routine universelle de départ",
+      "• objectif = comprendre la surface avant de tenter l'auth",
+    ],
+    windows_phase1: [
+      "Guide pratique → routine Windows / AD, phase 1",
+      "• pars de l'IP et cherche d'abord domaine, DC, SMB, LDAP, WinRM",
+      "• utilise ce module avant de lancer les gros outils post-auth",
+      "• objectif = transformer les premiers éléments en hypothèses solides",
+    ],
+    first_creds: [
+      "Guide pratique → routine Windows / AD, phase 2",
+      "• ce module sert juste après un user / password / hash / ccache",
+      "• réflexe = Creds Tracker → Use + retest → relire Résultats",
+      "• objectif = valider le credential et ouvrir un vrai pivot",
+    ],
+    kerberos_chain: [
+      "Guide pratique → routine Windows / AD, phase 3",
+      "• à utiliser si le compte semble bon mais SMB est limité ou Kerberos devient prioritaire",
+      "• chaîne typique = krb5_setup → gettgt → coller le ccache → relancer les modules Kerberos",
+      "• objectif = convertir un compte valide en ticket réutilisable",
+    ],
+    post_auth: [
+      "Guide pratique → routine Windows / AD, phase 4",
+      "• ce module intervient quand tu as déjà un accès ou un credential exploitable",
+      "• objectif = transformer l'accès en abus AD, hash, certificat ou privilège",
+      "• pense à remplir target account si le module abuse une cible précise",
+    ],
+    web: [
+      "Guide pratique → routine Web",
+      "• commence par découvrir endpoints, vhosts, techno et paramètres utiles",
+      "• n'avance vers nikto / nuclei / sqlmap qu'après avoir trouvé des pistes crédibles",
+      "• objectif = transformer une surface web en accès, fuite ou RCE",
+    ],
+    linux: [
+      "Guide pratique → routine Linux",
+      "• ce module appartient à la phase de découverte de surface et de services",
+      "• objectif = identifier SSH, NFS, HTTP, services et premiers accès plausibles",
+      "• garde la privesc pour après un vrai foothold",
+    ],
+    linux_post: [
+      "Guide pratique → routine Linux post-accès",
+      "• à lancer après un shell ou un accès SSH valide",
+      "• objectif = transformer l'accès initial en sudo, root ou lecture de secrets",
+      "• concentre-toi sur sudo, SUID, caps, cron, docker et creds en clair",
+    ],
+    loot: [
+      "Guide pratique → exploitation du loot",
+      "• relie ce module aux étapes 'ouvrir les preuves' et 'Réanalyser le loot'",
+      "• lis toujours le fichier source quand le résumé remonte une faiblesse",
+      "• objectif = transformer un fichier en cred, host, service ou pivot concret",
+    ],
+  };
+  const en = {
+    start: [
+      "Practical guide → box start",
+      "• step 1 = fill target / domain / dc cleanly",
+      "• step 3 = run the universal starting routine",
+      "• goal = understand the surface before attempting auth",
+    ],
+    windows_phase1: [
+      "Practical guide → Windows / AD routine, phase 1",
+      "• start from the IP and first identify domain, DC, SMB, LDAP, and WinRM",
+      "• use this module before larger post-auth tooling",
+      "• goal = turn early clues into solid hypotheses",
+    ],
+    first_creds: [
+      "Practical guide → Windows / AD routine, phase 2",
+      "• use this right after finding a user / password / hash / ccache",
+      "• reflex = Creds Tracker → Use + retest → reread Results",
+      "• goal = validate the credential and open a real pivot",
+    ],
+    kerberos_chain: [
+      "Practical guide → Windows / AD routine, phase 3",
+      "• use this when the account seems valid but SMB is restricted or Kerberos becomes the best route",
+      "• typical chain = krb5_setup → gettgt → paste the ccache → rerun Kerberos modules",
+      "• goal = convert a valid account into a reusable ticket",
+    ],
+    post_auth: [
+      "Practical guide → Windows / AD routine, phase 4",
+      "• this module comes into play once you already have useful access or reusable creds",
+      "• goal = turn access into AD abuse, a hash, a certificate, or privilege",
+      "• remember to fill target account when the abuse needs a specific target",
+    ],
+    web: [
+      "Practical guide → Web routine",
+      "• start by discovering endpoints, vhosts, stack, and useful parameters",
+      "• only move to nikto / nuclei / sqlmap after finding credible leads",
+      "• goal = turn web surface into access, disclosure, or RCE",
+    ],
+    linux: [
+      "Practical guide → Linux routine",
+      "• this module belongs to the surface and service discovery phase",
+      "• goal = identify SSH, NFS, HTTP, services, and plausible first access paths",
+      "• keep privesc for after you gain a real foothold",
+    ],
+    linux_post: [
+      "Practical guide → Linux post-access routine",
+      "• use this after a shell or valid SSH access",
+      "• goal = turn initial access into sudo, root, or secret exposure",
+      "• focus on sudo, SUID, capabilities, cron, docker, and cleartext creds",
+    ],
+    loot: [
+      "Practical guide → loot exploitation",
+      "• connect this module to the 'open proofs' and 'Reanalyze loot' steps",
+      "• always read the source file when a summary reports a weakness",
+      "• goal = turn a file into a cred, host, service, or concrete pivot",
+    ],
+  };
+  const lines = (getUiLang()==="en" ? en : fr)[family];
+  return lines ? lines.join("\n") : "";
 }
 function buildToolDescChecklist(tool) {
   const id = String(tool?.id || "");
@@ -3115,6 +3290,7 @@ function applyI18n() {
   const btnNotesPrev = document.getElementById("btn-notes-preview");
   if(btnNotesPrev) btnNotesPrev.textContent = t("notes_preview_btn");
   setNavLabel("nav-action-creds", "credentials");
+  setNavLabel("nav-action-practical-guide", "practical_guide");
   setNavLabel("nav-action-export", "export_report");
   setNavLabel("nav-action-save", "save_config");
   setNavLabel("nav-action-clear", "clear_terminal");
@@ -4875,6 +5051,10 @@ function renderTimeline(entries) {
    TOOLS STATUS
 ══════════════════════════════════════════════════════════════════ */
 function checkTools() { wsSend("check_tools"); }
+function openPracticalGuide() {
+  const lang = getUiLang()==="en" ? "en" : "fr";
+  window.open(`/docs/practical-guide?lang=${encodeURIComponent(lang)}`, "_blank", "noopener");
+}
 function renderToolsStatus(tools) {
   // Script pill
   const pill=document.getElementById("script-pill");

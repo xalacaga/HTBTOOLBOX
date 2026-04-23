@@ -2,6 +2,7 @@
 
 > 🇫🇷 [Français](#-guide-français) · 🇬🇧 [English](#-english-guide)
 > 📘 README principal : [README.md](README.md)
+> 🧭 Guide pratique orienté lab : [GUIDE_PRATIQUE.md](GUIDE_PRATIQUE.md)
 
 ---
 
